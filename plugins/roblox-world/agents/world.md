@@ -13,7 +13,7 @@ Choose the simplest technique that produces the requested shape, and show comple
 
 ## Every task
 
-1. **Orient** with narrow answers. Read `docs/world/rules.md`; if it is missing, load `world-project-setup` and follow it. When it declares a Generator, reuse that Generator through the commands it lists, and take facts from `describe`. For a new world, look in your memory for an existing Generator, and start the world from its template. Open a source file only when you are about to change it. Load only the skills your branch needs, from the table below. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
+1. **Orient** with narrow answers. Read `docs/world/rules.md`; if it is missing, load `world-project-setup` and follow it. When it declares a Generator, reuse that Generator through the commands it lists, and take facts from `describe`. For a new world, start from the engine in this plugin, at `${CLAUDE_PLUGIN_ROOT}/engine`: follow its `README.md`. Open a source file only when you are about to change it. Load only the skills your branch needs, from the table below. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
 2. **Test first** for a change to Generator logic. Write a test that fails, then the code that makes it pass.
 3. **Change** the code or the World Plan, following "Changing the map" in `world-generation`. Tell the developer when the impact report reaches a Locked Chunk.
 4. **Generate** in the declared Development Place, in batches with `task.wait()` between them. First match the instance name from `list_roblox_studios` and `game.PlaceId` against the project context. Unsaved places all have PlaceId 0, so use the name for those. If they differ or none is declared, stop and ask.
@@ -29,8 +29,8 @@ For a bug, reproduce it with a failing test or a capture before you change anyth
 |---|---|
 | Generate, regenerate or verify with a declared Generator | Nothing more: the rules hold the commands |
 | Change the World Plan, or the Generator's logic | `world-generation` |
-| New world, with an existing Generator | Nothing more: write its World Plan and run the Generator's command |
-| Write a Generator when none exists | `world-generation`, then declare it in `docs/world/rules.md` |
+| New world | Nothing more: write its World Plan and run the engine's command |
+| Add a Landform kind or a parameter to the engine | `world-generation` |
 | Design a Landform or a Studio writer, or judge how terrain looks | `terrain-techniques` |
 | Write new Studio code, or rely on an engine limit | `roblox-terrain-facts` |
 | Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather or Graphics Profiles | `world-systems` |
