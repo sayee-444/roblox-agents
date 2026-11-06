@@ -3,7 +3,21 @@ name: roblox-terrain-facts
 description: Verified Roblox terrain limits and generation techniques, with sources. Use before writing Studio terrain code or relying on an engine limit.
 ---
 
-Read 2026-11-05 against the linked sources. Recheck anything that matters, because the platform changes quickly. Terrain write speed and place file size have not been measured here, so measure them on your project before committing to a map size.
+Read 2026-11-05 against the linked sources, and measured where stated. Recheck anything that matters, because the platform changes quickly.
+
+## Measured
+
+Studio Edit mode, 2026-11-06, on one test map of 9 Chunks. Generating and writing took 3.6 s in total. Place file size, streaming, play mode and phones remain unmeasured, so measure them before committing to a map size.
+
+| Fact | Evidence |
+|---|---|
+| A 512 x 512 Chunk of 52 to 85 layers takes 0.35 to 0.42 s to generate and write, most of it calculating heights | 9 Chunks timed |
+| `WriteVoxelChannels(Region3, 4, channels)` takes arrays indexed `[x][y][z]`, and `ReadVoxelChannels` returns the same layout plus `Size` | 9,224,192 voxels read back with 0 mismatches |
+| A region not aligned to 4 studs returns the wrong array shape, so align before reading | Seen in the same test |
+| Occupancy reads back in 8-bit steps, a maximum error of 0.0039, so compare with that tolerance | Same read-back |
+| Studio builds the render mesh for 30 to 60 s after a large write | A grey rectangle vanished with identical data |
+
+## Documented
 
 | Fact | What to do about it | Source |
 |---|---|---|
