@@ -1,0 +1,16 @@
+{
+  "name": "roblox-agents",
+  "owner": {
+    "name": "sayee-444"
+  },
+  "metadata": {
+    "description": "Specialized Claude Code agents and skills for Roblox development"
+  },
+  "plugins": [
+    {
+      "name": "roblox-world",
+      "source": "./plugins/roblox-world",
+      "description": "An agent that builds and runs a deterministic world Generator in Roblox Studio"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash|PowerShell|mcp__Roblox_Studio__open_cloud_invoke|mcp__Roblox_Studio__execute_luau",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "powershell.exe -NoProfile -ExecutionPolicy Bypass -File \"${CLAUDE_PLUGIN_ROOT}/hooks/guard.ps1\""
+          }
+        ]
+      }
+    ]
+  }
+}
