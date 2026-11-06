@@ -30,6 +30,8 @@ Cheap measures such as the slope spread and pits with no outflow can catch regre
 
 ## Open defects
 
+- **New worlds copy the template's layout:** in 2 of 2 `create-fork` runs on 2026-11-06 the plan kept the template's range and mesa positions and the main River's route, the second even when the prompt asked for a placement unlike the template. The test map is what `new` hands the agent to edit.
+- **Reading `rules.md` in an empty folder:** the agent's first step reads a file that a new world does not have yet. In 1 of 2 runs that counted as an error, which fails a scenario with `maxErrors: 0`.
 - **Mesa:** the top is blotchy and still rounded.
 - **Rendering:** a dark rectangle hides part of the main River in the test world, while its voxels are correct. `hills-above` shows a dark crack.
 - **Mouse:** in one place the mouse stopped working in the 3D view, with the keyboard fine. Cause unknown.

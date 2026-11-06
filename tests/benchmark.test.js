@@ -46,6 +46,11 @@ test('a run names each thing it failed to do', () => {
   ]);
 });
 
+test('a file can forbid several texts', () => {
+  const failures = grade(run, { absentFiles: { 'plan.luau': ['seed = 1', 'seed = 2'] } }, { readFile: () => 'seed = 2' });
+  assert.deepStrictEqual(failures, ['plan.luau still holds "seed = 2"']);
+});
+
 test('an expected answer and expected file text are graded from what the run produced', () => {
   const failures = grade(run, { answer: ['fork', 'mesa'], files: { 'docs/world/history.md': 'Removed River' }, absentFiles: { 'src/world/plan.luau': 'id = "river"' } }, {
     answer: 'The last change removed River fork.',
