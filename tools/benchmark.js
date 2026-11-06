@@ -93,11 +93,13 @@ function groups(rows, measures) {
     const middle = Math.floor(sorted.length / 2);
     return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
   };
+  // A Map keeps insertion order, so inserting a key again leaves the group that ran last at the end.
   const found = new Map();
   for (const row of rows) {
     const key = row.label ? `${row.version} ${row.label}` : row.version;
-    if (!found.has(key)) found.set(key, []);
-    found.get(key).push(row);
+    const members = found.get(key) || [];
+    found.delete(key);
+    found.set(key, [...members, row]);
   }
   return [...found].map(([key, members]) => {
     const medians = {};
@@ -109,13 +111,19 @@ function groups(rows, measures) {
   });
 }
 
-// Prints the newest group of one kind of result against the group before it.
+// The group the newest one is judged against: the latest plain version before it, because a label
+// marks a technique that was only tried and may never have shipped.
+function baseline(all) {
+  return all.slice(0, -1).reverse().find((group) => !group.key.includes(' '));
+}
+
+// Prints the newest group of one kind of result against its baseline.
 function showComparison(name) {
   const rows = readResults().filter((row) => row.name === name);
   const measures = measuresOf(name);
   const all = groups(rows, measures);
   const now = all[all.length - 1];
-  const before = all[all.length - 2];
+  const before = baseline(all);
   const graded = rows.some((row) => row.passed !== undefined);
   const describe = (group) => `${group.key}, ${group.runs} run${group.runs === 1 ? '' : 's'}${graded ? `, ${group.passed} passed` : ''}`;
   console.log(`\n${name}: ${describe(now)}${before ? `, against ${describe(before)}` : ''}`);
@@ -282,4 +290,4 @@ if (require.main === module) {
   try { main(); } catch (error) { console.error(error.message); process.exitCode = 1; }
 }
 
-module.exports = { grade, parseCost, parseEngine, compare, groups };
+module.exports = { grade, parseCost, parseEngine, compare, groups, baseline };

@@ -1,6 +1,6 @@
 # Benchmark
 
-`tools/benchmark.js` measures the plugin and keeps every result in `benchmarks/results.jsonl`, stamped with its commit and plugin version, so that each change can be compared with the run before it. In a session on this repository, `/benchmark` runs it.
+`tools/benchmark.js` measures the plugin and keeps every result in `benchmarks/results.jsonl`, stamped with its commit and plugin version, so that a version or a technique can be compared with the one before it. In a session on this repository, `/benchmark` runs it.
 
 ## Three prices
 
@@ -8,7 +8,7 @@
 |---|---|---|---|
 | `node tools/benchmark.js cost` | Nothing | Nothing | How much context does the plugin add? |
 | `node tools/benchmark.js engine --place <name>` | No tokens | Studio | How long does each engine step take? |
-| `node tools/benchmark.js agent <scenario> [--place <name>]` | Tokens | Studio, except `recover` | Does the agent do the job, and at what cost? |
+| `node tools/benchmark.js agent <scenario> [--place <name>]` | Tokens | Studio, except `start` and `recover` | Does the agent do the job, and at what cost? |
 | `node tools/benchmark.js report` | Nothing | Nothing | What changed against the version before? |
 
 Run `cost` on every change to the agent or a skill, and `agent start` to see the real context, for about 2 cents. Run the other scenarios when a change should alter what the agent does.
@@ -17,9 +17,9 @@ Run `cost` on every change to the agent or a skill, and `agent start` to see the
 
 1. Before the change, run `agent start --runs 3` and any scenario it affects, if the current version has no results yet.
 2. Make the change. A plugin change bumps the version, which opens a new group of results.
-3. Run the same commands. Each scenario prints the median of the new group against the group before.
+3. Run the same commands. Each scenario prints the median of the new group against the latest version before it.
 
-To try a technique before deciding on it, add `--label <name>`, which keeps its runs in a group of their own.
+To try a technique before deciding on it, add `--label <name>`. Its runs form a group of their own, judged against the version they were tried on, and later versions are never compared with them. Undo the technique afterwards if you are not shipping it.
 
 ## What it measures
 

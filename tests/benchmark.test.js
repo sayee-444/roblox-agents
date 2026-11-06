@@ -1,6 +1,33 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { grade, parseCost, parseEngine, compare, groups } = require('../tools/benchmark.js');
+const { grade, parseCost, parseEngine, compare, groups, baseline } = require('../tools/benchmark.js');
+
+test('a version is compared with the version before, skipping techniques that were only tried', () => {
+  const v12 = { key: '0.12.0' };
+  const tried = { key: '0.12.0 no-memory' };
+  const v13 = { key: '0.13.0' };
+  assert.strictEqual(baseline([v12, tried, v13]), v12);
+});
+
+test('a technique is compared with the version it was tried on', () => {
+  const v13 = { key: '0.13.0' };
+  const first = { key: '0.13.0 warp' };
+  const second = { key: '0.13.0 ridges' };
+  assert.strictEqual(baseline([v13, first, second]), v13);
+});
+
+test('the newest group is the one that ran last, even when its version already had runs', () => {
+  const rows = [
+    { version: '0.13.0', passed: true, output: 10 },
+    { version: '0.13.0', label: 'warp', passed: true, output: 6 },
+    { version: '0.13.0', passed: true, output: 12 },
+  ];
+  assert.deepStrictEqual(groups(rows, ['output']).map((group) => group.key), ['0.13.0 warp', '0.13.0']);
+});
+
+test('the first group has nothing to compare with', () => {
+  assert.strictEqual(baseline([{ key: '0.13.0' }]), undefined);
+});
 
 const run = { skills: { 'world-history': 1 }, commands: { generate: 1 }, toolCalls: 9, errors: 0, captures: 0 };
 

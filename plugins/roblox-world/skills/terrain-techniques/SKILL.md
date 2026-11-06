@@ -49,7 +49,7 @@ Choose each voxel's material from height, slope and noise. Calculate slope from 
 
 ## Judging the result
 
-Ask the developer first, since they watch Studio. When captures are needed, choose from a fixed capture set: one view from above and one from the ground for each Landform, about 10 to 12 in all, with a sun angle that shows relief. List its camera positions in `docs/world/rules.md`, so each run compares the same views.
+Ask the developer first, since they watch Studio. When captures are needed, use the views the engine derives from the World Plan, so each run compares the same ones.
 
 Use `world.js capture <view> ...`, which repeats the first view until its size stops changing and takes the others once. After a fix, repeat only the views that fix affects. For a hole, a seam or a dark patch, load `world-debug` before you change anything.
 

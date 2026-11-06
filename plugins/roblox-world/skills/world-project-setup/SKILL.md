@@ -5,12 +5,12 @@ description: Creates the world context of a Roblox project. Use when a project h
 
 1. **Ask** the developer, one question at a time, for what the code cannot tell you:
    - The Development Place: the only place the Generator may write to. Its `PlaceId` is 0 until the developer saves it to Roblox; record the Studio window title until then.
-   - The target map: its overall size and shape, the Landforms it needs, and where the player may walk.
+   - The target map: its overall size and shape, and the Landforms it needs.
    - Rules for the repository, if there is no `CLAUDE.md`.
 2. **Write** `docs/world/rules.md` using the template below. Mark every value you chose yourself as a default the developer can change.
-3. **Add** the terms of the systems this project uses, from the `world-generation` and `world-systems` skills, to `GLOSSARY.md`, creating it if needed.
+3. **Add** the terms from the `world-generation` skill to `GLOSSARY.md`, creating it if needed.
 
-Done when the developer has confirmed or supplied the target map and every row in the template holds a value. The Generator and capture set sections fill in once a Generator exists.
+Done when the developer has confirmed or supplied the target map and every row in the template holds a value. The Generator section fills in once a Generator exists.
 
 ## Template
 
@@ -30,22 +30,14 @@ Terms are defined in `GLOSSARY.md`.
 
 Its location, how to load it, its commands and the output each one returns.
 
-## Capture set
-
-| View | Camera | Look at |
-|---|---|---|
-
 ## Target map
 
 | Element | Target |
 |---|---|
 | Maximum extent | |
 | Chunk | 512 x 512 studs |
-| Playable area | |
 | Landform Regions | |
-| Rivers and Lakes | |
-| Sites | |
-| World Limit | |
+| Rivers | |
 | Ground | |
 
 ## Measurements

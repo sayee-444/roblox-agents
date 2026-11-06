@@ -13,6 +13,11 @@ The developer chooses what follows. They chose the detail layer as the next feat
 3. **Install test.** Install from the marketplace once, and confirm that `${CLAUDE_PLUGIN_ROOT}` expands there. Every measured run used `--plugin-dir`.
 4. **Final exam.** A new world for a new game in a clean session, with a real `docs/world/rules.md` question flow, which has not been tried since plugin 0.5.0.
 
+## Waiting on the developer
+
+- **`memory: user`.** Measured on 2026-11-06 with `--label no-memory`, 3 runs against 3 on plugin 0.13.0. Without the field, the starting context falls from 15,588 to 11,366 tokens (27%), and `recover` sends 25% fewer tokens at about the same cost, because cached tokens are cheap. The agent's memory holds 3 lines, and removing the field ends its memory across sessions.
+- **The place for step 1.** `create`, `edit`, `engine` and `check` write terrain, so they need a disposable place.
+
 ## Natural look
 
 Research says a detail layer is necessary and not enough alone (`docs/research/tooling-and-reasoning.md`, item 14). Detail added evenly can make it worse, because real slopes are smooth below hillslope length, so rough ridges and smooth valley floors should differ. Try these in order, and let the developer judge each in Studio:
@@ -32,6 +37,7 @@ Cheap measures such as the slope spread and pits with no outflow can catch regre
 - **Transcript format:** `tools/measure-run.js` reads a format documented as internal, so a Claude Code update can break it.
 - **Cell count:** `CountCells` gave 5,248,872 while a voxel count found 5,338,011 solid cells, and this was not explained.
 - **Capture camera:** `capture` leaves the camera where it is, so a rewritten Chunk far from it can look broken.
+- **Setup and `new`:** `world-project-setup` writes `docs/world/rules.md`, and `new` refuses to run if that file exists. Read in the code, and not run.
 
 ## Not built
 
@@ -39,6 +45,8 @@ Cheap measures such as the slope spread and pits with no outflow can catch regre
 - A command for `Describe.impact`: it exists and is tested in the Generator, and no command reaches it, so `describe` is read before a change instead.
 - Detecting hand edits: the developer says which Chunks they touched.
 - Routes that follow the relief: a River is placed by hand and holds one water level.
+- Lakes, Sites and the World Limit: the World Plan has fields for them, and no code generates them.
+- Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather and Graphics Profiles: designed only, in `docs/designs/world-systems.md`, which also holds their terms.
 
 ## Not verified
 
@@ -53,6 +61,6 @@ Each has a verdict in `docs/research/tooling-and-reasoning.md`, part E.
 | Seed hunting | Partly: seeds have no locality, so search is random, and the score is the hard part | Measure a score's spread over 1,000 seeds, and whether it agrees with the developer's picks among 20 finalists |
 | Fractal Rivers | Partly: a fork rule on a declared map inverts the method, which derives terrain from the network | A three-order network that carves its own valleys, judged in Studio |
 | Circular agents | Partly: files and a stop condition are sound, and a circle of many agents is weak today | Written look principles that one evaluator grades in agreement with the developer |
-| Parameters for Biomes | Not researched | Build when the developer asks, from `world-systems` |
+| Parameters for Biomes | Not researched | Build when the developer asks, from `docs/designs/world-systems.md` |
 
 Create a new agent only when its work exists, and 3D modeling costs money per use, so look for cheaper techniques first.
