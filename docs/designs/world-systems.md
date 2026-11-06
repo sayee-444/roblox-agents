@@ -8,7 +8,6 @@ Terrain generation runs in Studio. Whatever must run while people play, such as 
 
 | Term | Meaning | Avoid |
 |---|---|---|
-| Lake | A body of still water declared in the World Plan, where Rivers end | ocean, sea |
 | World Limit | The impassable edge shared by every player, whose shape is declared in the World Plan: an invisible barrier and a server check | wall, border |
 | Gate | A per-player barrier, decided by the server, that opens with that player's progress | lock, World Limit |
 | Biome | A ground treatment, its Decoration parameters and its default Theme | using it for a shape (Landform) or for ambience alone (Theme) |

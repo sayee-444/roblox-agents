@@ -72,6 +72,42 @@ function Describe.validate(plan): { string }
 			table.insert(e, "river " .. tostring(rv.id) .. ": less than 64 studs of ground under the bed")
 		end
 	end
+	for _, lk in ipairs(plan.lakes or {}) do
+		local label = "lake " .. tostring(lk.id)
+		if ids[lk.id] then
+			table.insert(e, "duplicate id " .. tostring(lk.id))
+		end
+		ids[lk.id] = true
+		if not isNum(lk.seed) then
+			table.insert(e, label .. ": needs a seed")
+		end
+		if not (type(lk.center) == "table" and isNum(lk.center[1]) and isNum(lk.center[2])) then
+			table.insert(e, label .. ": needs a center")
+		end
+		if not (isNum(lk.radius) and lk.radius > 0 and isNum(lk.shore) and lk.shore > 0 and isNum(lk.warp)) then
+			table.insert(e, label .. ": needs radius > 0, shore > 0 and warp")
+		end
+		if not isNum(lk.waterLevel) or lk.waterLevel % 4 ~= 0 then
+			table.insert(e, label .. ": waterLevel must be a multiple of 4")
+		elseif isNum(lk.bedY) and lk.bedY >= lk.waterLevel then
+			table.insert(e, label .. ": bedY must be below waterLevel")
+		end
+		if isNum(lk.bedY) and isNum(plan.floorY) and lk.bedY - plan.floorY < 64 then
+			table.insert(e, label .. ": less than 64 studs of ground under the bed")
+		end
+		-- Still water holds one level, so a River ending in a lake must meet it.
+		if type(lk.center) == "table" and isNum(lk.radius) then
+			for _, rv in ipairs(plan.rivers or {}) do
+				local last = rv.points and rv.points[#rv.points]
+				if last and isNum(last[1]) and isNum(last[2]) then
+					local reach = math.sqrt((last[1] - lk.center[1]) ^ 2 + (last[2] - lk.center[2]) ^ 2)
+					if reach < lk.radius and rv.waterLevel ~= lk.waterLevel then
+						table.insert(e, "river " .. tostring(rv.id) .. ": ends in " .. tostring(lk.id) .. ", so it needs the same waterLevel")
+					end
+				end
+			end
+		end
+	end
 	for _, r in ipairs(plan.regions or {}) do
 		local label = "region " .. tostring(r.id)
 		if ids[r.id] then
@@ -212,7 +248,8 @@ function Describe.impact(plan, state, change)
 end
 
 -- The surface height of each Landform and River, one per line. A range reports its highest route
--- point or midpoint, a mesa its centre, a cave the ground at its mouth, and a River both ends.
+-- point or midpoint, a mesa its centre, a cave the ground at its mouth, a River both ends and a
+-- lake its centre.
 function Describe.heights(plan): string
 	local lines = {}
 	local function ground(x, z)
@@ -245,6 +282,9 @@ function Describe.heights(plan): string
 	for _, rv in ipairs(plan.rivers) do
 		local a, b = rv.points[1], rv.points[#rv.points]
 		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2]))
+	end
+	for _, lk in ipairs(plan.lakes or {}) do
+		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel))
 	end
 	return table.concat(lines, "\n")
 end

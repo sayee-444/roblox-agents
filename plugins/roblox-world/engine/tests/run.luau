@@ -8,6 +8,7 @@ local suites = {
 	{ "materials", require("./materials.test") },
 	{ "chunk", require("./chunk.test") },
 	{ "describe", require("./describe.test") },
+	{ "lake", require("./lake.test") },
 }
 
 local T = {}

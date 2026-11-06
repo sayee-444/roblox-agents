@@ -370,7 +370,7 @@ function composedPlan(seed, layout) {
   const template = fillTemplate(seed);
   const start = template.indexOf('return {');
   const before = template.slice(start, template.indexOf('\t-- Landform Regions.'));
-  const after = template.slice(template.indexOf('\tlakes = {},'));
+  const after = `\tlakes = {},\n${template.slice(template.indexOf('\tsites = {},'))}`;
   return `-- World Plan: declares what exists where. It wins over the seeds. Composed by new from the World Seed.\n-- Chunk (i, j) covers x in [i*512-256, i*512+256) and z in [j*512-256, j*512+256).\n\n${before}${layouts.renderLuau(layout, regionSeeds(seed))}\n${after}`;
 }
 
