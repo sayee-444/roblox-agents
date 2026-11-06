@@ -5,10 +5,10 @@
 //
 //   node tools/world.js new <dir> --place <name> [--seed <n>]    Start a world from the template
 //   node tools/world.js run --place <name> [--project <dir>]     load, test, describe, generate,
-//        [--remove-baseplate] [--wait <s>]                       borders, regenerate, capture
+//        [--remove-baseplate]                                    borders, regenerate, capture
 //   node tools/world.js <step> --place <name> [--project <dir>]  One step of the above: load,
 //        test, describe, generate [<i> <j> ...], borders, capture, regenerate <i> <j>, height <x> <z>,
-//        shot <name> <camera x y z> <look x y z> [--wait <s>]
+//        shot <name> <camera x y z> <look x y z>, refresh (Play then Stop, which rebuilds the render)
 //
 // Prints one line per fact. Exits 1 when a check fails, and writes nothing to a place whose
 // name differs from --place.
@@ -21,6 +21,27 @@ const PLAN = 'src/world/plan';
 const STATE = 'src/world/state';
 const OPS = 'shared.World.require("src/world/studio/Ops")';
 const BLANK_CAPTURE_CHARS = 15000; // Blank captures measured about 7,400 base64 characters, real ones over 79,000.
+// A view has settled when two captures in a row differ in size by this fraction or less. A settled
+// view measured under 1% of variation, and a half-built one 18% to 70%. Some settled far views jump
+// about 6% between two sizes, so tries are capped and a view that never settles is only reported.
+const SETTLE_TOLERANCE = 0.02;
+const SETTLE_PAUSE_MS = 2000;
+const SETTLE_TRIES = 5;
+
+// Repeats a capture until its size stops changing, and returns the last image with the tries used.
+async function settledCapture(studio, id, camera, look) {
+  let previous = null;
+  for (let tries = 1; ; tries += 1) {
+    const result = await studio.tool('screen_capture', { capture_id: id, camera_position: camera, look_at_position: look });
+    const image = result.content.find((c) => c.type === 'image');
+    if (!image) throw new Error(`No image for ${id}`);
+    const size = image.data.length;
+    const settled = previous !== null && Math.abs(size - previous) <= SETTLE_TOLERANCE * Math.max(size, previous);
+    if (settled || tries === SETTLE_TRIES) return { data: image.data, tries, settled };
+    previous = size;
+    await new Promise((resolve) => { setTimeout(resolve, SETTLE_PAUSE_MS); });
+  }
+}
 
 function parseArgs(argv) {
   const flags = {};
@@ -215,30 +236,32 @@ const steps = {
   // One view chosen by hand, for what the capture set does not cover.
   async shot(studio, ctx, args) {
     const [name, ...numbers] = args;
-    const wait = ctx.flags.wait === undefined ? 0 : Number(ctx.flags.wait);
-    if (wait > 0) await new Promise((resolve) => { setTimeout(resolve, wait * 1000); });
-    const result = await studio.tool('screen_capture', { capture_id: `world_${name}`, camera_position: numbers.slice(0, 3).map(Number), look_at_position: numbers.slice(3, 6).map(Number) });
-    const image = result.content.find((c) => c.type === 'image');
-    if (!image || image.data.length < BLANK_CAPTURE_CHARS) { ctx.failed = true; return 'BLANK capture. The Studio window is probably minimized'; }
+    const image = await settledCapture(studio, `world_${name}`, numbers.slice(0, 3).map(Number), numbers.slice(3, 6).map(Number));
+    if (image.data.length < BLANK_CAPTURE_CHARS) { ctx.failed = true; return 'BLANK capture. The Studio window is probably minimized'; }
     const dir = path.join(ctx.project, 'docs/captures/run');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, `${name}.jpg`), Buffer.from(image.data, 'base64'));
-    return path.join(dir, `${name}.jpg`);
+    return `${path.join(dir, `${name}.jpg`)}${image.settled ? '' : ' (not settled)'}`;
+  },
+
+  // Rebuilds the render without changing the map, for a hole whose voxels are correct.
+  async refresh(studio) {
+    await studio.tool('start_stop_play', { is_start: true });
+    await studio.tool('start_stop_play', { is_start: false });
+    return 'Play then Stop done';
   },
 
   // Views come from the World Plan, so a new map needs no camera positions.
   async capture(studio, ctx) {
-    const wait = ctx.flags.wait === undefined ? 45 : Number(ctx.flags.wait);
-    if (ctx.wrote && wait > 0) await new Promise((resolve) => { setTimeout(resolve, wait * 1000); });
     const views = JSON.parse(await studio.luau(`return ${OPS}.views()`));
     const dir = path.join(ctx.project, 'docs/captures/run');
     fs.mkdirSync(dir, { recursive: true });
     const saved = [];
+    const unsettled = [];
     for (let n = 0; n < views.length; n += 1) {
       const view = views[n];
-      const result = await studio.tool('screen_capture', { capture_id: `world_${view.name}`, camera_position: view.camera, look_at_position: view.look });
-      const image = result.content.find((c) => c.type === 'image');
-      if (!image) throw new Error(`No image for ${view.name}`);
+      const image = await settledCapture(studio, `world_${view.name}`, view.camera, view.look);
+      if (!image.settled) unsettled.push(view.name);
       if (image.data.length < BLANK_CAPTURE_CHARS) {
         ctx.failed = true;
         return `BLANK capture at ${view.name}. The Studio window is probably minimized: ask the developer to restore it, then run the capture step`;
@@ -247,7 +270,8 @@ const steps = {
       fs.writeFileSync(path.join(dir, name), Buffer.from(image.data, 'base64'));
       saved.push(name);
     }
-    return `${saved.length} views in ${dir}: ${saved.join(' ')}`;
+    const note = unsettled.length ? `. Not settled, look at these first: ${unsettled.join(' ')}` : '';
+    return `${saved.length} views in ${dir}: ${saved.join(' ')}${note}`;
   },
 };
 
@@ -293,10 +317,10 @@ async function main() {
     ? ['load', 'test', 'describe', 'generate', 'borders', 'regenerate', 'capture']
     : ['load', command];
   if (!command || (command !== 'run' && !steps[command]) || typeof flags.place !== 'string') {
-    console.error('Usage: world.js <run|load|test|describe|generate|borders|capture|regenerate i j|height x z> --place <name> [--project <dir>]');
+    console.error('Usage: world.js <run|load|test|describe|generate|borders|capture|refresh|regenerate i j|height x z> --place <name> [--project <dir>]');
     return 2;
   }
-  const ctx = { flags, project: path.resolve(typeof flags.project === 'string' ? flags.project : ENGINE), failed: false, wrote: false };
+  const ctx = { flags, project: path.resolve(typeof flags.project === 'string' ? flags.project : ENGINE), failed: false };
   const studio = new Studio();
   try {
     await studio.connect(flags.place);
@@ -308,7 +332,6 @@ async function main() {
         const t0 = Date.now();
         const text = await steps[name](studio, ctx, name === command ? args : []);
         console.log(`${name} (${((Date.now() - t0) / 1000).toFixed(1)} s): ${text}`);
-        if (name === 'generate' || name === 'regenerate') ctx.wrote = true;
       }
     }
     console.log(`Total ${((Date.now() - started) / 1000).toFixed(1)} s`);
