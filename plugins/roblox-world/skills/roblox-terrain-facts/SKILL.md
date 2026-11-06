@@ -15,7 +15,8 @@ Studio Edit mode, 2026-11-06, on one test map of 9 Chunks. Generating and writin
 | `WriteVoxelChannels(Region3, 4, channels)` takes arrays indexed `[x][y][z]`, and `ReadVoxelChannels` returns the same layout plus `Size` | 9,224,192 voxels read back with 0 mismatches |
 | A region not aligned to 4 studs returns the wrong array shape, so align before reading | Seen in the same test |
 | Occupancy reads back in 8-bit steps, a maximum error of 0.0039, so compare with that tolerance | Same read-back |
-| Studio builds the render mesh for 30 to 60 s after a large write | A grey rectangle vanished with identical data |
+| Studio builds the render mesh after a write. A grey rectangle once took 30 to 60 s to vanish, while later captures recovered within about 2 s | One Chunk rewritten, and 9 views right after Play then Stop, all complete |
+| Play then Stop rebuilds the render from nothing in about 3 s, and leaves the terrain, `shared` and the camera as they were | Terrain fingerprint identical before and after |
 | Studio builds that mesh near its real camera, and `screen_capture` moves the camera only for an instant. A Chunk rewritten far from the camera can stay missing or coarse in captures after minutes of waiting | A dark rectangle of 68,075 solid voxels stayed for over 3 minutes, and it shrank where `Camera.CFrame` was left for 40 s |
 
 ## Documented

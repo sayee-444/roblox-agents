@@ -6,48 +6,61 @@ An agent that generates worlds, Structures and complex, detailed terrain on requ
 
 ## Where the work stands
 
-Plugin 0.8.1, on 2026-11-06. A new world is a World Plan run through `plugins/roblox-world/engine/tools/world.js`, which reaches Studio without the model. A Chunk can be generated on its own, and a River can fork.
+Plugin 0.11.0, on 2026-11-06. A new world is a World Plan run through `plugins/roblox-world/engine/tools/world.js`, which reaches Studio without the model. A Chunk can be generated on its own, and a River can fork.
 
-The developer's test world is Place3, unsaved, with its plan and captures in `../roblox-world-generator/worlds/place3`. They like the generation so far, and these remain open:
+Place3, unsaved, now holds the world `../roblox-world-generator/worlds/exam-1`. Its earlier world was wiped on purpose, and its plan remains in `worlds/place3`. They like the generation so far, and these remain open:
 
 - **Mesa:** the top is blotchy and still rounded. The developer set this aside until the token work is done.
 - **Rendering:** a dark rectangle hides part of the main River in Place3, while its voxels are correct.
 - **Mouse:** in Place2 the mouse stopped working in the 3D view, with the keyboard fine. Cause unknown, and Place3 has not been reported on.
 
-## In progress: test branch `feat/capture-when-settled` and merge it
+## Done on 2026-11-06: captures on request, wipe and history
 
-Plugin 0.11.0 on that branch, not merged. It contains `feat/wipe-terrain` and `feat/world-history`, so merging it alone is enough. Its checks have to pass again first.
+Plugin 0.11.0.
 
 - **Captures:** `run` no longer captures. `capture [<view> ...]` runs only on request or when the developer is away, because each capture moves their camera. The first view repeats until its size settles, replacing the 45 s wait.
 - **Refresh:** the `refresh` step presses Play then Stop, used once for a hole whose voxels are correct.
 - **Wipe:** `wipe` prints a warning, and deletes all terrain only with `--confirm <place>`. The agent stops for a new message from the developer, and the guard asks for approval.
 - **History:** the `world-history` skill keeps `docs/world/history.md` apart from the current state.
 
-Measured on 2026-11-06, in Place3 unless noted, one run each:
+Each run below was a clean session on `sonnet`, through `--plugin-dir`, one run each, on the world `worlds/exam-1` in Place3.
+
+| Measure | Best before, 0.6.0 | New world | Remove River | Restore River |
+|---|---|---|---|---|
+| Duration, minutes | 3.1 | 1.1 | 1.0 | 1.0 |
+| Output tokens | 8,626 | 3,101 | 2,666 | 2,895 |
+| Cache read tokens, millions | 0.45 | 0.27 | 0.21 | 0.23 |
+| Context at the end | 47k | 36k | 34k | 33k |
+| Tool calls | 26 | 12 | 11 | 12 |
+| Errors | 2 | 0 | 0 | 0 |
+| Captures | 11, of which 8 read | 0 | 0 | 0 |
+
+The new world had 9 Chunks like the 0.6.0 run, with a different request, so this compares two single runs. Skipping captures explains part of the saving, and no run judged the look.
+
+Other measurements, in Place3:
 
 | Test | Result |
 |---|---|
 | Play then Stop | 3.2 s. Terrain fingerprint, `shared.World` and camera unchanged |
-| Render after Stop | Studio rebuilds it from nothing. Half built at once, 0.1 of 255 from the reference 2 s later |
+| Render after Stop | Rebuilt from nothing. Half built at once, 0.1 of 255 from the reference 2 s later, on 64 x 64 thumbnails |
 | Rewrite of far Chunk 1,2, wait only | 12.9 of 255 at once, 0.3 at 2 s. Overview 0.6 until 30 s, 0 at 45 s |
-| Agent asked to delete Place3, clean session | Warned and stopped, in 16 s with 642 output tokens |
+| Worst case: `refresh`, then `capture` of all 9 views at once | 6.5 s, and all 9 looked complete by eye |
+| Real wipe | 5,248,872 cells to 0 in 0.06 s, state emptied, confirmed by a second read |
+| Agent asked to delete Place3 | Warned and stopped, in 16 s with 642 output tokens |
 | Confirmed wipe with no person to approve | The guard stopped it, in default and bypass modes, against a place that does not exist |
-| Agent asked to remove River `fork`, on a copy, no Studio | 0.7 minutes, 2,856 output tokens, no trace in the plan, removed blocks in the history |
-| `capture` of 2 views | 3.1 s |
+| Restored World Plan against the original | Identical except for one comment line, which the removal had not kept |
 
-Not verified: a real wipe, the guard's approval window in an interactive session, a full-map generation with these changes, the dark rectangle, restoring from the history, and regenerating after a removal. The differences compare 64 x 64 thumbnails, so they can miss small detail. `CountCells` gave 5,248,872 while a voxel count found 5,338,011 solid cells, and this was not explained.
+Not verified: the guard's approval window in an interactive session, a wipe run by the agent itself after confirmation, the dark rectangle from the River fork, and a larger map. `CountCells` gave 5,248,872 while a voxel count found 5,338,011 solid cells, and this was not explained.
 
-Test plan, without touching Place3, which stays unsaved and regenerable:
+Seen in these runs:
 
-1. The developer opens a new Baseplate place and names it.
-2. In a clean session, the agent generates a mountain range, a mesa and a River. Measure with `tools/measure-run.js` against 3.1 minutes, 8,626 output tokens and 47k context.
-3. Remove a River and regenerate, which tests the history on real terrain.
-4. Wipe that place, with the warning and the developer's confirmation.
-5. If all pass, merge. Then correct the render fact in `roblox-terrain-facts`, and delete this section's finished items.
+- The agent regenerated all 9 Chunks after removing a River, through `run`, although `generate <i> <j>` exists. It cost about 4 s.
+- A new world writes no history entry, so the history starts at the first change.
+- `hills-above` shows a dark crack again, and the mesa is still rounded.
 
 ## After that
 
-The developer agreed on the direction on 2026-11-06, with the order still to confirm:
+The developer agreed on the direction on 2026-11-06, and decides the order after this test. They also want the agent aware of what changed between a before and an after, and of what exists now, for the world only:
 
 - **Separate debugging from building:** building generates and checks the basics, and debugging lives in a skill loaded only when something fails.
 - **Detail layer:** a pass of noise and materials over the base shape, set by World Plan parameters, as output of the Generator. This is the main path to a natural look, and it replaces detailing by hand.
@@ -56,7 +69,7 @@ The developer agreed on the direction on 2026-11-06, with the order still to con
 
 ## Next: where the tokens go
 
-Items 1, 2 and 4 below are built on the branch above. One turn added a River fork, and it measured 10.8 minutes to its last tool call:
+Items 1, 2 and 4 below are built, as recorded above. One turn added a River fork, and it measured 10.8 minutes to its last tool call:
 
 | Part | Measure |
 |---|---|
