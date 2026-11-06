@@ -1,6 +1,6 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
-const { grade, parseCost, parseEngine, compare } = require('../tools/benchmark.js');
+const { grade, parseCost, parseEngine, compare, groups } = require('../tools/benchmark.js');
 
 const run = { skills: { 'world-history': 1 }, commands: { generate: 1 }, toolCalls: 9, errors: 0, captures: 0 };
 
@@ -62,4 +62,18 @@ test('a comparison gives the change for each measure against the previous run', 
 
 test('with no previous run a comparison only states the values', () => {
   assert.deepStrictEqual(compare(null, { output: 1500 }, ['output']), ['output 1500 (first run)']);
+});
+
+test('runs are grouped by version and label, and each group gives medians over the runs that hold the measure', () => {
+  const rows = [
+    { version: '0.12.0', passed: true, output: 100, context: { tools: 10 } },
+    { version: '0.12.0', passed: false, output: 300, context: { tools: 30 } },
+    { version: '0.12.0', passed: true, output: 200 },
+    { version: '0.13.0', label: 'warp', passed: true, output: 50, context: { tools: 5 } },
+    { version: '0.13.0', label: 'warp', passed: true, output: 70, context: { tools: 7 } },
+  ];
+  assert.deepStrictEqual(groups(rows, ['output', 'context.tools']), [
+    { key: '0.12.0', runs: 3, passed: 2, medians: { output: 200, 'context.tools': 20 } },
+    { key: '0.13.0 warp', runs: 2, passed: 2, medians: { output: 60, 'context.tools': 6 } },
+  ]);
 });

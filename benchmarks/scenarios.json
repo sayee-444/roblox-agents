@@ -1,4 +1,15 @@
 {
+  "start": {
+    "about": "Start: the context the agent carries before any work, which every run pays",
+    "studio": false,
+    "setup": "empty",
+    "prompt": "Reply only with the word OK. Use no tools.",
+    "expect": {
+      "answer": ["OK"],
+      "maxToolCalls": 0,
+      "maxErrors": 0
+    }
+  },
   "recover": {
     "about": "Recover context: answer what exists and what changed, from the project files alone",
     "studio": false,

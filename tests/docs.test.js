@@ -22,6 +22,12 @@ test('the function map names every skill and engine command', () => {
   assert.deepStrictEqual(commands.filter((command) => !map.includes(`\`${command}`)), []);
 });
 
+test('the benchmark guide names every scenario', () => {
+  const guide = read('docs/benchmark.md');
+  const scenarios = Object.keys(JSON.parse(read('benchmarks/scenarios.json')));
+  assert.deepStrictEqual(scenarios.filter((name) => !guide.includes(`\`${name}\``)), []);
+});
+
 test('every skill description survives YAML, which an unquoted colon breaks', () => {
   for (const skill of skills) {
     const description = read(`plugins/roblox-world/skills/${skill}/SKILL.md`).match(/^description: (.*)$/m);

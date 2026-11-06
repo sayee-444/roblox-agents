@@ -14,7 +14,7 @@ test('reports the cost of a run as JSON, counting a repeated tool call once', ()
   assert.strictEqual(run.cacheRead, 9500);
   assert.strictEqual(run.contextStart, 1050);
   assert.strictEqual(run.contextEnd, 3500);
-  assert.strictEqual(run.toolCalls, 6);
+  assert.strictEqual(run.toolCalls, 7);
   assert.strictEqual(run.errors, 1);
 });
 
@@ -30,4 +30,44 @@ test('prints the same proof for a person to read', () => {
   assert.match(stdout, /Skills loaded: world-history 1/);
   assert.match(stdout, /Engine commands: new 1, help 1, capture 1/);
   assert.match(stdout, /Capture calls 2/);
+});
+
+test('reports every token the run sent, which does not depend on what happened to be cached', () => {
+  const run = JSON.parse(measure('--json').stdout);
+  assert.strictEqual(run.tokensSent, 9550);
+  assert.strictEqual(run.thinking, 120);
+});
+
+test('breaks the starting context into parts, and says how much it could not attribute', () => {
+  const { context } = JSON.parse(measure('--json').stdout);
+  assert.deepStrictEqual(context, {
+    agent: 100,
+    memoryRules: 200,
+    memoryFile: 50,
+    tools: 300,
+    pluginSkills: 30,
+    otherSkills: 70,
+    attachments: 10,
+    unattributed: 290,
+  });
+});
+
+test('names each tool the context carries from the start', () => {
+  const run = JSON.parse(measure('--json').stdout);
+  assert.deepStrictEqual(run.startTools, { Bash: 200, Read: 100 });
+});
+
+test('shows what grew the context during the run', () => {
+  const { growth } = JSON.parse(measure('--json').stdout);
+  assert.deepStrictEqual(growth.skills, { 'world-history': 100 });
+  assert.strictEqual(growth.toolResults.Read, 200);
+  assert.deepStrictEqual(growth.reads, { 'plan.luau': 200 });
+});
+
+test('prints the context parts for a person to read', () => {
+  const { stdout } = measure();
+  assert.match(stdout, /Tokens sent 9550 \| output 600, thinking 120/);
+  assert.match(stdout, /Start, estimated: agent 100, memoryRules 200, memoryFile 50, tools 300, pluginSkills 30, otherSkills 70, attachments 10, unattributed 290/);
+  assert.match(stdout, /Tools at the start: Bash 200, Read 100/);
+  assert.match(stdout, /Added, estimated: skill world-history 100/);
 });
