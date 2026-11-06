@@ -65,9 +65,26 @@ The aim of under 10 minutes and 15 captures was met in all three runs.
 - **Blank captures:** an earlier run took 3.4 minutes with 5 blank captures, so it is excluded. They came from a minimized Studio window. Restored but not in the foreground, Studio captured normally. A fully covered window was not tested.
 - **Crack in the ground:** `hills-ground` shows a dark crack, and `range-ground` a straight line near x 0. Each run called them render artifacts, since raycasts and voxel reads found no hole. The cause is not proven.
 
-## Next for speed
+## A new world from a World Plan
 
-Load the Generator with a script. A test script called `execute_luau` directly through Studio's MCP server and pasted a module without the model generating it, so a fresh session could cost about the same as a loaded one. Not measured in an agent run yet.
+Plugin 0.6.0 treats a new world as a new World Plan. The Generator repository's `tools/world.js` reaches Studio through its MCP server, so the model pastes no modules and writes no Luau. One command loads, tests, describes, generates, verifies and writes captures, with views derived from the plan.
+
+One run on `sonnet` on 2026-11-06, from an empty folder with nothing loaded in Studio, on a new layout and seed. The agent found the engine through its memory.
+
+| Measure | Baseline, wrote the Generator | New World Plan, engine reused |
+|---|---|---|
+| Duration, minutes | 32.9 | 3.1 |
+| Output tokens | 192,619 | 8,626 |
+| Cache read tokens, millions | 13.9 | 0.45 |
+| Context at the end | 268k | 47k |
+| Tool calls | 141 | 26 |
+| Errors | 14 | 2 |
+
+The tool itself took 62 s of that, most of it the wait for the render mesh and the captures. Generating took 3.85 s.
+
+- **What this does not measure:** the engine's cost was paid in the baseline, and a shape the engine lacks still needs code.
+- **Captures:** the agent read 8 of the 11 views, and said so.
+- **Reach:** the engine stays local, so only this computer can use this path. A public install has to write its own Generator, and that path has not been measured since these changes.
 
 ## Natural look
 
@@ -78,6 +95,15 @@ Developer feedback on the first map: decent for a first test, but artificial and
 - **Caves:** a cave takes advantage of the existing terrain, so that the player ends up inside it. A tube drilled into one Landform is not what was meant.
 
 The developer recalls an earlier, more natural generation. Show them the `before-*` captures in the Generator repository and ask whether it was one of those. Conversations from 2026-11-05 may hold its algorithm.
+
+## Developer ideas
+
+Collected from the developer on 2026-11-06. None is built yet.
+
+- **Parameters over code:** a new world should change parameters, and writing code should be the rare case. Also asked for Biomes, whose objects and density are edited by parameters.
+- **Seed hunting:** try thousands of seeds by brute force and keep the best, instead of building shapes by hand. Score each seed from heights on a coarse grid, which needs no graphics, then capture only the finalists for the developer to judge. A seed chooses among shapes the engine can already produce, so this works within the World Plan and adds no new shapes.
+- **Finding a seed from a screenshot:** the developer recalled this from Minecraft, where it is called seed cracking. It recovers the seed of an existing world, so seed hunting fits this project better.
+- **Fractal Rivers:** Rivers that branch, from a short rule that divides a channel into thinner ones. This needs a new engine capability, and the developer set it aside until after the speed work.
 
 ## Known gaps
 
