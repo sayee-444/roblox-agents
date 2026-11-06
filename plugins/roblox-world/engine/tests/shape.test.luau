@@ -166,6 +166,44 @@ return {
 		t.ok(distinct >= 3, "distinct ledge counts around the mesa " .. distinct)
 	end,
 
+	["a branching River keeps both beds under water where they meet"] = function(t)
+		local function clone(v)
+			if type(v) ~= "table" then
+				return v
+			end
+			local c = {}
+			for k, x in pairs(v) do
+				c[k] = clone(x)
+			end
+			return c
+		end
+		local forked = clone(plan)
+		local main = forked.rivers[1]
+		local junction = main.points[3]
+		local branch = {
+			id = "branch",
+			points = { { junction[1], junction[2] }, { junction[1] + 80, junction[2] + 90 }, { junction[1] + 60, junction[2] + 220 } },
+			halfWidth = 14,
+			bedY = main.bedY,
+			waterLevel = main.waterLevel,
+		}
+		table.insert(forked.rivers, branch)
+		table.insert(forked.regions, { id = "branchValley", kind = "valley", seed = 7099, riverId = "branch", halfWidth = 90, floorY = 24 })
+		for _, route in ipairs({ main.points, branch.points }) do
+			-- Walk the whole channel, because a dam would sit between route points.
+			for i = 1, #route - 1 do
+				local p, q = route[i], route[i + 1]
+				for s = 0, 1, 0.02 do
+					local x, z = p[1] + (q[1] - p[1]) * s, p[2] + (q[2] - p[2]) * s
+					local h, _, _, level = Shape.height(forked, x, z)
+					t.ok(h < main.waterLevel, "bed at " .. x .. "," .. z .. " is at " .. h)
+					t.ok(h > main.bedY - 4, "no pit where the beds meet: " .. x .. "," .. z .. " is at " .. h)
+					t.eq(level, main.waterLevel, "water over the route")
+				end
+			end
+		end
+	end,
+
 	["river bed lies below the water level along every route point"] = function(t)
 		local river = plan.rivers[1]
 		for _, p in ipairs(river.points) do

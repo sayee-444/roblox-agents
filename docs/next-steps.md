@@ -107,6 +107,11 @@ Collected from the developer on 2026-11-06. None is built yet.
 
 ## Known gaps
 
+The `capture` step of `tools/world.js` waits but leaves the camera where it is, so a rewritten Chunk far from the camera can look broken. It should settle the camera near each view first.
+
+A River is still placed by hand and holds one water level. A fork works as a second River and valley leaving a route point. Routes that follow the relief are not built.
+
+
 The tests have never run under Lute. Place file size, streaming, play mode and phones are unmeasured. The cave has not been walked by a character.
 
 ## Later agents
