@@ -47,8 +47,8 @@ function grade(run, expect, produced = {}) {
   for (const [file, text] of Object.entries(expect.files || {})) {
     if (!produced.readFile(file).includes(text)) failures.push(`${file} does not hold "${text}"`);
   }
-  for (const [file, text] of Object.entries(expect.absentFiles || {})) {
-    if (produced.readFile(file).includes(text)) failures.push(`${file} still holds "${text}"`);
+  for (const [file, texts] of Object.entries(expect.absentFiles || {})) {
+    for (const text of [].concat(texts)) if (produced.readFile(file).includes(text)) failures.push(`${file} still holds "${text}"`);
   }
   return failures;
 }
