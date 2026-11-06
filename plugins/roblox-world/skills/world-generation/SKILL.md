@@ -49,7 +49,7 @@ The Generator validates the World Plan and answers these questions, so planning 
 1. Edit the World Plan, a seed or the Generator.
 2. Run the `describe` impact report.
 3. Regenerate only the affected Chunks.
-4. Run `describe` again, and check the result with a capture.
+4. Run `describe` again, and ask the developer how it looks in Studio.
 
 To change a shape, change the World Plan or a Region Seed. A Region Seed change alters that Landform Region and its blend margin.
 
@@ -78,7 +78,8 @@ The engine does not report hand edits, so the developer says which Chunks they t
 |---|---|---|
 | `docs/world/rules.md` | The Development Place, target map and decisions | This project, in Git |
 | `GLOSSARY.md` | Canonical terms | This project, in Git |
-| World Plan and generation state | What exists where, and which Chunks are Locked | This project, in Git |
+| World Plan and generation state | What exists where now, and which Chunks are Locked | This project, in Git |
+| `docs/world/history.md` | What changed on the map, and what was removed, through `world-history` | This project, in Git |
 | Your agent memory | Lessons that hold in any Roblox project: measured engine behaviour, failures and their fixes, each with its date and evidence | All projects, on this computer |
 
 Your memory travels between projects, so it holds only reusable lessons. Map details, game design and credentials stay in the project. When a lesson has held in two projects, propose adding it to the `roblox-terrain-facts` skill.

@@ -49,12 +49,12 @@ Choose each voxel's material from height, slope and noise. Calculate slope from 
 
 ## Judging the result
 
-Use a fixed capture set: one view from above and one from the ground for each Landform, about 10 to 12 in all, with a sun angle that shows relief. List its camera positions in `docs/world/rules.md`, so each run compares the same views.
+Ask the developer first, since they watch Studio. When captures are needed, choose from a fixed capture set: one view from above and one from the ground for each Landform, about 10 to 12 in all, with a sun angle that shows relief. List its camera positions in `docs/world/rules.md`, so each run compares the same views.
 
-1. Wait 45 seconds in its own call after a large write, because Studio is still building the render mesh: dark rectangles, missing patches and sky through walls can appear when the data is fine.
-2. Take the captures one at a time, each alone in its turn. Two captures sent beside a `task.wait(40)` each timed out after about 340 s; the cause is not proven.
+1. Use `tools/world.js capture <view> ...`, which repeats the first view until its size stops changing and takes the others once. Studio may still be building the render mesh after a write: dark rectangles, missing patches and sky through walls can appear when the data is fine.
+2. Without that tool, take the captures one at a time, each alone in its turn. Two captures sent beside a `task.wait(40)` each timed out after about 340 s; the cause is not proven.
 3. After a fix, repeat only the views that fix affects.
-4. When a view shows a hole or a coarse patch, read its voxels. If they are there, leave `workspace.CurrentCamera.CFrame` near that area for 40 s, capture again, and put the camera back.
+4. When a view shows a hole or a coarse patch, read its voxels. If they are there, it is only rendering: run the `refresh` step once, capture again, and report it if it stays.
 
 Confirm any suspect area with a raycast or a voxel read before you change anything. Far views can show a false seam at level-of-detail boundaries.
 

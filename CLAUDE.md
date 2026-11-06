@@ -32,7 +32,7 @@ Keep game designs and map details out of this repository, because it is public. 
 
 ## Priorities
 
-Follow `docs/next-steps.md`: make the agent faster and cheaper, then make terrain look natural. The developer judges the look from captures, since passing measurements have not meant a natural result.
+Follow `docs/next-steps.md`: make the agent faster and cheaper, then make terrain look natural. The developer judges the look in Studio or from captures, since passing measurements have not meant a natural result.
 
 ## Asking and reporting
 
@@ -70,6 +70,6 @@ Follow `docs/next-steps.md`: make the agent faster and cheaper, then make terrai
 
 ## Reserved for the developer
 
-These need the developer's explicit order every time: publishing to Roblox by any route, overwriting a Locked Chunk, and changing the World Seed. Saving a place also falls to them, because no tool lets an agent save.
+These need the developer's explicit order every time: publishing to Roblox by any route, overwriting a Locked Chunk, changing the World Seed, and deleting all terrain in a place, which `tools/world.js wipe` warns about first. Saving a place also falls to them, because no tool lets an agent save.
 
 Before writing to Studio, confirm with the developer which place is open.
