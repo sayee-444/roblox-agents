@@ -6,8 +6,9 @@
 // Usage: node tools/measure-run.js <transcript.jsonl> [--json]
 const fs = require('fs');
 
-// A real run of the engine's command line, so reading the file with `head` does not count.
-const ENGINE_COMMAND = /\bnode\s+(?:"[^"]*world\.js"|\S*world\.js)(?:\s+([a-z]+))?/g;
+// A real run of the engine's command line, so reading the file with `head` does not count. A shell
+// variable may hold its path.
+const ENGINE_COMMAND = /\bnode\s+(?:"[^"]*world\.js"|\S*world\.js|"?\$\w+"?)(?:\s+([a-z]+))?/g;
 const estimate = (chars) => Math.round(chars / 4);
 const textLength = (content) => {
   if (typeof content === 'string') return content.length;

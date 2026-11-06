@@ -2,10 +2,25 @@
 const { test } = require('node:test');
 const assert = require('node:assert');
 const { spawnSync } = require('node:child_process');
+const fs = require('node:fs');
+const os = require('node:os');
 const path = require('node:path');
 
 const root = path.resolve(__dirname, '..');
 const measure = (...args) => spawnSync(process.execPath, [path.join(root, 'tools/measure-run.js'), path.join(__dirname, 'fixtures/run.jsonl'), ...args], { encoding: 'utf8' });
+
+test('counts an engine command called through a shell variable', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'measure-'));
+  try {
+    const file = path.join(dir, 'run.jsonl');
+    const command = 'W=/x/world.js; node $W new . --place P && node "$W" run --place P --project .';
+    fs.writeFileSync(file, `${JSON.stringify({ type: 'assistant', timestamp: '2026-11-06T10:00:00.000Z', message: { content: [{ type: 'tool_use', id: 'a', name: 'Bash', input: { command } }] } })}\n`);
+    const run = JSON.parse(spawnSync(process.execPath, [path.join(root, 'tools/measure-run.js'), file, '--json'], { encoding: 'utf8' }).stdout);
+    assert.deepStrictEqual(run.commands, { new: 1, run: 1 });
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
 
 test('reports the cost of a run as JSON, counting a repeated tool call once', () => {
   const run = JSON.parse(measure('--json').stdout);
