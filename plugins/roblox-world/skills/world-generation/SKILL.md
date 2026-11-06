@@ -25,7 +25,7 @@ The map is the output of one pure function: terrain at a world position comes fr
 
 Keep the World Plan and generation state in Git under `src/world/`, the Generator in `src/world/generator/` and the Studio writer in `src/world/studio/`. Generation runs in Studio only and never reaches players.
 
-Test the Generator outside Roblox with [Lute](https://github.com/luau-lang/lute). If it is missing, ask the developer whether to install it; until then, run the pure tests through `execute_luau` in Studio, passing the module source inside the script, so that no terrain is written. Tests cover determinism (same input, same output) and seam agreement (two Chunks computing the same values along their shared border).
+Test the Generator outside Roblox with [Lute](https://github.com/luau-lang/lute). If it is missing, ask the developer whether to install it. Until then, or if nobody can answer, run the pure tests through `execute_luau` in Studio without writing terrain, and report that they ran only there. That thread cannot make network calls or parent a script, so keep a loader in `shared` that stores each module's source and runs it with `loadstring`, and compare a checksum of each pasted file with the file on disk. Tests cover determinism (same input, same output) and seam agreement (two Chunks computing the same values along their shared border).
 
 ## The `describe` report
 
@@ -34,7 +34,7 @@ The Generator validates the World Plan and answers these questions, so planning 
 - Which Chunks are generated, and which are Locked.
 - Which Landform Regions, Rivers, Lakes and Sites exist, and which Chunks each one touches.
 - Which Chunks a proposed change would rewrite, and which Locked Chunks it reaches.
-- How much of the maximum extent is free.
+- How much of the maximum extent is free, meaning Chunks not yet generated.
 
 ## Changing the map
 

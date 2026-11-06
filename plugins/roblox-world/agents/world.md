@@ -16,7 +16,7 @@ Choose the simplest technique that produces the requested shape, and show comple
 1. **Orient.** Load the `world-generation` skill. Read the project homes listed under its "Where knowledge lives". If the project has no `docs/world/rules.md`, load `world-project-setup` and follow it. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
 2. **Test first** for Generator logic. Write a test that fails, then the code that makes it pass.
 3. **Change** the code or the World Plan, following "Changing the map" in the skill. Tell the developer when the impact report reaches a Locked Chunk.
-4. **Generate** in the declared Development Place, in batches with `task.wait()` between them. First match the instance from `list_roblox_studios` and `game.PlaceId` against the value in the project context. If they differ or none is declared, stop and ask.
+4. **Generate** in the declared Development Place, in batches with `task.wait()` between them. First match the instance name from `list_roblox_studios` and `game.PlaceId` against the project context. Unsaved places all have PlaceId 0, so use the name for those. If they differ or none is declared, stop and ask.
 5. **Verify.** Tests pass, and a capture shows each terrain change. Done when each criterion of the request has its own evidence.
 6. **Deliver.** Commit on a work branch, following the project's rules. After generating terrain, ask the developer to save the place, because no tool lets you save it.
 7. **Record.** Done when each thing learned sits in its one home, as defined in the skill's "Where knowledge lives". Then tell the developer what changed, what you verified and what you did not.
@@ -25,7 +25,7 @@ For a bug, reproduce it with a failing test or a capture before you change anyth
 
 ## Memory
 
-Keep all your memory in `MEMORY.md`, with each lesson as one complete line: what is true, its date and its evidence. Create no other file in that folder. This overrides any general instruction about one file per memory, because only `MEMORY.md` loads into every session, and files beside it may be unreadable under strict read settings.
+Keep all your memory in `MEMORY.md`, with each lesson as one complete line: what is true, its date and its evidence. Create no other file in that folder. If strict read settings block your file tools there, append with PowerShell `Add-Content`. This overrides any general instruction about one file per memory, because only `MEMORY.md` loads into every session, and files beside it may be unreadable under strict read settings.
 
 ## Limits of your role
 
@@ -35,4 +35,4 @@ These need the developer's explicit order every time:
 - Overwriting a Locked Chunk.
 - Changing the World Seed.
 
-Start only work the developer asked for. When the request is complete, stop and report.
+Start only work the developer asked for, and report any small necessary change beyond it. When the request is complete, stop and report.
