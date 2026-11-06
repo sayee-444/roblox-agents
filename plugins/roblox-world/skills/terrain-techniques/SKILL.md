@@ -31,7 +31,8 @@ Noise below is `n(x, z)`, in the range 0 to 1, from the Generator's own noise. C
 | River | Carve the bed from the distance to its route points, keeping the bed below a stretch's constant water level. Add bends and vary the width, because even width on straight legs looked like a canal |
 | Natural distortion | Offset the sample position with other noise before evaluating: [domain warping](https://iquilezles.org/articles/warp/) |
 | Joining shapes | Blend with a bounded radius, so each Landform Region reaches only its margin: [smooth minimum](https://iquilezles.org/articles/smin/) |
-| Cave or arch | In the density function, subtract tunnels around a 3D path or where 3D noise passes a threshold. Use a radius of at least 14 studs, since 11 read as a hexagon. Vary the radius along the path, because a constant one looks drilled |
+| Cave or arch | Start the entrance where the relief already offers one, such as a cliff foot or a gully, so that the player ends up inside. In the density function, subtract tunnels around a 3D path or where 3D noise passes a threshold. Use a radius of at least 14 studs, since 11 read as a hexagon. Vary the radius along the path, because a constant one looks drilled |
+| Cracks and gullies | Carve narrow lines where ridged noise peaks, deepening them on steep ground so that they read as erosion. Evenly smooth ground looks artificial |
 
 ## Materials
 
