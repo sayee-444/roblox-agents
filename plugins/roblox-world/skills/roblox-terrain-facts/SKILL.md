@@ -30,3 +30,12 @@ Read 2026-11-05 against the linked sources. Recheck anything that matters, becau
 - Natural-looking distortion: [domain warping](https://iquilezles.org/articles/warp/).
 - Terrain from primitives with limited influence: [Genevaux et al. 2013](https://www.cs.purdue.edu/homes/bbenes/papers/Genevaux13ToG.pdf).
 - Test third-party Studio plugins only in a disposable place, since a [backdoored plugin](https://devforum.roblox.com/t/backdoor-found-in-a-circulating-roblox-studio-plugin/4486846) has been reported.
+
+## Expanded Terrain and external tools
+
+- Expanded Terrain offers up to 62 editable materials, with its own 200 MB limit according to a [staff post](https://devforum.roblox.com/t/full-launch-publish-games-with-custom-terrain-materials-and-performance-improvements/4950620/145). Before adopting it, recheck three risks: painting depends on the undocumented `SolidMaterialIndex` channel, client optimizations were temporarily off in published games, and [Rojo and Lune lose its voxels](https://github.com/rojo-rbx/rbx-dom/pull/672).
+- The earlier terrain limit was 16K x 16K studs, and 64K is [still in the works](https://devforum.roblox.com/t/creator-roadmap-2025-rdc-update/3961527). No source says what enforces it, so measure before planning near it.
+- Rust has no supported way to write voxels into a place file. A Studio plugin [can reach `127.0.0.1`](https://create.roblox.com/docs/cloud-services/http-service.md), which is the documented route if Rust is ever added.
+- Meshes are limited to [20,000 triangles](https://create.roblox.com/docs/art/modeling/specifications), and swimming requires terrain water, so the ground stays voxel terrain.
+- For automatic River routing, see [Priority-Flood](https://ar5iv.labs.arxiv.org/html/1511.04463).
+- Check the licence of any 3D generator first. [Hunyuan 3D's](https://raw.githubusercontent.com/Tencent-Hunyuan/Hunyuan3D-2.1/main/LICENSE) excludes the EU, the UK and South Korea, and it produces objects, not terrain.
