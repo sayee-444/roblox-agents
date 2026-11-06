@@ -15,9 +15,9 @@ Carry each order from start to finish in one pass, and debug only at the end.
 
 ## Every task
 
-1. **Orient** with narrow answers. Read `docs/world/rules.md`. If it is missing and the request names a place and what to build, follow "A new world" below; otherwise load `world-project-setup` and follow it. The engine ships in this plugin, at `${CLAUDE_PLUGIN_ROOT}/engine`, and `node tools/world.js help` there lists every command. Take facts from `describe`. Open a source file only when you are about to change it. Load only the skills your branch needs, from the table below. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
+1. **Orient** with narrow answers. Look for `docs/world/rules.md` with `ls`, and read it if it exists. If it is missing and the request names a place and what to build, follow "A new world" below; otherwise load `world-project-setup` and follow it. The engine ships in this plugin, at `${CLAUDE_PLUGIN_ROOT}/engine`, and `node tools/world.js help` there lists every command. Take facts from `describe`. Open a source file only when you are about to change it. Load only the skills your branch needs, from the table below. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
 2. **Test first** for a change to Generator logic. Write a test that fails, then the code that makes it pass.
-3. **Change** the code or the World Plan, following "Changing the map" in `world-generation`. Tell the developer when the impact report reaches a Locked Chunk.
+3. **Change** the code or the World Plan, following "Changing the map" in `world-generation`. To add, change or remove what exists on an existing map, load `world-history` before you edit, because its entry needs the exact block you replace, and done means that entry is written. Tell the developer when the impact report reaches a Locked Chunk.
 4. **Generate** in the declared Development Place through the engine, whose `--place` refuses a place of any other name. A change that touches a few Chunks writes only those, with `generate <i> <j> ...`, and `run` is for a whole world. If no place is declared, stop and ask.
 5. **Verify** with the script's facts. `run` prints what proves the data: tests, `describe`, `borders`, the regenerate check and the height of each Landform. Read a spot with `height` or a voxel only when a check fails or the developer asks about it. A view that looks odd while the voxels are correct goes in your final report for the developer to judge, since it is most often a Roblox rendering glitch. The look is the developer's to judge, and they watch Studio, so ask them what they see. Each capture moves their camera, so run `capture <view> ...` only when they ask for one or are away, and only for the views a change affects. Done when each criterion of the request has its own fact, or is handed to the developer to judge.
 6. **Deliver.** Commit on a work branch, following the project's rules. After generating terrain, ask the developer to save the place, because no tool lets you save it.
@@ -25,10 +25,10 @@ Carry each order from start to finish in one pass, and debug only at the end.
 
 ## A new world
 
-Two messages, then your report, with nothing else to read:
+With nothing else to read:
 
-1. Run `node ${CLAUDE_PLUGIN_ROOT}/engine/tools/world.js new . --place <name>`. It chooses the World Seed and the Region Seeds, and prints the World Plan template.
-2. Send these together in one message, in this order. Write `src/world/plan.luau`: the template, with every `<...>` chosen for this request, and only the Landforms it asks for. Append the layout as one line to `docs/world/rules.md` with Bash, since Decisions is its last section. Run `world.js run --place <name> --project .` with a Bash timeout of 600000 ms.
+1. **The engine composes it** when the request asks only for a range, a mesa, a River or a fork, and leaves where they go to you. In one Bash call with a timeout of 600000 ms, run `node ${CLAUDE_PLUGIN_ROOT}/engine/tools/world.js new . --place <name> --landforms <list> && node ${CLAUDE_PLUGIN_ROOT}/engine/tools/world.js run --place <name> --project .`, where the list comes from `range,mesa,river,fork`. It chooses the seeds and the layout, writes the plan and records the decision.
+2. **You compose it** for anything else, such as a chosen position or size, or a cave. Run the same `new` without `--landforms`, which prints the World Plan template. Then send these together in one message, in this order. Write `src/world/plan.luau`: the template, with every `<...>` chosen for this request, and only the Landforms it asks for. Append the layout as one line to `docs/world/rules.md` with Bash, since Decisions is its last section. Run `world.js run --place <name> --project .` with a Bash timeout of 600000 ms.
 3. Fix the plan and run again only if `run` exits 1. Then report as in "Every task" step 7.
 
 Done when `run` exits 0 and its heights show each requested Landform.

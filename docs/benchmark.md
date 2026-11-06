@@ -60,7 +60,7 @@ They live in `benchmarks/scenarios.json`. `start` measures the context alone, an
 | `start` | Answer without doing any work | It calls a tool |
 | `recover` | Say what exists and what changed last, from the project's files | Its answer misses the facts, or it writes or generates |
 | `create` | Build a new world from an empty folder | `new` or `run` did not run, or it captured |
-| `create-fork` | Build a new world with a forked River, on a new seed and a layout of its own | Same as `create`, or the plan keeps the template's seed, range, mesa or Region Seeds. Whether the River forks is read by hand in the kept plan |
+| `create-fork` | Build a new world with a forked River, on a new seed and a layout of its own | Same as `create`, or the plan keeps the template's seed, range, mesa or Region Seeds. Whether the River forks is read by hand in the kept plan. Its prompt stopped asking for a placement unlike the template on plugin 0.17.0, so earlier runs had a harder prompt |
 | `edit` | Remove a River and write only the Chunks it touched | `generate` did not run, `run` did, `world-history` did not load, or the River stayed in the plan |
 
 A failure names what was missing. Each scenario also sets a limit on tool calls, errors and captures. Scenarios grade what the agent produced, with one deliberate exception: `edit` requires `generate`, since writing few Chunks is the point of that job.

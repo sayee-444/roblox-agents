@@ -8,13 +8,15 @@
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+const layouts = require('./layout.js');
 
 const HELP = `Runs the Generator in Studio. Every command except help takes --place <name>, and all that
 touch a world take --project <dir>. Exits 1 when a check fails.
 
 Create and write terrain
-  new <dir> --place <name> [--seed <n>] [--test-map]
-                                  Start a world, and print the World Plan template to fill in
+  new <dir> --place <name> [--seed <n>] [--landforms <list>] [--test-map]
+                                  Start a world. With --landforms (range,mesa,river,fork) it composes and
+                                  writes the whole World Plan. Without, it prints a template to fill in
   run [--remove-baseplate]        Whole cycle: load, test, describe, generate every Chunk, borders, regenerate, heights
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
   regenerate <i> <j>              Rewrite one Chunk and prove the result is identical
@@ -352,12 +354,24 @@ const steps = {
 };
 
 // A Region Seed for each Landform of a new world, following from its World Seed.
-function fillTemplate(seed) {
+function regionSeeds(seed) {
   let n = 0;
-  const regionSeed = () => { n += 1; return 10000 + ((seed * 31 + n * 7919) % 90000); };
+  return () => { n += 1; return 10000 + ((seed * 31 + n * 7919) % 90000); };
+}
+
+function fillTemplate(seed) {
   return readModule(path.join(ENGINE, 'templates/plan.luau'))
     .split('{{worldSeed}}').join(String(seed))
-    .replace(/\{\{regionSeed\}\}/g, regionSeed);
+    .replace(/\{\{regionSeed\}\}/g, regionSeeds(seed));
+}
+
+// A whole World Plan: the template's settings around a composed layout's regions and rivers.
+function composedPlan(seed, layout) {
+  const template = fillTemplate(seed);
+  const start = template.indexOf('return {');
+  const before = template.slice(start, template.indexOf('\t-- Landform Regions.'));
+  const after = template.slice(template.indexOf('\tlakes = {},'));
+  return `-- World Plan: declares what exists where. It wins over the seeds. Composed by new from the World Seed.\n-- Chunk (i, j) covers x in [i*512-256, i*512+256) and z in [j*512-256, j*512+256).\n\n${before}${layouts.renderLuau(layout, regionSeeds(seed))}\n${after}`;
 }
 
 function newWorld(dir, flags) {
@@ -367,6 +381,8 @@ function newWorld(dir, flags) {
     if (fs.existsSync(path.join(project, rel))) throw new Error(`${rel} already exists in ${project}`);
   }
   const seed = flags.seed === undefined ? Math.floor(Math.random() * 1e9) : Number(flags.seed);
+  // Composed before anything is written, so a refused Landform leaves nothing behind.
+  const layout = typeof flags.landforms === 'string' ? layouts.compose(seed, flags.landforms.split(',').map((name) => name.trim())) : null;
   fs.mkdirSync(path.join(project, 'src/world'), { recursive: true });
   fs.mkdirSync(path.join(project, 'docs/world'), { recursive: true });
   if (flags['test-map'] === true) {
@@ -393,6 +409,12 @@ The engine ships with the \`roblox-world\` plugin. This project holds only \`src
 Newest first: the date, the decision and why it was made.
 `);
   if (flags['test-map'] === true) return `World started in ${project}, seed ${seed}, on the engine's test map`;
+  if (layout) {
+    fs.writeFileSync(path.join(project, `${PLAN}.luau`), composedPlan(seed, layout));
+    const line = `${new Date().toISOString().slice(0, 10)}: composed by new from seed ${seed}: ${layouts.summary(layout)}.`;
+    fs.appendFileSync(path.join(project, 'docs/world/rules.md'), `\n- ${line}\n`);
+    return `World started in ${project}. Its plan is written. ${line}`;
+  }
   return `World started in ${project}, seed ${seed}. Write src/world/plan.luau from this template, in one go:\n\n${fillTemplate(seed)}`;
 }
 

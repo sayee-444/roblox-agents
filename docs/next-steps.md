@@ -27,8 +27,11 @@ The developer wants fewer tokens so that generations run faster and more of them
 | 0.13.0 | 70 | 9 | 187,043 | 1 of 3 |
 | 0.14.0: `new` prints a template, `run` prints heights | 68 | 8 | 167,159 | 3 of 3 |
 | 0.15.0: points shown as arrays, plan and `run` sent together | 38 | 3 | 54,620 | 2 of 3 |
+| 0.18.0: `new --landforms` composes the plan from the seed, on a plainer prompt | 27 | 3 | 51,596 | 3 of 3 |
 
-Plugin 0.14.0 gained little because its template let every run write points the engine rejects, so each ran the cycle 3 times. A 0.15.0 run still spends about 16 s in Studio, of which `test`, `borders` and `regenerate` take about 11 s, so these are the next place to look. Only `create-fork` was measured, so `edit` and `recover` on these versions are not known.
+Plugin 0.14.0 gained little because its template let every run write points the engine rejects, so each ran the cycle 3 times. A 0.15.0 run still spends about 16 s in Studio, of which `test`, `borders` and `regenerate` take about 11 s, so these are the next place to look.
+
+`edit` on 0.18.0, 3 runs: 47 s, 6 requests, 117,551 tokens, 3 of 3 passed. Plugin 0.13.0 passed 2 of 3 at about 124,000 tokens, and its time was not kept. The one-pass rule first made 2 of 3 `edit` runs skip `world-history`, which 0.18.0 fixed by loading it before the plan is edited. `recover` was run once, on 0.17.0, and passed.
 
 ## Natural look
 
@@ -42,9 +45,8 @@ Cheap measures such as the slope spread and pits with no outflow can catch regre
 
 ## Open defects
 
-- **New worlds look alike:** since `new` stopped handing over the test map, no `create-fork` run on plugin 0.15.0 kept its coordinates, but 3 of 3 still put the range in the north, the River running west to east and the mesa in the east. Measured on one prompt, and how far this matters is the developer's call.
-- **Region Seeds from `new`:** 3 of 3 runs on plugin 0.15.0 replaced the seeds the template offers, and the `create-fork` prompt asks for seeds of their own, which may be why. Whether a plainer prompt keeps them was not tried.
-- **Reading `rules.md` in an empty folder:** the agent's first step can read a file that a new world does not have yet. In 1 of 3 runs on plugin 0.15.0 that counted as an error, which fails a scenario with `maxErrors: 0`.
+- **Worlds the agent places by hand look alike:** on plugin 0.15.0, 3 of 3 put the range in the north, the River running west to east and the mesa in the east. `new --landforms` avoids this, and a request with chosen positions or a cave still goes through the template.
+- **Composed layouts:** seen as text and by tests only. Whether they look good is the developer's call, and the range favours the south over the north, 651 to 351 of 2,000 seeds.
 - **Mesa:** the top is blotchy and still rounded.
 - **Rendering:** a dark rectangle hides part of the main River in the test world, while its voxels are correct. `hills-above` shows a dark crack.
 - **Mouse:** in one place the mouse stopped working in the 3D view, with the keyboard fine. Cause unknown.
