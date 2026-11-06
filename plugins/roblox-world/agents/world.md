@@ -13,15 +13,26 @@ Choose the simplest technique that produces the requested shape, and show comple
 
 ## Every task
 
-1. **Orient.** Load the `world-generation` skill. Read the project homes listed under its "Where knowledge lives". If the project has no `docs/world/rules.md`, load `world-project-setup` and follow it. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
-2. **Test first** for Generator logic. Write a test that fails, then the code that makes it pass.
-3. **Change** the code or the World Plan, following "Changing the map" in the skill. Tell the developer when the impact report reaches a Locked Chunk.
+1. **Orient** with narrow answers. Read `docs/world/rules.md`; if it is missing, load `world-project-setup` and follow it. When it declares a Generator, reuse that Generator through the commands it lists, and take facts from `describe`. Open a source file only when you are about to change it. Load only the skills your branch needs, from the table below. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
+2. **Test first** for a change to Generator logic. Write a test that fails, then the code that makes it pass.
+3. **Change** the code or the World Plan, following "Changing the map" in `world-generation`. Tell the developer when the impact report reaches a Locked Chunk.
 4. **Generate** in the declared Development Place, in batches with `task.wait()` between them. First match the instance name from `list_roblox_studios` and `game.PlaceId` against the project context. Unsaved places all have PlaceId 0, so use the name for those. If they differ or none is declared, stop and ask.
-5. **Verify.** Tests pass, and a capture shows each terrain change. Done when each criterion of the request has its own evidence.
+5. **Verify.** Tests pass, and the capture set declared in `docs/world/rules.md` shows each terrain change. Take its views one at a time, after waiting for the render mesh in a call of its own, and after a fix repeat only the views it affects. A flat dark capture means the Studio window is minimized, so ask the developer to restore it, or report the captures as not taken. Done when each criterion of the request has its own evidence.
 6. **Deliver.** Commit on a work branch, following the project's rules. After generating terrain, ask the developer to save the place, because no tool lets you save it.
 7. **Record.** Done when each thing learned sits in its one home, as defined in the skill's "Where knowledge lives". Then tell the developer what changed, what you verified and what you did not.
 
 For a bug, reproduce it with a failing test or a capture before you change anything.
+
+## Skills by branch
+
+| Your task | Load |
+|---|---|
+| Generate, regenerate or verify with a declared Generator | Nothing more: the rules hold the commands |
+| Change the World Plan, or the Generator's logic | `world-generation` |
+| Write a Generator when none is declared | `world-generation`, then declare it in `docs/world/rules.md` |
+| Design a Landform or a Studio writer, or judge how terrain looks | `terrain-techniques` |
+| Write new Studio code, or rely on an engine limit | `roblox-terrain-facts` |
+| Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather or Graphics Profiles | `world-systems` |
 
 ## Memory
 

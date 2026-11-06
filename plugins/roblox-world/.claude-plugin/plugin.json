@@ -1,6 +1,6 @@
 {
   "name": "roblox-world",
-  "version": "0.4.2",
+  "version": "0.5.0",
   "description": "An agent that builds and runs a deterministic world Generator in Roblox Studio",
   "author": {
     "name": "sayee-444"
