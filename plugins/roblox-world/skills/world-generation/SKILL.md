@@ -17,9 +17,7 @@ The map is the output of one pure function: terrain at a world position comes fr
 | Locked Chunk | A hand-edited Chunk the Generator skips |
 | World Seed | Supplies natural detail across the map |
 | Landform Region | A declared shape, such as a mountain range or a mesa, with its own Region Seed and a bounded blend margin |
-| River, Lake | Water declared in the World Plan; a River follows route points |
-| Site | An area reserved for a future structure, with size and slope limits |
-| World Limit | The declared edge where players stop: an invisible barrier and a server check |
+| River | Water declared in the World Plan, following route points |
 
 ## Layout
 
@@ -40,7 +38,7 @@ The Generator is an engine driven by parameters, and it ships in this plugin und
 The Generator validates the World Plan and answers these questions, so planning rests on facts:
 
 - Which Chunks are generated, and which are Locked.
-- Which Landform Regions, Rivers and Lakes exist, and which Chunks each one touches. Sites appear only as a count.
+- Which Landform Regions and Rivers exist, and which Chunks each one touches.
 - How much of the maximum extent is free, meaning Chunks not yet generated.
 
 ## Changing the map
@@ -60,11 +58,11 @@ Supersede these only with the developer's agreement, recording why in the projec
 |---|---|
 | Terrain is generated only in Studio and saved in the place | Generation can be heavy without affecting play, and the map stays editable Chunk by Chunk. New terrain reaches players only through a published update |
 | The World Plan overrides the seeds | A required mountain range never depends on finding a lucky seed |
-| The maximum extent is fixed up front, and only requested Chunks are generated | Automatically routed Rivers, if ever added, depend on terrain far beyond one Chunk |
+| The maximum extent is fixed up front, and only requested Chunks are generated | A shape can reach far beyond one Chunk, so the whole extent has to be known first |
 | The World Seed stays fixed after the first publication | Changing it would alter every unlocked Chunk. Later changes go through the World Plan and Region Seeds |
-| Chunks are squares | `Terrain` is written through axis-aligned boxes. A hexagon wastes about 25% of its write box and needs a merge with its neighbours. A hexagonal planning layer can still sit on top |
-| The Generator is pure Luau and returns Chunk data | No official way to run Rust on Roblox servers was found, and the final write stays serial in Studio. Rust can join at this boundary if a measurement justifies it |
-| Code reaches Studio through MCP | Rojo adds a process nothing needs yet, and rewriting a place with it can lose Expanded Terrain voxels. If adopted, Rojo manages code only and never rewrites a place holding terrain |
+| Chunks are squares | `Terrain` is written through axis-aligned boxes. A hexagon wastes about 25% of its write box and needs a merge with its neighbours |
+| The Generator is pure Luau and returns Chunk data | No official way to run Rust on Roblox servers was found, and the final write stays serial in Studio |
+| Code reaches Studio through MCP | Rojo adds a process nothing needs yet, and rewriting a place with it can lose terrain voxels |
 | The Generator is our own, with no Creator Store plugin as its base | None reviewed offers scripted control, forced Landforms and per-Chunk writes that respect hand edits |
 
 ## Hand edits

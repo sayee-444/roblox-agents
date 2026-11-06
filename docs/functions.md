@@ -1,6 +1,6 @@
 # Function map
 
-Everything the `world` agent can do, grouped by the job it serves, so that the developer and the agent use the same words. `tests/docs.test.js` fails when a skill or an engine command is missing from this file.
+Everything the `world` agent can do today, grouped by the job it serves, so that the developer and the agent use the same words. What does not exist yet is in `docs/next-steps.md`. `tests/docs.test.js` fails when a skill or an engine command is missing from this file.
 
 ## The pieces
 
@@ -16,8 +16,6 @@ Everything the `world` agent can do, grouped by the job it serves, so that the d
 
 - **Measured:** run in Studio or by a test, with a recorded result.
 - **Built:** exists, and has not been measured as the agent uses it.
-- **Designed:** written down, with no code.
-- **Missing:** wanted, and neither built nor designed in detail.
 
 ## Create
 
@@ -36,9 +34,7 @@ Everything the `world` agent can do, grouped by the job it serves, so that the d
 | Write a single Chunk | `generate <i> <j>` | Measured |
 | Prove a Chunk regenerates identically | `regenerate <i> <j>` | Measured |
 | A new shape the engine lacks | `world-generation` and `terrain-techniques`, then a change to the engine | Built |
-| Remove one Chunk | No command | Missing |
-| Detect hand edits | The developer says which Chunks they touched, and they become Locked | Missing |
-| Detail layer: noise and materials over the base shape | No code | Designed |
+| Protect a Chunk edited by hand | Say which Chunks you touched, and the agent marks them Locked | Built |
 
 ## Recover context
 
@@ -87,7 +83,6 @@ These move the developer's camera, so they run only on request or when the devel
 | `world-generation` | The method: how the map works and how to change it | Measured |
 | `terrain-techniques` | Recipes for Landforms and materials, and how to judge a result | Built |
 | `roblox-terrain-facts` | Engine limits, with sources | Built |
-| `world-systems` | Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather and Graphics Profiles | Designed |
 
 ## Measure and prove
 

@@ -39,6 +39,9 @@ Cheap measures such as the slope spread and pits with no outflow can catch regre
 - A command for `Describe.impact`: it exists and is tested in the Generator, and no command reaches it, so `describe` is read before a change instead.
 - Detecting hand edits: the developer says which Chunks they touched.
 - Routes that follow the relief: a River is placed by hand and holds one water level.
+- Lakes, Sites and the World Limit: the World Plan has fields for them, and no code generates them.
+- Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather and Graphics Profiles: designed only, in `docs/designs/world-systems.md`, which also holds their terms.
+- Project setup and `new` overlap: setup writes `docs/world/rules.md`, and `new` refuses to run if that file exists.
 
 ## Not verified
 
@@ -53,6 +56,6 @@ Each has a verdict in `docs/research/tooling-and-reasoning.md`, part E.
 | Seed hunting | Partly: seeds have no locality, so search is random, and the score is the hard part | Measure a score's spread over 1,000 seeds, and whether it agrees with the developer's picks among 20 finalists |
 | Fractal Rivers | Partly: a fork rule on a declared map inverts the method, which derives terrain from the network | A three-order network that carves its own valleys, judged in Studio |
 | Circular agents | Partly: files and a stop condition are sound, and a circle of many agents is weak today | Written look principles that one evaluator grades in agreement with the developer |
-| Parameters for Biomes | Not researched | Build when the developer asks, from `world-systems` |
+| Parameters for Biomes | Not researched | Build when the developer asks, from `docs/designs/world-systems.md` |
 
 Create a new agent only when its work exists, and 3D modeling costs money per use, so look for cheaper techniques first.

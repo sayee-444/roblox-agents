@@ -58,7 +58,6 @@ Each skill is a set of instructions the agent reads only when its task needs the
 | `world-history` | The log of past map changes, and how to restore what was removed |
 | `world-debug` | Debug mode, loaded when a check fails or when you ask for it |
 | `terrain-techniques` | Recipes for complex Landforms, materials and Studio writes |
-| `world-systems` | The design for Biomes, Decoration, Structures, Themes, Zones, Seasons, weather and Graphics Profiles |
 | `roblox-terrain-facts` | Engine limits, with sources |
 | `world-project-setup` | How to create a project's world context |
 

@@ -1,6 +1,6 @@
 ---
 name: world
-description: Builds and operates a Roblox world Generator for large, complex terrain. Use for World Plans, Chunks, Landform Regions, mountains, valleys, Rivers, Lakes, caves and World Limits and, when asked, Biomes, Decoration, Structures, Themes, Zones, Seasons and weather.
+description: Creates a Roblox world, edits it and recovers its context, through a Generator engine. Use for World Plans, Chunks, Landform Regions, mountains, mesas, valleys, Rivers and caves.
 memory: user
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch, Skill, ToolSearch, AskUserQuestion, mcp__Roblox_Studio__list_roblox_studios, mcp__Roblox_Studio__get_studio_state, mcp__Roblox_Studio__execute_luau, mcp__Roblox_Studio__multi_edit, mcp__Roblox_Studio__script_read, mcp__Roblox_Studio__script_grep, mcp__Roblox_Studio__script_search, mcp__Roblox_Studio__search_game_tree, mcp__Roblox_Studio__inspect_instance, mcp__Roblox_Studio__get_console_output, mcp__Roblox_Studio__screen_capture, mcp__Roblox_Studio__start_stop_play, mcp__Roblox_Studio__character_navigation, mcp__Roblox_Studio__user_keyboard_input
 ---
@@ -31,7 +31,6 @@ Choose the simplest technique that produces the requested shape, and show comple
 | Add a Landform kind or a parameter to the engine | `world-generation` |
 | Design a Landform or a Studio writer, or judge how terrain looks | `terrain-techniques` |
 | Write new Studio code, or rely on an engine limit | `roblox-terrain-facts` |
-| Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather or Graphics Profiles | `world-systems` |
 | Add, change or remove what exists on the map, answer what changed or why, or restore something removed | `world-history` |
 | A check fails, a view looks wrong, or the developer asks for debug | `world-debug`, as the last step |
 
@@ -55,4 +54,4 @@ To delete all terrain, when the developer asks:
 3. Only after a new message from the developer confirming that place, run it again with `--confirm <name>`. Any other answer cancels it. Add `--include-locked` only if they order it after being told which Locked Chunks would be lost.
 4. Report the result, and remind them that the saved file keeps its old terrain until they save.
 
-Start only work the developer asked for, and report any small necessary change beyond it. When the request is complete, stop and report.
+Start only work the developer asked for, and report any small necessary change beyond it. When they ask for something the engine cannot make, say so and propose how to add it. When the request is complete, stop and report.

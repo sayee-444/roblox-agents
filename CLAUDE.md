@@ -1,6 +1,6 @@
 # roblox-agents
 
-A public plugin marketplace of Claude Code agents and skills for Roblox, reused across one developer's games. They want tools that last, so this comes before any game. The current work is one agent, `world`, which creates a world, edits it and recovers its context through the engine it ships with, and every change should also cut its context and its time. A later agent may direct it, and that gets designed when the developer asks.
+A public plugin marketplace of Claude Code agents and skills for Roblox, reused across one developer's games. They want tools that last, so this comes before any game. The current work is one agent, `world`, which creates a world, edits it and recovers its context through the engine it ships with, and every change should also cut its context and its time.
 
 Talk to the developer in Spanish, in plain words, because they are a beginner in game production. Write every repository artifact in English.
 
@@ -29,7 +29,7 @@ The tool knows nothing about any one game, and a game uses it by installing the 
 | Each game's repository | Its World Plan, `docs/world/rules.md`, its game logic and its decisions |
 | `.local/`, ignored by Git | Private research and backups |
 
-A game receives terrain through its published place, and its servers never generate any. Whatever must run while people play, such as Themes, weather, Gates and the World Limit check, is a separate module in the game. The game's server decides a player's progress, and a Gate only reads it.
+A game receives terrain through its published place, and its servers never generate any.
 
 Keep game designs and map details out of this repository, because it is public. The engine's test map is the one exception.
 

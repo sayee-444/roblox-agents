@@ -1,25 +1,25 @@
----
-name: world-systems
-description: Design for what sits on top of terrain, namely Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather, day and night, and Graphics Profiles. Use when the developer asks for any of them.
----
+# World systems
 
-These systems are designed and not yet built or measured. Build one only when the developer asks, and start with a visual test on the target devices.
+The design for what sits on top of terrain. None of it is built or measured, and nothing loads it into the agent. Build a system only when the developer asks, starting with a visual test on the target devices, then move what became real into a skill and its terms into `GLOSSARY.md`.
 
-Terrain generation runs in Studio. Themes, weather and Graphics Profiles run in the live game, so keep them in separate modules from the Generator.
+Terrain generation runs in Studio. Whatever must run while people play, such as Themes, weather, Gates, Graphics Profiles and the World Limit check, is a separate module in the game. The game's server decides a player's progress, and a Gate only reads it.
 
 ## Terms
 
-| Term | Meaning |
-|---|---|
-| Biome | A ground treatment, its Decoration parameters and its default Theme. It never defines a shape, which is a Landform |
-| Decoration | A static object placed from Biome parameters, such as a tree, rock or bush. Its density can be zero |
-| Structure | A building placed on purpose, on a Site the Generator prepares and preserves |
-| Gate | A per-player barrier, decided by the server, that opens with that player's progress |
-| Theme | Ambience: sky and light colour, atmosphere, music and sound. It never changes the ground |
-| Standard Theme | The placeholder Theme used until a place in the world has a real one |
-| Zone | A named area, such as a graveyard, that activates a Theme on entry. It never changes the ground or Decoration |
-| Season | A temporary change to how Biomes look and what falls from the sky. It never changes the terrain's shape |
-| Graphics Profile | A quality level, from Low to Ultra, that changes what a device draws and never anything a player can collide with |
+| Term | Meaning | Avoid |
+|---|---|---|
+| Lake | A body of still water declared in the World Plan, where Rivers end | ocean, sea |
+| World Limit | The impassable edge shared by every player, whose shape is declared in the World Plan: an invisible barrier and a server check | wall, border |
+| Gate | A per-player barrier, decided by the server, that opens with that player's progress | lock, World Limit |
+| Biome | A ground treatment, its Decoration parameters and its default Theme | using it for a shape (Landform) or for ambience alone (Theme) |
+| Decoration | A static object placed from Biome parameters, such as a tree, rock or bush. It never simulates physics, and its density can be zero | prop, scatter |
+| Structure | A building placed on purpose, such as a castle | landmark, prefab |
+| Site | The place reserved in the World Plan for a Structure, with size and slope limits, whose ground the Generator prepares and preserves | pad, plot |
+| Season | A temporary change to how Biomes look and what falls from the sky, which never changes the shape of the terrain | event skin, holiday mode |
+| Theme | What a player perceives as ambience: sky and light colour, atmosphere, music and sound. It never changes the ground, and only one is active at a time, outside a transition | mood, ambience, environment |
+| Standard Theme | The placeholder Theme used until a place in the world has a real one | normal biome, and "default theme" for this fallback, since that phrase means a Biome's own Theme |
+| Zone | A named area placed on purpose that activates a Theme when a player enters it, such as a graveyard. It never changes the ground or Decoration | region, area |
+| Graphics Profile | A named quality level, from Low to Ultra, that changes what a device draws but never anything a player can collide with | quality preset, graphics mode |
 
 ## Ground and objects
 
