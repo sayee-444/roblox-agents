@@ -18,6 +18,9 @@ Read 2026-11-05 against the linked sources. Recheck anything that matters, becau
 | Parts do not simulate or render properly at a great distance | Keep the world centred on the origin | [Workspace](https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/reference/engine/classes/Workspace.yaml) |
 | A client that owns its character can bypass physical obstacles | Back a World Limit barrier with a server check | [Network ownership](https://create.roblox.com/docs/scripting/security/network-ownership) |
 | `SetMaterialColor` has no region argument, and water colour is global | Colour changes apply to the whole place | [Terrain](https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/reference/engine/classes/Terrain.yaml) |
+| Voxel writes need arrays that exactly match a grid-aligned region, with resolution 4. Occupancy runs from 0 to 1 and morphs a cell with its neighbours | Use `Region3:ExpandToGrid()` and check array sizes before writing | [Terrain](https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/reference/engine/classes/Terrain.yaml) |
+| In `WriteVoxelChannels`, `Enum.Material.Water` is not supported. A voxel holding only water is `SolidMaterial = Air` with `LiquidOccupancy` above 0 | Write water through that channel | [Terrain](https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/reference/engine/classes/Terrain.yaml) |
+| A height map gives each column one height | Caves and overhangs need voxel writes | [Terrain guide](https://raw.githubusercontent.com/Roblox/creator-docs/main/content/en-us/parts/terrain.md) |
 | Water does not flow, and no public current simulation was found | A River is still water in a bed, with flat or stepped stretches | [WaterForce](https://create.roblox.com/docs/reference/engine/enums/WaterForce) |
 
 ## Techniques
