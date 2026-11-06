@@ -2,7 +2,7 @@
 name: benchmark
 description: Measures the world agent and compares it with the previous run.
 disable-model-invocation: true
-argument-hint: "cost | engine | agent <recover|create|edit|all> | report"
+argument-hint: "cost | engine | agent <start|recover|create|edit|all> [--label name] | report"
 ---
 
 Follow `docs/benchmark.md`.

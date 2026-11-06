@@ -1,12 +1,12 @@
 #!/usr/bin/env node
-// Measures the plugin at three prices, and keeps every result so that a change can be compared
-// with the run before it. See docs/benchmark.md.
+// Measures the plugin at three prices, and keeps every result so that a version or a technique can
+// be compared with the one before it. See docs/benchmark.md.
 //
 //   node tools/benchmark.js cost                               Free: what the plugin adds to context
 //   node tools/benchmark.js engine --place <name>              No tokens, needs Studio: time per engine step
-//   node tools/benchmark.js agent <scenario|all> [--place <name>] [--model sonnet] [--budget 2] [--runs 1]
-//                                                              Spends tokens: a real agent run, graded
-//   node tools/benchmark.js report                             Latest result of each kind, against the one before
+//   node tools/benchmark.js agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3]
+//        [--model sonnet] [--budget 2]                         Spends tokens: a real agent run, graded
+//   node tools/benchmark.js report                             Each measure's median, against the group before
 //
 // `engine` and the scenarios marked `studio` overwrite the terrain of --place, so use a disposable place.
 const { spawnSync } = require('child_process');
@@ -21,8 +21,15 @@ const PLUGIN = path.join(ROOT, 'plugins/roblox-world');
 const WORLD = path.join(PLUGIN, 'engine/tools/world.js');
 const RESULTS = path.join(ROOT, 'benchmarks/results.jsonl');
 const MEMORY = path.join(os.homedir(), '.claude/agent-memory/roblox-world-world/MEMORY.md');
-const AGENT_MEASURES = ['durationMin', 'output', 'cacheRead', 'contextEnd', 'toolCalls', 'errors', 'captures', 'costUsd'];
-const COST_MEASURES = ['alwaysOn', 'onInvoke', 'memoryBytes'];
+const CLAUDE_MD = path.join(ROOT, 'CLAUDE.md');
+const AGENT_MEASURES = ['contextStart', 'contextEnd', 'tokensSent', 'output', 'thinking', 'durationMin', 'toolCalls', 'errors', 'captures', 'costUsd'];
+const CONTEXT_PARTS = ['agent', 'memoryRules', 'memoryFile', 'tools', 'pluginSkills', 'otherSkills', 'attachments', 'unattributed'].map((part) => `context.${part}`);
+const COST_MEASURES = ['alwaysOn', 'onInvoke', 'memoryBytes', 'claudeMdBytes'];
+const measuresOf = (name) => {
+  if (name === 'cost') return COST_MEASURES;
+  if (name === 'engine') return ['totalSec'];
+  return [...AGENT_MEASURES, ...CONTEXT_PARTS];
+};
 
 // Every way a run fell short of what its scenario expects. An empty list means it passed.
 function grade(run, expect, produced = {}) {
@@ -66,14 +73,55 @@ function parseEngine(text) {
 }
 
 function compare(before, now, measures) {
-  return measures.map((name) => {
+  const shown = (value) => (Number.isInteger(value) ? value : Number(value.toFixed(3)));
+  return measures.filter((name) => now[name] !== undefined).map((name) => {
     const value = now[name];
-    if (!before || before[name] === undefined) return `${name} ${value} (first run)`;
+    if (!before || before[name] === undefined) return `${name} ${shown(value)} (first run)`;
     const delta = value - before[name];
-    if (delta === 0) return `${name} ${before[name]} -> ${value} (same)`;
-    const change = before[name] === 0 ? `${delta > 0 ? '+' : ''}${delta}` : `${delta > 0 ? '+' : ''}${Math.round((delta / before[name]) * 100)}%`;
-    return `${name} ${before[name]} -> ${value} (${change})`;
+    if (delta === 0) return `${name} ${shown(before[name])} -> ${shown(value)} (same)`;
+    const change = before[name] === 0 ? `${delta > 0 ? '+' : ''}${shown(delta)}` : `${delta > 0 ? '+' : ''}${Math.round((delta / before[name]) * 100)}%`;
+    return `${name} ${shown(before[name])} -> ${shown(value)} (${change})`;
   });
+}
+
+// Groups runs by plugin version and label, because one run says little and a version is what gets
+// compared. Each group gives the median of each measure over the runs that hold it.
+function groups(rows, measures) {
+  const valueOf = (row, measure) => measure.split('.').reduce((value, key) => (value === undefined || value === null ? undefined : value[key]), row);
+  const median = (values) => {
+    const sorted = [...values].sort((a, b) => a - b);
+    const middle = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[middle] : (sorted[middle - 1] + sorted[middle]) / 2;
+  };
+  const found = new Map();
+  for (const row of rows) {
+    const key = row.label ? `${row.version} ${row.label}` : row.version;
+    if (!found.has(key)) found.set(key, []);
+    found.get(key).push(row);
+  }
+  return [...found].map(([key, members]) => {
+    const medians = {};
+    for (const measure of measures) {
+      const values = members.map((row) => valueOf(row, measure)).filter((value) => typeof value === 'number');
+      if (values.length) medians[measure] = median(values);
+    }
+    return { key, runs: members.length, passed: members.filter((row) => row.passed).length, medians };
+  });
+}
+
+// Prints the newest group of one kind of result against the group before it.
+function showComparison(name) {
+  const rows = readResults().filter((row) => row.name === name);
+  const measures = measuresOf(name);
+  const all = groups(rows, measures);
+  const now = all[all.length - 1];
+  const before = all[all.length - 2];
+  const graded = rows.some((row) => row.passed !== undefined);
+  const describe = (group) => `${group.key}, ${group.runs} run${group.runs === 1 ? '' : 's'}${graded ? `, ${group.passed} passed` : ''}`;
+  console.log(`\n${name}: ${describe(now)}${before ? `, against ${describe(before)}` : ''}`);
+  console.log(compare(before ? before.medians : null, now.medians, measures).map((line) => `  ${line}`).join('\n'));
+  const failures = [...new Set(rows.filter((row) => (row.label ? `${row.version} ${row.label}` : row.version) === now.key).flatMap((row) => row.failures || []))];
+  for (const failure of failures) console.log(`  failed: ${failure}`);
 }
 
 function readResults() {
@@ -81,9 +129,8 @@ function readResults() {
   return fs.readFileSync(RESULTS, 'utf8').split('\n').filter(Boolean).map((line) => JSON.parse(line));
 }
 
-// Appends a result, stamped with what was measured, and returns the previous result of the same name.
+// Appends a result, stamped with what was measured.
 function record(name, result) {
-  const previous = readResults().filter((row) => row.name === name).pop() || null;
   const git = (args) => spawnSync('git', args, { cwd: ROOT, encoding: 'utf8' }).stdout.trim();
   const row = {
     name,
@@ -95,7 +142,6 @@ function record(name, result) {
     ...result,
   };
   fs.appendFileSync(RESULTS, `${JSON.stringify(row)}\n`);
-  return previous;
 }
 
 function memoryBytes() {
@@ -115,9 +161,9 @@ function tempWorld() {
 function benchCost() {
   const details = spawnSync(`claude --plugin-dir "${PLUGIN}" plugin details roblox-world`, { shell: true, encoding: 'utf8' });
   if (details.status !== 0) throw new Error(`claude plugin details failed:\n${details.stdout}${details.stderr}`);
-  const result = { ...parseCost(details.stdout), memoryBytes: memoryBytes() };
-  const previous = record('cost', result);
-  console.log(compare(previous, result, COST_MEASURES).join('\n'));
+  const result = { ...parseCost(details.stdout), memoryBytes: memoryBytes(), claudeMdBytes: fs.statSync(CLAUDE_MD).size };
+  record('cost', result);
+  showComparison('cost');
   for (const [name, part] of Object.entries(result.components)) console.log(`  ${name.padEnd(22)} always-on ${String(part.alwaysOn).padStart(4)}  on-invoke ${String(part.onInvoke).padStart(5)}`);
 }
 
@@ -126,8 +172,8 @@ function benchEngine(place) {
   try {
     runWorld('new', dir, '--place', place, '--seed', '12345');
     const result = parseEngine(runWorld('run', '--place', place, '--project', dir));
-    const previous = record('engine', result);
-    console.log(compare(previous, result, ['totalSec']).join('\n'));
+    record('engine', result);
+    showComparison('engine');
     for (const [step, seconds] of Object.entries(result.steps)) console.log(`  ${step.padEnd(12)} ${seconds} s`);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -172,20 +218,23 @@ function benchAgent(name, scenario, flags) {
     if (started.status !== 0) failures.unshift(`claude exited with ${started.status}`);
     const result = {
       model,
+      label: flags.label,
       passed: failures.length === 0,
       failures,
       session,
       memoryBytes: memoryBytes(),
       costUsd: output.total_cost_usd,
       ...Object.fromEntries(AGENT_MEASURES.filter((key) => key !== 'costUsd').map((key) => [key, run[key]])),
+      context: run.context,
+      startTools: run.startTools,
+      growth: run.growth,
       skills: run.skills,
       commands: run.commands,
     };
-    const previous = record(`agent:${name}`, result);
-    console.log(`\n${name}: ${result.passed ? 'PASSED' : 'FAILED'} on ${model}`);
-    for (const failure of failures) console.log(`  - ${failure}`);
-    console.log(compare(previous, result, AGENT_MEASURES).map((line) => `  ${line}`).join('\n'));
+    record(`agent:${name}`, result);
+    console.log(`${name}: ${result.passed ? 'PASSED' : 'FAILED'} | context ${run.contextStart} to ${run.contextEnd} | sent ${run.tokensSent} | output ${run.output} | ${run.toolCalls} tool calls | $${Number(output.total_cost_usd || 0).toFixed(3)}`);
     console.log(`  skills ${JSON.stringify(run.skills)}  commands ${JSON.stringify(run.commands)}`);
+    for (const failure of failures) console.log(`  failed: ${failure}`);
     return result.passed;
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -193,18 +242,9 @@ function benchAgent(name, scenario, flags) {
 }
 
 function report() {
-  const rows = readResults();
-  const names = [...new Set(rows.map((row) => row.name))];
+  const names = [...new Set(readResults().map((row) => row.name))];
   if (!names.length) console.log('No results yet.');
-  for (const name of names) {
-    const same = rows.filter((row) => row.name === name);
-    const now = same[same.length - 1];
-    const before = same[same.length - 2] || null;
-    const measures = name === 'cost' ? COST_MEASURES : name === 'engine' ? ['totalSec'] : AGENT_MEASURES;
-    const state = now.passed === undefined ? '' : now.passed ? ' PASSED' : ` FAILED: ${now.failures.join('; ')}`;
-    console.log(`\n${name} at ${now.commit}${now.uncommitted ? '+' : ''}, plugin ${now.version}, ${now.date.slice(0, 10)}${state}`);
-    console.log(compare(before, now, measures).map((line) => `  ${line}`).join('\n'));
-  }
+  names.forEach(showComparison);
 }
 
 function main() {
@@ -228,11 +268,12 @@ function main() {
     for (const name of names) {
       if (!scenarios[name]) throw new Error(`Unknown scenario "${name}". Scenarios: ${Object.keys(scenarios).join(', ')}`);
       for (let n = 0; n < Number(flags.runs || 1); n += 1) allPassed = benchAgent(name, scenarios[name], flags) && allPassed;
+      showComparison(`agent:${name}`);
     }
     process.exitCode = allPassed ? 0 : 1;
     return undefined;
   }
-  console.error('Usage: node tools/benchmark.js <cost|engine --place <name>|agent <scenario|all> [--place <name>] [--model sonnet] [--budget 2] [--runs 1]|report>');
+  console.error('Usage: node tools/benchmark.js <cost|engine --place <name>|agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3] [--model sonnet] [--budget 2]|report>');
   process.exitCode = 2;
   return undefined;
 }
@@ -241,4 +282,4 @@ if (require.main === module) {
   try { main(); } catch (error) { console.error(error.message); process.exitCode = 1; }
 }
 
-module.exports = { grade, parseCost, parseEngine, compare };
+module.exports = { grade, parseCost, parseEngine, compare, groups };
