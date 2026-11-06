@@ -23,6 +23,19 @@ local function eachChunk(fn)
 	end
 end
 
+local function isGenerated(ci, cj)
+	local entry = state.chunks[Gen.Chunk.key(ci, cj)]
+	return entry ~= nil and entry.generated == true
+end
+
+local function eachGenerated(fn)
+	eachChunk(function(ci, cj)
+		if isGenerated(ci, cj) then
+			fn(ci, cj)
+		end
+	end)
+end
+
 local function sameData(a, b)
 	return a.s1 == b.s1 and a.s2 == b.s2 and a.solid == b.solid and a.liquid == b.liquid
 end
@@ -36,21 +49,31 @@ function Ops.describe()
 	return Gen.Describe.format(Gen.Describe.report(plan, state))
 end
 
--- Writes every unlocked Chunk and reports measured seconds per Chunk.
-function Ops.generate()
+-- Writes the given Chunks, as a list of { i, j }, or every Chunk of the extent when none is
+-- given. Skips Locked Chunks, records the rest as generated and reports seconds per Chunk.
+function Ops.generate(list)
 	local t = workspace.Terrain
 	local seconds, skipped = {}, {}
 	local total = 0
-	eachChunk(function(ci, cj)
+	local function write(ci, cj)
+		local key = Gen.Chunk.key(ci, cj)
 		if isLocked(ci, cj) then
-			table.insert(skipped, Gen.Chunk.key(ci, cj))
+			table.insert(skipped, key)
 			return
 		end
 		local stats = Writer.writeChunk(t, plan, Gen, ci, cj)
 		table.insert(seconds, stats.wall)
 		total += stats.wall
+		state.chunks[key] = { generated = true, locked = false }
 		task.wait()
-	end)
+	end
+	if list then
+		for _, c in ipairs(list) do
+			write(c[1], c[2])
+		end
+	else
+		eachChunk(write)
+	end
 	if #seconds == 0 then
 		return "generated 0 Chunks, skipped Locked: " .. table.concat(skipped, " ")
 	end
@@ -61,16 +84,16 @@ function Ops.generate()
 	)
 end
 
--- Reads voxels on both sides of every border inside the extent and compares them with the
--- Generator. Lists only the borders that disagree.
+-- Reads voxels on both sides of every border between two generated Chunks and compares them
+-- with the Generator. Lists only the borders that disagree.
 function Ops.borders()
 	local t = workspace.Terrain
-	local e = plan.extent
 	local count, voxels, mat, occ, liq, worstErr, worstCross, worstInside = 0, 0, 0, 0, 0, 0, 0, 0
 	local bad = {}
-	eachChunk(function(ci, cj)
+	eachGenerated(function(ci, cj)
 		for _, axis in ipairs({ "x", "z" }) do
-			if (axis == "x" and ci < e.maxX) or (axis == "z" and cj < e.maxZ) then
+			local ni, nj = if axis == "x" then ci + 1 else ci, if axis == "z" then cj + 1 else cj
+			if isGenerated(ni, nj) then
 				local r = Writer.borderReport(t, plan, Gen, axis, ci, cj)
 				count += 1
 				voxels += r.voxelsCompared
@@ -142,12 +165,14 @@ function Ops.placeSpawn(removeBaseplate)
 	return table.concat(notes, ", ")
 end
 
--- Source of the generation state after a full generate. Locked Chunks stay as they were.
+-- Source of the current generation state. Locked Chunks stay as they were.
 function Ops.stateSource()
 	local lines = { "return {", "\tgeneratorVersion = " .. tostring(state.generatorVersion or 1) .. ",", "\tchunks = {" }
 	eachChunk(function(ci, cj)
-		local key = Gen.Chunk.key(ci, cj)
-		table.insert(lines, string.format('\t\t["%s"] = { generated = true, locked = %s },', key, tostring(isLocked(ci, cj))))
+		local entry = state.chunks[Gen.Chunk.key(ci, cj)]
+		if entry then
+			table.insert(lines, string.format('\t\t["%s"] = { generated = %s, locked = %s },', Gen.Chunk.key(ci, cj), tostring(entry.generated == true), tostring(entry.locked == true)))
+		end
 	end)
 	table.insert(lines, "\t},")
 	table.insert(lines, "}")
@@ -215,7 +240,7 @@ function Ops.views()
 		end
 	end
 	local hillX, hillZ, farthest = cx, cz, -1
-	eachChunk(function(ci, cj)
+	eachGenerated(function(ci, cj)
 		local x, z = ci * S, cj * S
 		local near = math.huge
 		for _, m in ipairs(marks) do

@@ -7,7 +7,8 @@
 //   node tools/world.js run --place <name> [--project <dir>]     load, test, describe, generate,
 //        [--remove-baseplate] [--wait <s>]                       borders, regenerate, capture
 //   node tools/world.js <step> --place <name> [--project <dir>]  One step of the above: load,
-//        test, describe, generate, borders, capture, regenerate <i> <j>, height <x> <z>
+//        test, describe, generate [<i> <j> ...], borders, capture, regenerate <i> <j>, height <x> <z>,
+//        shot <name> <camera x y z> <look x y z> [--wait <s>]
 //
 // Prints one line per fact. Exits 1 when a check fails, and writes nothing to a place whose
 // name differs from --place.
@@ -180,9 +181,12 @@ const steps = {
     return `\n${text}`;
   },
 
-  async generate(studio, ctx) {
+  async generate(studio, ctx, args) {
     const remove = ctx.flags['remove-baseplate'] === true;
-    const text = await studio.luau(`local O = ${OPS}; local g = O.generate(); return g .. "\\n" .. O.placeSpawn(${remove})`);
+    const pairs = [];
+    for (let n = 0; n + 1 < args.length; n += 2) pairs.push(`{ ${Number(args[n])}, ${Number(args[n + 1])} }`);
+    const list = pairs.length ? `{ ${pairs.join(', ')} }` : 'nil';
+    const text = await studio.luau(`local O = ${OPS}; local g = O.generate(${list}); return g .. "\\n" .. O.placeSpawn(${remove})`);
     if (ctx.project !== ENGINE) {
       const source = await studio.luau(`return ${OPS}.stateSource()`);
       fs.writeFileSync(path.join(ctx.project, `${STATE}.luau`), `${source.trim()}\n`);
@@ -206,6 +210,20 @@ const steps = {
   async height(studio, ctx, args) {
     const [x, z] = args.map(Number);
     return studio.luau(`return ${OPS}.height(${x}, ${z})`);
+  },
+
+  // One view chosen by hand, for what the capture set does not cover.
+  async shot(studio, ctx, args) {
+    const [name, ...numbers] = args;
+    const wait = ctx.flags.wait === undefined ? 0 : Number(ctx.flags.wait);
+    if (wait > 0) await new Promise((resolve) => { setTimeout(resolve, wait * 1000); });
+    const result = await studio.tool('screen_capture', { capture_id: `world_${name}`, camera_position: numbers.slice(0, 3).map(Number), look_at_position: numbers.slice(3, 6).map(Number) });
+    const image = result.content.find((c) => c.type === 'image');
+    if (!image || image.data.length < BLANK_CAPTURE_CHARS) { ctx.failed = true; return 'BLANK capture. The Studio window is probably minimized'; }
+    const dir = path.join(ctx.project, 'docs/captures/run');
+    fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(path.join(dir, `${name}.jpg`), Buffer.from(image.data, 'base64'));
+    return path.join(dir, `${name}.jpg`);
   },
 
   // Views come from the World Plan, so a new map needs no camera positions.
