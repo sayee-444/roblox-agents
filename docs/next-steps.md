@@ -4,6 +4,49 @@
 
 An agent that generates worlds, Structures and complex, detailed terrain on request, with less context and less time on each run. Other specialized agents follow later, each with its own skills and tools. Scripts in any language are welcome when they save context.
 
+## Where the work stands
+
+Plugin 0.8.1, on 2026-11-06. A new world is a World Plan run through `plugins/roblox-world/engine/tools/world.js`, which reaches Studio without the model. A Chunk can be generated on its own, and a River can fork.
+
+The developer's test world is Place3, unsaved, with its plan and captures in `../roblox-world-generator/worlds/place3`. They like the generation so far, and these remain open:
+
+- **Mesa:** the top is blotchy and still rounded. The developer set this aside until the token work is done.
+- **Rendering:** a dark rectangle hides part of the main River in Place3, while its voxels are correct.
+- **Mouse:** in Place2 the mouse stopped working in the 3D view, with the keyboard fine. Cause unknown, and Place3 has not been reported on.
+
+## Next: where the tokens go
+
+This is the next session's only focus. One turn added a River fork, and it measured 10.8 minutes to its last tool call:
+
+| Part | Measure |
+|---|---|
+| Building the fork, fixing a dam and a pit, verifying | 4.9 minutes |
+| Chasing the dark rectangle, which was not a map defect | 5.5 minutes |
+| Recording and publishing | 0.4 minutes |
+| Waits of 40 to 75 s, included above | 5.7 minutes |
+| Output tokens | 24,066 |
+| Cache read tokens | 5.68 million, over 17 requests |
+| Context at the end | About 350k, against 47k in the agent's clean run |
+
+Most of the token count came from rereading a long session's context on each request, and a clean session avoids it.
+
+Proposed, none of it tried yet:
+
+1. **Refresh with Play.** The developer sees render glitches clear after pressing Play, stopping and looking again. Test it once in Place3, measure it, and check what it does to `shared.World`. If it works, `world.js` should do this before capturing instead of waiting 45 s, and the render fact in `roblox-terrain-facts` should be corrected. Whether Studio's MCP causes the glitches is unknown.
+2. **Bound the check.** When voxels are correct, a hole is only rendering: refresh once, and report it if it stays.
+3. **Plan edits through the Edit tool.** A throwaway script put a valley inside a comment and cost one run.
+4. **Captures only when needed.** The developer watches Studio while the agent works, so captures can be fewer when they are present.
+
+## Final exam
+
+After the token work, ask the agent for a new world for a new game in a clean session, from an empty folder and a new place, and measure it with `tools/measure-run.js`.
+
+The agent has not been tried with a real `docs/world/rules.md` question flow since 0.5.0, and an install from the marketplace has not been tried either.
+
+## Hand edits
+
+The engine does not detect hand edits. The developer says which Chunks they touched, and the agent marks them Locked. Otherwise the next generation overwrites them. Comparing a Chunk's voxels with the Generator could detect them, and this is not built.
+
 ## Baseline of the first test
 
 One run on `sonnet` on 2026-11-06, from an empty folder to a verified map of 9 Chunks. `tools/measure-run.js` counts each tool call once, by id. An earlier count of 215 calls, 58 captures and 18 errors included repeated transcript lines.
