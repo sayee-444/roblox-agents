@@ -18,6 +18,18 @@ The developer chooses what follows. They chose the detail layer as the next feat
 - **`memory: user`.** Measured on 2026-11-06 with `--label no-memory`, 3 runs against 3 on plugin 0.13.0. Without the field, the starting context falls from 15,588 to 11,366 tokens (27%), and `recover` sends 25% fewer tokens at about the same cost, because cached tokens are cheap. The agent's memory holds 3 lines, and removing the field ends its memory across sessions.
 - **The place for step 1.** `create`, `edit`, `engine` and `check` write terrain, so they need a disposable place.
 
+## Speed of a new world
+
+The developer wants fewer tokens so that generations run faster and more of them fit, with automatic tests, and not to pay less. Measured on 2026-11-06 with `agent create-fork` in Place4, 3 runs each, medians:
+
+| Plugin | Seconds | Requests | Tokens sent | Passed |
+|---|---|---|---|---|
+| 0.13.0 | 70 | 9 | 187,043 | 1 of 3 |
+| 0.14.0: `new` prints a template, `run` prints heights | 68 | 8 | 167,159 | 3 of 3 |
+| 0.15.0: points shown as arrays, plan and `run` sent together | 38 | 3 | 54,620 | 2 of 3 |
+
+Plugin 0.14.0 gained little because its template let every run write points the engine rejects, so each ran the cycle 3 times. A 0.15.0 run still spends about 16 s in Studio, of which `test`, `borders` and `regenerate` take about 11 s, so these are the next place to look. Only `create-fork` was measured, so `edit` and `recover` on these versions are not known.
+
 ## Natural look
 
 Research says a detail layer is necessary and not enough alone (`docs/research/tooling-and-reasoning.md`, item 14). Detail added evenly can make it worse, because real slopes are smooth below hillslope length, so rough ridges and smooth valley floors should differ. Try these in order, and let the developer judge each in Studio:
@@ -30,8 +42,9 @@ Cheap measures such as the slope spread and pits with no outflow can catch regre
 
 ## Open defects
 
-- **New worlds copy the template's layout:** in 2 of 2 `create-fork` runs on 2026-11-06 the plan kept the template's range and mesa positions and the main River's route, the second even when the prompt asked for a placement unlike the template. The test map is what `new` hands the agent to edit.
-- **Reading `rules.md` in an empty folder:** the agent's first step reads a file that a new world does not have yet. In 1 of 2 runs that counted as an error, which fails a scenario with `maxErrors: 0`.
+- **New worlds look alike:** since `new` stopped handing over the test map, no `create-fork` run on plugin 0.15.0 kept its coordinates, but 3 of 3 still put the range in the north, the River running west to east and the mesa in the east. Measured on one prompt, and how far this matters is the developer's call.
+- **Region Seeds from `new`:** 3 of 3 runs on plugin 0.15.0 replaced the seeds the template offers, and the `create-fork` prompt asks for seeds of their own, which may be why. Whether a plainer prompt keeps them was not tried.
+- **Reading `rules.md` in an empty folder:** the agent's first step can read a file that a new world does not have yet. In 1 of 3 runs on plugin 0.15.0 that counted as an error, which fails a scenario with `maxErrors: 0`.
 - **Mesa:** the top is blotchy and still rounded.
 - **Rendering:** a dark rectangle hides part of the main River in the test world, while its voxels are correct. `hills-above` shows a dark crack.
 - **Mouse:** in one place the mouse stopped working in the 3D view, with the keyboard fine. Cause unknown.

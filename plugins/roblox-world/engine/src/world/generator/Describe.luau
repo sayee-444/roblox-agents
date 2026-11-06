@@ -211,6 +211,44 @@ function Describe.impact(plan, state, change)
 	return { rewrite = rewrite, lockedReached = lockedReached }
 end
 
+-- The surface height of each Landform and River, one per line. A range reports its highest route
+-- point or midpoint, a mesa its centre, a cave the ground at its mouth, and a River both ends.
+function Describe.heights(plan): string
+	local lines = {}
+	local function ground(x, z)
+		return (Shape.height(plan, x, z))
+	end
+	for _, r in ipairs(plan.regions) do
+		if r.kind == "mountain" then
+			local crest, cx, cz = -math.huge, 0, 0
+			local function sample(x, z)
+				local h = ground(x, z)
+				if h > crest then
+					crest, cx, cz = h, x, z
+				end
+			end
+			for i, p in ipairs(r.points) do
+				sample(p[1], p[2])
+				local q = r.points[i + 1]
+				if q then
+					sample((p[1] + q[1]) / 2, (p[2] + q[2]) / 2)
+				end
+			end
+			table.insert(lines, string.format("%s: crest %.1f at %d %d", r.id, crest, cx, cz))
+		elseif r.kind == "mesa" then
+			table.insert(lines, string.format("%s: top %.1f at %d %d", r.id, ground(r.center[1], r.center[2]), r.center[1], r.center[2]))
+		elseif r.kind == "cave" then
+			local mouth = r.points[1]
+			table.insert(lines, string.format("%s: ground %.1f at the mouth, axis y %d", r.id, ground(mouth[1], mouth[3]), mouth[2]))
+		end
+	end
+	for _, rv in ipairs(plan.rivers) do
+		local a, b = rv.points[1], rv.points[#rv.points]
+		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2]))
+	end
+	return table.concat(lines, "\n")
+end
+
 function Describe.format(report): string
 	local lines = {}
 	local e = report.extent

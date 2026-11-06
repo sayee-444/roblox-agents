@@ -1,6 +1,6 @@
 {
   "name": "roblox-world",
-  "version": "0.13.0",
+  "version": "0.15.0",
   "description": "An agent that creates, edits and recovers the context of Roblox worlds through a deterministic Generator engine",
   "author": {
     "name": "sayee-444"

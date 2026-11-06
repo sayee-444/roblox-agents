@@ -1,6 +1,6 @@
 ---
 name: world-debug
-description: Debug mode for a world, as the last step of a task. Use when a check fails, a view looks wrong, or the developer asks for debug.
+description: Debug mode for a world, as the last step of a task. Use when a check fails, or the developer reports a wrong view or asks for debug.
 ---
 
 Debugging is bounded: find which kind of problem this is, then fix it or report it. Build first, and debug last.

@@ -28,6 +28,17 @@ return {
 		t.eq(#errors, 0, table.concat(errors, "; "))
 	end,
 
+	["heights report each Landform and River of the shipped plan"] = function(t)
+		local text = Describe.heights(plan)
+		local crest = tonumber(text:match("range: crest ([%d%.]+)"))
+		local top = tonumber(text:match("mesa: top ([%d%.]+)"))
+		local bed = tonumber(text:match("river: bed ([%d%.]+)"))
+		t.ok(crest ~= nil and crest > 150, "the range rises above the hills: " .. tostring(crest))
+		t.ok(top ~= nil and top > 100, "the mesa rises above the hills: " .. tostring(top))
+		t.ok(bed ~= nil and bed < plan.rivers[1].waterLevel, "the River's bed lies under its water: " .. tostring(bed))
+		t.ok(text:find("cave: ground", 1, true) ~= nil, "the cave is reported")
+	end,
+
 	["validation catches a bad plan"] = function(t)
 		local bad = clone(plan)
 		bad.regions[1].points = { { 0, 0 } }

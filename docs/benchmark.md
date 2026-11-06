@@ -11,6 +11,8 @@
 | `node tools/benchmark.js agent <scenario> [--place <name>]` | Tokens | Studio, except `start` and `recover` | Does the agent do the job, and at what cost? |
 | `node tools/benchmark.js report` | Nothing | Nothing | What changed against the version before? |
 
+Fewer tokens serve speed here: a faster run leaves room for more generations and automatic tests, so a change that saves no money can still be worth making. `--runs <n>` runs a scenario n times with nobody watching.
+
 Run `cost` on every change to the agent or a skill, and `agent start` to see the real context, for about 2 cents. Run the other scenarios when a change should alter what the agent does.
 
 ## Testing a change
@@ -25,6 +27,7 @@ To try a technique before deciding on it, add `--label <name>`. Its runs form a 
 
 | Measure | Means | Exact? |
 |---|---|---|
+| `durationSec`, `requests` | How long the run took and how many requests it made, the first measures to judge, since the aim is faster runs | Yes |
 | `contextStart`, `contextEnd` | Tokens in the first and last request | Yes |
 | `tokensSent` | Tokens sent across all requests, the best single measure of a run's size | Yes |
 | `output`, `thinking` | Tokens the model wrote, and how many of them were reasoning | Yes |

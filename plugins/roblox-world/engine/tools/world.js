@@ -13,8 +13,9 @@ const HELP = `Runs the Generator in Studio. Every command except help takes --pl
 touch a world take --project <dir>. Exits 1 when a check fails.
 
 Create and write terrain
-  new <dir> [--seed <n>]          Start a world from the template
-  run [--remove-baseplate]        Whole cycle: load, test, describe, generate every Chunk, borders, regenerate
+  new <dir> --place <name> [--seed <n>] [--test-map]
+                                  Start a world, and print the World Plan template to fill in
+  run [--remove-baseplate]        Whole cycle: load, test, describe, generate every Chunk, borders, regenerate, heights
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
   regenerate <i> <j>              Rewrite one Chunk and prove the result is identical
 
@@ -25,6 +26,7 @@ Inspect, writing no terrain
   describe                        What exists, which Chunks each thing touches, which are Locked
   borders                         Compare the voxels on both sides of every Chunk border
   height <x> <z>                  Surface height at one spot
+  heights                         Surface height of each Landform and River, from the plan
 
 Look, only on request or when the developer is away: these move their camera
   capture [<view> ...]            Save chosen views, or all of them, to docs/captures/run/
@@ -255,6 +257,10 @@ const steps = {
     return text;
   },
 
+  async heights(studio) {
+    return `\n${await studio.luau(`return ${OPS}.heights()`)}`;
+  },
+
   async height(studio, ctx, args) {
     const [x, z] = args.map(Number);
     return studio.luau(`return ${OPS}.height(${x}, ${z})`);
@@ -345,17 +351,27 @@ const steps = {
   },
 };
 
+// A Region Seed for each Landform of a new world, following from its World Seed.
+function fillTemplate(seed) {
+  let n = 0;
+  const regionSeed = () => { n += 1; return 10000 + ((seed * 31 + n * 7919) % 90000); };
+  return readModule(path.join(ENGINE, 'templates/plan.luau'))
+    .split('{{worldSeed}}').join(String(seed))
+    .replace(/\{\{regionSeed\}\}/g, regionSeed);
+}
+
 function newWorld(dir, flags) {
-  if (!dir || typeof flags.place !== 'string') throw new Error('Usage: world.js new <dir> --place <name> [--seed <n>]');
+  if (!dir || typeof flags.place !== 'string') throw new Error('Usage: world.js new <dir> --place <name> [--seed <n>] [--test-map]');
   const project = path.resolve(dir);
   for (const rel of [`${PLAN}.luau`, 'docs/world/rules.md']) {
     if (fs.existsSync(path.join(project, rel))) throw new Error(`${rel} already exists in ${project}`);
   }
   const seed = flags.seed === undefined ? Math.floor(Math.random() * 1e9) : Number(flags.seed);
-  const plan = readModule(path.join(ENGINE, `${PLAN}.luau`)).replace(/worldSeed = \d+/, `worldSeed = ${seed}`);
   fs.mkdirSync(path.join(project, 'src/world'), { recursive: true });
   fs.mkdirSync(path.join(project, 'docs/world'), { recursive: true });
-  fs.writeFileSync(path.join(project, `${PLAN}.luau`), plan);
+  if (flags['test-map'] === true) {
+    fs.writeFileSync(path.join(project, `${PLAN}.luau`), readModule(path.join(ENGINE, `${PLAN}.luau`)).replace(/worldSeed = \d+/, `worldSeed = ${seed}`));
+  }
   fs.writeFileSync(path.join(project, `${STATE}.luau`), 'return {\n\tgeneratorVersion = 1,\n\tchunks = {},\n}\n');
     fs.writeFileSync(path.join(project, 'docs/world/rules.md'), `# World rules
 
@@ -376,7 +392,8 @@ The engine ships with the \`roblox-world\` plugin. This project holds only \`src
 
 Newest first: the date, the decision and why it was made.
 `);
-  return `World started in ${project}, seed ${seed}. Edit src/world/plan.luau, which is the engine's test map with comments as a template`;
+  if (flags['test-map'] === true) return `World started in ${project}, seed ${seed}, on the engine's test map`;
+  return `World started in ${project}, seed ${seed}. Write src/world/plan.luau from this template, in one go:\n\n${fillTemplate(seed)}`;
 }
 
 async function main() {
@@ -385,7 +402,7 @@ async function main() {
   if (!command || command === 'help') { console.log(HELP); return 0; }
   if (command === 'new') { console.log(newWorld(args[0], flags)); return 0; }
   const cycles = {
-    run: ['load', 'test', 'describe', 'generate', 'borders', 'regenerate'],
+    run: ['load', 'test', 'describe', 'generate', 'borders', 'regenerate', 'heights'],
     check: ['load', 'test', 'describe', 'borders'],
   };
   if (!cycles[command] && !steps[command]) {
@@ -398,12 +415,16 @@ async function main() {
   }
   const order = cycles[command] || ['load', command];
   const ctx = { flags, project: path.resolve(typeof flags.project === 'string' ? flags.project : ENGINE), failed: false };
+  if (!fs.existsSync(path.join(ctx.project, `${PLAN}.luau`))) {
+    console.error(`No World Plan at ${path.join(ctx.project, `${PLAN}.luau`)}. Write it from the template that new printed`);
+    return 2;
+  }
   const studio = new Studio();
   try {
     await studio.connect(flags.place);
     const started = Date.now();
     for (const name of [...new Set(order)]) {
-      if (ctx.failed && ['generate', 'borders', 'regenerate', 'capture'].includes(name)) {
+      if (ctx.failed && ['generate', 'borders', 'regenerate', 'heights', 'capture'].includes(name)) {
         console.log(`${name}: skipped after a failure`);
       } else {
         const t0 = Date.now();

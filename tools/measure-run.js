@@ -151,6 +151,7 @@ function measure(file) {
   const all = Object.values(tools);
   return {
     durationMin: minutes(end - start),
+    durationSec: Math.round((end - start) / 1000),
     busyMin: minutes(busy),
     modelMin: minutes(end - start - busy),
     requests: messages.size,
