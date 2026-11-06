@@ -43,3 +43,7 @@ On its first task in a project, the agent asks about your map and writes `docs/w
 ## Guard
 
 While the plugin is enabled, a hook applies to the whole Claude Code session, including sessions outside this agent. It blocks agent attempts to publish a place and to run `rojo build`, `rojo upload` or `rojo syncback`. It catches mistakes, and it is not a security boundary. Run `tests/guard-tests.ps1` to check it.
+
+## License
+
+[MIT](LICENSE).

@@ -62,5 +62,6 @@ Your memory travels between projects, so it holds only reusable lessons. Map det
 
 ## Other skills
 
+- `terrain-techniques`: load it when designing a Landform or the Studio writer.
 - `roblox-terrain-facts`: load it before writing Studio code or relying on an engine limit.
 - `world-project-setup`: load it when the project has no `docs/world/rules.md`.
