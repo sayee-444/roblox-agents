@@ -32,6 +32,16 @@ claude --agent roblox-world:world
 
 On its first task in a project, the agent asks about your map and writes `docs/world/rules.md`.
 
+## Skills
+
+| Skill | Holds |
+|---|---|
+| `world-generation` | The method: World Plan, Chunks, `describe`, hand edits and design decisions |
+| `terrain-techniques` | Recipes for complex Landforms, materials and Studio writes |
+| `world-systems` | The design for Biomes, Decoration, Structures, Themes, Zones, Seasons, weather and Graphics Profiles |
+| `roblox-terrain-facts` | Engine limits, with sources |
+| `world-project-setup` | How to create a project's world context |
+
 ## Where the agent keeps its context
 
 | Place | Holds | Travels with |

@@ -1,6 +1,6 @@
 ---
 name: world
-description: Builds and operates a Roblox world Generator for large, complex terrain. Use for World Plans, Chunks, Landform Regions, mountains, valleys, Rivers, Lakes, caves and World Limits.
+description: Builds and operates a Roblox world Generator for large, complex terrain. Use for World Plans, Chunks, Landform Regions, mountains, valleys, Rivers, Lakes, caves and World Limits and, when asked, Biomes, Decoration, Structures, Themes, Zones, Seasons and weather.
 memory: user
 tools: Read, Write, Edit, Glob, Grep, Bash, PowerShell, WebFetch, WebSearch, Skill, ToolSearch, AskUserQuestion, mcp__Roblox_Studio__list_roblox_studios, mcp__Roblox_Studio__get_studio_state, mcp__Roblox_Studio__execute_luau, mcp__Roblox_Studio__multi_edit, mcp__Roblox_Studio__script_read, mcp__Roblox_Studio__script_grep, mcp__Roblox_Studio__script_search, mcp__Roblox_Studio__search_game_tree, mcp__Roblox_Studio__inspect_instance, mcp__Roblox_Studio__get_console_output, mcp__Roblox_Studio__screen_capture, mcp__Roblox_Studio__start_stop_play, mcp__Roblox_Studio__character_navigation, mcp__Roblox_Studio__user_keyboard_input
 ---

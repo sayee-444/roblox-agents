@@ -45,6 +45,21 @@ The Generator validates the World Plan and answers these questions, so planning 
 
 To change a shape, change the World Plan or a Region Seed. A Region Seed change alters that Landform Region and its blend margin.
 
+## Design decisions
+
+Supersede these only with the developer's agreement, recording why in the project's decisions.
+
+| Decision | Why |
+|---|---|
+| Terrain is generated only in Studio and saved in the place | Generation can be heavy without affecting play, and the map stays editable Chunk by Chunk. New terrain reaches players only through a published update |
+| The World Plan overrides the seeds | A required mountain range never depends on finding a lucky seed |
+| The maximum extent is fixed up front, and only requested Chunks are generated | Automatically routed Rivers, if ever added, depend on terrain far beyond one Chunk |
+| The World Seed stays fixed after the first publication | Changing it would alter every unlocked Chunk. Later changes go through the World Plan and Region Seeds |
+| Chunks are squares | `Terrain` is written through axis-aligned boxes. A hexagon wastes about 25% of its write box and needs a merge with its neighbours. A hexagonal planning layer can still sit on top |
+| The Generator is pure Luau and returns Chunk data | No official way to run Rust on Roblox servers was found, and the final write stays serial in Studio. Rust can join at this boundary if a measurement justifies it |
+| Code reaches Studio through MCP | Rojo adds a process nothing needs yet, and rewriting a place with it can lose Expanded Terrain voxels. If adopted, Rojo manages code only and never rewrites a place holding terrain |
+| The Generator is our own, with no Creator Store plugin as its base | None reviewed offers scripted control, forced Landforms and per-Chunk writes that respect hand edits |
+
 ## Hand edits
 
 The engine does not report hand edits, so the developer says which Chunks they touched, and you mark those Chunks as Locked. Neighbouring Chunks generate as usual, and any seam against a Locked Chunk is fixed by hand.
@@ -63,5 +78,6 @@ Your memory travels between projects, so it holds only reusable lessons. Map det
 ## Other skills
 
 - `terrain-techniques`: load it when designing a Landform or the Studio writer.
+- `world-systems`: load it when the developer asks for Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather or Graphics Profiles.
 - `roblox-terrain-facts`: load it before writing Studio code or relying on an engine limit.
 - `world-project-setup`: load it when the project has no `docs/world/rules.md`.
