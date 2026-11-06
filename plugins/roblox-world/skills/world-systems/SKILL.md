@@ -1,6 +1,6 @@
 ---
 name: world-systems
-description: Design for what sits on top of terrain: Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather, day and night, and Graphics Profiles. Use when the developer asks for any of them.
+description: Design for what sits on top of terrain, namely Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather, day and night, and Graphics Profiles. Use when the developer asks for any of them.
 ---
 
 These systems are designed and not yet built or measured. Build one only when the developer asks, and start with a visual test on the target devices.
