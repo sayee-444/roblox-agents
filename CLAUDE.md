@@ -1,6 +1,6 @@
 # roblox-agents
 
-A public plugin marketplace of Claude Code agents and skills for Roblox, reused across one developer's games. The current work is one agent, `world`, focused on world generation. A later agent may direct it, and that gets designed when the developer asks.
+A public plugin marketplace of Claude Code agents and skills for Roblox, reused across one developer's games. They want tools that last, so this comes before any game. The current work is one agent, `world`, which generates worlds, Structures and complex terrain on request, and every change should also cut its context and its time. A later agent may direct it, and that gets designed when the developer asks.
 
 Talk to the developer in Spanish, in plain words, because they are a beginner in game production. Write every repository artifact in English.
 
@@ -21,9 +21,10 @@ The tool knows nothing about any one game, and a game uses it by installing the 
 
 | Lives in | Holds |
 |---|---|
-| This repository | The agent, its skills, the method and verified engine facts |
-| `../roblox-world-generator`, private | Reusable Generator code, and `docs/next-steps.md` with the current priorities |
+| This repository | The agent, its skills, scripts, the method and verified engine facts |
+| `../roblox-world-generator`, local Git with no remote | Reusable Generator code, the test map and its captures |
 | Each game's repository | Its World Plan, `docs/world/rules.md`, its game logic and its decisions |
+| `.local/`, ignored by Git | Private research |
 
 A game receives terrain through its published place, and its servers never generate any. Whatever must run while people play, such as Themes, weather, Gates and the World Limit check, is a separate module in the game. The game's server decides a player's progress, and a Gate only reads it.
 
@@ -31,7 +32,21 @@ Keep game designs, map details and Generator code out of this repository, becaus
 
 ## Priorities
 
-Follow `docs/next-steps.md` in the private repository: make the agent faster and cheaper, then make terrain look natural. The developer judges the look from captures, since passing measurements have not meant a natural result.
+Follow `docs/next-steps.md`: make the agent faster and cheaper, then make terrain look natural. The developer judges the look from captures, since passing measurements have not meant a natural result.
+
+## Asking and reporting
+
+- Edit files, including `.rbxl` places, without asking, and report what you did.
+- Create branches, commit, push branches, open pull requests and merge them once the checks below pass, and report what you did. In `../roblox-world-generator`, commit locally only.
+- Ask first, naming the exact action, for a force push, a history rewrite, deleting a branch or repository, creating a repository, and any other action that is not an edit.
+- Look at what a file holds before overwriting it.
+- Mark what was measured apart from what was only read, and record what was not verified.
+
+## Working on an agent
+
+- Run it from this checkout: `claude --plugin-dir plugins/roblox-world --agent roblox-world:world`.
+- Measure a run with `node tools/measure-run.js <transcript.jsonl>`, and compare with the baseline in `docs/next-steps.md`.
+- One agent writes to Studio at a time. Long Luau runs call `task.wait()` between batches.
 
 ## Changing this repository
 
@@ -43,7 +58,15 @@ Follow `docs/next-steps.md` in the private repository: make the agent faster and
 - Bump `version` in `plugin.json` on every plugin change, since installed copies stay on that version until it changes.
 - In skill frontmatter, avoid colons in unquoted values, because they break the YAML and the skill loads without its metadata.
 - Prefer a skill. Add an agent only when the work needs its own tools, memory or context.
-- Mark what was measured apart from what was only read, and record what was not verified.
+
+## Read when it applies
+
+- `GLOSSARY.md`: naming anything in the world domain.
+- `docs/adr/`: changing a recorded decision. Supersede an ADR with a new one and leave the old text.
+- `docs/research/foundations.md`: relying on a source behind an engine fact or a tool.
+- `mattpocock-skills:writing-for-agents`: editing an agent, a skill or this file.
+- `mattpocock-skills:domain-modeling`: editing the glossary or an ADR.
+- `mattpocock-skills:tdd`, `mattpocock-skills:diagnosing-bugs`, `mattpocock-skills:research`: building, debugging or researching.
 
 ## Reserved for the developer
 

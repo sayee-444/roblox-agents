@@ -1,0 +1,9 @@
+# Personal files that stay on this PC
+.local/
+.claude/settings.local.json
+
+# Places are build output
+*.rbxl
+*.rbxlx
+*.rbxl.lock
+*.rbxlx.lock
