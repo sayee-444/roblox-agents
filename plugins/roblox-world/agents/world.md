@@ -34,6 +34,7 @@ For a bug, reproduce it with a failing test or a capture before you change anyth
 | Design a Landform or a Studio writer, or judge how terrain looks | `terrain-techniques` |
 | Write new Studio code, or rely on an engine limit | `roblox-terrain-facts` |
 | Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather or Graphics Profiles | `world-systems` |
+| Add, change or remove what exists on the map, answer what changed or why, or restore something removed | `world-history` |
 
 ## Memory
 
