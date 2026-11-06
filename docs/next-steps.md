@@ -45,6 +45,7 @@ Cheap measures such as the slope spread and pits with no outflow can catch regre
 
 ## Open defects
 
+- **Lake:** measured in voxels and tests on `exam-4`, and not yet judged by eye. A River's valley keeps its width up to the shore.
 - **Worlds the agent places by hand look alike:** on plugin 0.15.0, 3 of 3 put the range in the north, the River running west to east and the mesa in the east. `new --landforms` avoids this, and a request with chosen positions or a cave still goes through the template.
 - **Composed layouts:** seen as text and by tests only. Whether they look good is the developer's call, and the range favours the south over the north, 651 to 351 of 2,000 seeds.
 - **Mesa:** the top is blotchy and still rounded.
@@ -62,7 +63,8 @@ Cheap measures such as the slope spread and pits with no outflow can catch regre
 - A command for `Describe.impact`: it exists and is tested in the Generator, and no command reaches it, so `describe` is read before a change instead.
 - Detecting hand edits: the developer says which Chunks they touched.
 - Routes that follow the relief: a River is placed by hand and holds one water level.
-- Lakes, Sites and the World Limit: the World Plan has fields for them, and no code generates them.
+- Sites and the World Limit: the World Plan has fields for them, and no code generates them.
+- Composing a Lake: `new --landforms` does not place one, so a Lake is written into the World Plan.
 - Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather and Graphics Profiles: designed only, in `docs/designs/world-systems.md`, which also holds their terms.
 
 ## Not verified

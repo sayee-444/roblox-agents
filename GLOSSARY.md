@@ -26,6 +26,10 @@ _Avoid_: local seed, sub-seed
 A watercourse of still water whose route is declared by points in the World Plan.
 _Avoid_: stream, flow
 
+**Lake**:
+A body of still water declared in the World Plan, where Rivers end.
+_Avoid_: ocean, sea
+
 **Generator**:
 The tool that turns the World Plan and the seeds into terrain. It is written and operated by the World agent, which does not shape terrain by eye.
 _Avoid_: agent (the agent is not the Generator)

@@ -15,7 +15,7 @@ local function prepare(plan)
 	if P then
 		return P
 	end
-	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {} }
+	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {} }
 	for _, rv in ipairs(plan.rivers) do
 		P.rivers[rv.id] = { def = rv, poly = Geo.polyline2(rv.points) }
 	end
@@ -61,7 +61,7 @@ local function prepare(plan)
 end
 
 -- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
--- distance to the nearest River route, and the water level over this column (0 = dry).
+-- distance to the nearest River route or lake water, and the water level over this column (0 = dry).
 function Shape.height(plan, x: number, z: number): (number, number, number, number)
 	local P = prepare(plan)
 	local b = plan.base
@@ -149,6 +149,33 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 	end
 	h -= carve
 
+	-- Lakes come last and only lower the ground, so a River's bed stays open where it enters and
+	-- no valley floor can rise inside the water. The radius is about where the water ends.
+	for _, def in ipairs(P.lakes) do
+		local dx, dz = x - def.center[1], z - def.center[2]
+		local outer = def.radius + def.shore
+		local stretch = def.elongate or 1
+		if math.sqrt(dx * dx + dz * dz) < (outer + def.warp) * stretch then
+			local angle = math.rad(def.angle or 0)
+			local along = dx * math.cos(angle) + dz * math.sin(angle)
+			local across = dz * math.cos(angle) - dx * math.sin(angle)
+			local d = math.sqrt((along / stretch) ^ 2 + (across * stretch) ^ 2)
+			d += math.clamp(Noise.fbm(x / 240, z / 240, def.seed, 2) * 2, -1, 1) * def.warp
+			if d < outer then
+				local beach = def.waterLevel + 3
+				local deep = smoothstep(0, 1, math.clamp((def.radius - d) / (def.radius * 0.4), 0, 1))
+				local target = beach + (def.bedY - beach) * deep
+				if target < h then
+					h += (target - h) * (1 - smoothstep(def.radius, outer, d))
+				end
+				riverD = math.min(riverD, math.max(0, d - def.radius))
+				if h < def.waterLevel then
+					waterLevel = def.waterLevel
+				end
+			end
+		end
+	end
+
 	return h, mesaP, riverD, waterLevel
 end
 
@@ -198,6 +225,12 @@ function Shape.bounds(plan, id: string)
 	for _, c in ipairs(P.caves) do
 		if c.def.id == id then
 			return ofPoints(c.def.points, c.def.radius * 1.4 + 10, 3)
+		end
+	end
+	for _, def in ipairs(P.lakes) do
+		if def.id == id then
+			local c, e = def.center, (def.radius + def.shore + def.warp) * (def.elongate or 1)
+			return { c[1] - e, c[2] - e, c[1] + e, c[2] + e }
 		end
 	end
 	local rv = P.rivers[id]

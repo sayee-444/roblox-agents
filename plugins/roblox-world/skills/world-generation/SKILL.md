@@ -18,6 +18,7 @@ The map is the output of one pure function: terrain at a world position comes fr
 | World Seed | Supplies natural detail across the map |
 | Landform Region | A declared shape, such as a mountain range or a mesa, with its own Region Seed and a bounded blend margin |
 | River | Water declared in the World Plan, following route points |
+| Lake | Still water declared in the World Plan, where Rivers end at the same water level |
 
 ## Layout
 

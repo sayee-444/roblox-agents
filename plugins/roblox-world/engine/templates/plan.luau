@@ -67,6 +67,8 @@ return {
 		-- { id = "fork", points = { { <that x>, <that z> }, { <x>, <z> }, { <x>, <z> } }, halfWidth = 14, bedY = 10, waterLevel = 20 },
 	},
 	lakes = {},
+	-- For a lake, with any River ending in it holding the same waterLevel:
+	-- lakes = { { id = "lake", seed = {{regionSeed}}, center = { <x>, <z> }, radius = 170, shore = 60, warp = 20, elongate = 1.2, angle = <degrees>, bedY = 6, waterLevel = 20 } },
 	sites = {},
 	worldLimit = nil, -- not requested yet
 

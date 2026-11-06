@@ -277,6 +277,9 @@ function Ops.views()
 			table.insert(marks, p)
 		end
 	end
+	for _, lk in ipairs(plan.lakes or {}) do
+		table.insert(marks, lk.center)
+	end
 	local hillX, hillZ, farthest = cx, cz, -1
 	eachGenerated(function(ci, cj)
 		local x, z = ci * S, cj * S
@@ -301,6 +304,9 @@ function Ops.views()
 	for _, rv in ipairs(plan.rivers) do
 		local x, z = middle(rv.points)
 		landform(rv.id, x, z, 140, 16)
+	end
+	for _, lk in ipairs(plan.lakes or {}) do
+		landform(lk.id, lk.center[1], lk.center[2], 300, 16)
 	end
 	for _, r in ipairs(plan.regions) do
 		if r.kind == "cave" then

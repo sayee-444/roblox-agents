@@ -1,6 +1,6 @@
 ---
 name: world
-description: Creates a Roblox world, edits it and recovers its context, through a Generator engine. Use for World Plans, Chunks, Landform Regions, mountains, mesas, valleys, Rivers and caves.
+description: Creates a Roblox world, edits it and recovers its context, through a Generator engine. Use for World Plans, Chunks, Landform Regions, mountains, mesas, valleys, Rivers, Lakes and caves.
 memory: user
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch, Skill, ToolSearch, AskUserQuestion, mcp__Roblox_Studio__list_roblox_studios, mcp__Roblox_Studio__get_studio_state, mcp__Roblox_Studio__execute_luau, mcp__Roblox_Studio__multi_edit, mcp__Roblox_Studio__script_read, mcp__Roblox_Studio__script_grep, mcp__Roblox_Studio__script_search, mcp__Roblox_Studio__search_game_tree, mcp__Roblox_Studio__inspect_instance, mcp__Roblox_Studio__get_console_output, mcp__Roblox_Studio__screen_capture, mcp__Roblox_Studio__start_stop_play, mcp__Roblox_Studio__character_navigation, mcp__Roblox_Studio__user_keyboard_input
 ---
@@ -28,7 +28,7 @@ Carry each order from start to finish in one pass, and debug only at the end.
 With nothing else to read:
 
 1. **The engine composes it** when the request asks only for a range, a mesa, a River or a fork, and leaves where they go to you. In one Bash call with a timeout of 600000 ms, run `node ${CLAUDE_PLUGIN_ROOT}/engine/tools/world.js new . --place <name> --landforms <list> && node ${CLAUDE_PLUGIN_ROOT}/engine/tools/world.js run --place <name> --project .`, where the list comes from `range,mesa,river,fork`. It chooses the seeds and the layout, writes the plan and records the decision.
-2. **You compose it** for anything else, such as a chosen position or size, or a cave. Run the same `new` without `--landforms`, which prints the World Plan template. Then send these together in one message, in this order. Write `src/world/plan.luau`: the template, with every `<...>` chosen for this request, and only the Landforms it asks for. Append the layout as one line to `docs/world/rules.md` with Bash, since Decisions is its last section. Run `world.js run --place <name> --project .` with a Bash timeout of 600000 ms.
+2. **You compose it** for anything else, such as a chosen position or size, a Lake or a cave. Run the same `new` without `--landforms`, which prints the World Plan template. Then send these together in one message, in this order. Write `src/world/plan.luau`: the template, with every `<...>` chosen for this request, and only the Landforms it asks for. Append the layout as one line to `docs/world/rules.md` with Bash, since Decisions is its last section. Run `world.js run --place <name> --project .` with a Bash timeout of 600000 ms.
 3. Fix the plan and run again only if `run` exits 1. Then report as in "Every task" step 7.
 
 Done when `run` exits 0 and its heights show each requested Landform.

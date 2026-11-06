@@ -30,7 +30,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 
 | Ask for | What runs | Status |
 |---|---|---|
-| Add, change or remove a Landform or River | `world-generation`, `world-history`, then `generate <i> <j>` | Built. In 2 of 2 runs the agent rewrote everything with `run` instead |
+| Add, change or remove a Landform, River or Lake | `world-generation`, `world-history`, then `generate <i> <j>` | Built. In 2 of 2 runs the agent rewrote everything with `run` instead |
 | Restore something removed | `world-history` | Measured |
 | Write a single Chunk | `generate <i> <j>` | Measured |
 | Prove a Chunk regenerates identically | `regenerate <i> <j>` | Measured |
