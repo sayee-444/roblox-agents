@@ -22,7 +22,7 @@ const WORLD = path.join(PLUGIN, 'engine/tools/world.js');
 const RESULTS = path.join(ROOT, 'benchmarks/results.jsonl');
 const MEMORY = path.join(os.homedir(), '.claude/agent-memory/roblox-world-world/MEMORY.md');
 const CLAUDE_MD = path.join(ROOT, 'CLAUDE.md');
-const AGENT_MEASURES = ['contextStart', 'contextEnd', 'tokensSent', 'output', 'thinking', 'durationMin', 'toolCalls', 'errors', 'captures', 'costUsd'];
+const AGENT_MEASURES = ['durationSec', 'requests', 'contextStart', 'contextEnd', 'tokensSent', 'output', 'thinking', 'durationMin', 'toolCalls', 'errors', 'captures', 'costUsd'];
 const CONTEXT_PARTS = ['agent', 'memoryRules', 'memoryFile', 'tools', 'pluginSkills', 'otherSkills', 'attachments', 'unattributed'].map((part) => `context.${part}`);
 const COST_MEASURES = ['alwaysOn', 'onInvoke', 'memoryBytes', 'claudeMdBytes'];
 const measuresOf = (name) => {
@@ -178,7 +178,7 @@ function benchCost() {
 function benchEngine(place) {
   const dir = tempWorld();
   try {
-    runWorld('new', dir, '--place', place, '--seed', '12345');
+    runWorld('new', dir, '--place', place, '--seed', '12345', '--test-map');
     const result = parseEngine(runWorld('run', '--place', place, '--project', dir));
     record('engine', result);
     showComparison('engine');
@@ -190,7 +190,7 @@ function benchEngine(place) {
 
 function setUp(kind, dir, place) {
   if (kind === 'empty') return;
-  runWorld('new', dir, '--place', place || 'NoPlace', '--seed', '12345');
+  runWorld('new', dir, '--place', place || 'NoPlace', '--seed', '12345', '--test-map');
   if (kind === 'world-with-history') fs.copyFileSync(path.join(ROOT, 'benchmarks/history-fixture.md'), path.join(dir, 'docs/world/history.md'));
   if (kind === 'generated-world') runWorld('run', '--place', place, '--project', dir);
 }

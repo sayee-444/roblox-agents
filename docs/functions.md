@@ -21,9 +21,9 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 
 | Ask for | What runs | Status |
 |---|---|---|
-| A new world | `new`, editing the World Plan, then `run` | Measured |
+| A new world | `new`, writing the World Plan from the template it prints, then `run` | Measured |
 | Set up a project with no world context | `world-project-setup` | Measured |
-| The whole cycle again | `run`: `load`, `test`, `describe`, `generate`, `borders`, `regenerate` | Measured |
+| The whole cycle again | `run`: `load`, `test`, `describe`, `generate`, `borders`, `regenerate`, `heights` | Measured |
 
 ## Edit
 
@@ -43,12 +43,13 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 | What exists now | `describe`, the World Plan and the generation state | Measured |
 | What changed, and why | `docs/world/history.md`, through `world-history` | Measured |
 | How high the ground is at one spot | `height <x> <z>` | Measured |
+| How high each Landform and River is | `heights` | Measured |
 | The project's rules and decisions | `docs/world/rules.md` | Measured |
 | Lessons from other projects | The agent's memory | Built |
 
 ## Check and debug
 
-Debugging runs last, and only when a check fails, a view looks wrong or the developer asks for it.
+Debugging runs last, and only when a check fails or the developer reports a wrong view or asks for it. Any other odd view goes in the final report.
 
 | Ask for | What runs | Status |
 |---|---|---|

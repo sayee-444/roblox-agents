@@ -11,15 +11,28 @@ The project's `CLAUDE.md` wins over this file on how work flows and on language.
 
 Choose the simplest technique that produces the requested shape, and show complexity only where a player will see it.
 
+Carry each order from start to finish in one pass, and debug only at the end.
+
 ## Every task
 
-1. **Orient** with narrow answers. Read `docs/world/rules.md`; if it is missing, load `world-project-setup` and follow it. The engine ships in this plugin, at `${CLAUDE_PLUGIN_ROOT}/engine`, and `node tools/world.js help` there lists every command, so a new world starts with `new`. Take facts from `describe`. Open a source file only when you are about to change it. Load only the skills your branch needs, from the table below. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
+1. **Orient** with narrow answers. Read `docs/world/rules.md`. If it is missing and the request names a place and what to build, follow "A new world" below; otherwise load `world-project-setup` and follow it. The engine ships in this plugin, at `${CLAUDE_PLUGIN_ROOT}/engine`, and `node tools/world.js help` there lists every command. Take facts from `describe`. Open a source file only when you are about to change it. Load only the skills your branch needs, from the table below. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
 2. **Test first** for a change to Generator logic. Write a test that fails, then the code that makes it pass.
 3. **Change** the code or the World Plan, following "Changing the map" in `world-generation`. Tell the developer when the impact report reaches a Locked Chunk.
 4. **Generate** in the declared Development Place through the engine, whose `--place` refuses a place of any other name. A change that touches a few Chunks writes only those, with `generate <i> <j> ...`, and `run` is for a whole world. If no place is declared, stop and ask.
-5. **Verify** with the script's facts. Tests, `describe`, `borders` and the regenerate check prove the data, and `height` or a voxel read answers a question about one spot. The look is the developer's to judge, and they watch Studio, so ask them what they see. Each capture moves their camera, so run `capture <view> ...` only when they ask for one or are away, and only for the views a change affects. Done when each criterion of the request has its own fact, or is handed to the developer to judge.
+5. **Verify** with the script's facts. `run` prints what proves the data: tests, `describe`, `borders`, the regenerate check and the height of each Landform. Read a spot with `height` or a voxel only when a check fails or the developer asks about it. A view that looks odd while the voxels are correct goes in your final report for the developer to judge, since it is most often a Roblox rendering glitch. The look is the developer's to judge, and they watch Studio, so ask them what they see. Each capture moves their camera, so run `capture <view> ...` only when they ask for one or are away, and only for the views a change affects. Done when each criterion of the request has its own fact, or is handed to the developer to judge.
 6. **Deliver.** Commit on a work branch, following the project's rules. After generating terrain, ask the developer to save the place, because no tool lets you save it.
 7. **Record.** Done when each thing learned sits in its one home, as defined in the skill's "Where knowledge lives". Then tell the developer what changed, what you verified and what you did not.
+
+## A new world
+
+Four actions, in order, with nothing else to read:
+
+1. Run `node ${CLAUDE_PLUGIN_ROOT}/engine/tools/world.js new . --place <name>`. It chooses the World Seed and the Region Seeds, and prints the World Plan template.
+2. Write `src/world/plan.luau` in one Write: the template, with every `<...>` chosen for this request, and only the Landforms it asks for.
+3. Run `world.js run --place <name> --project .` with a Bash timeout of 600000 ms. Fix the plan and run again only if it exits 1.
+4. Add the layout to the Decisions in `docs/world/rules.md`, and report as in "Every task" step 7.
+
+Done when `run` exits 0 and its heights show each requested Landform.
 
 ## Skills by branch
 
@@ -27,12 +40,12 @@ Choose the simplest technique that produces the requested shape, and show comple
 |---|---|
 | Generate, regenerate or verify with a declared Generator | Nothing more: the rules hold the commands |
 | Change the World Plan, or the Generator's logic | `world-generation` |
-| New world | Nothing more: write its World Plan and run the engine's command |
+| New world | Nothing more: follow "A new world" |
 | Add a Landform kind or a parameter to the engine | `world-generation` |
 | Design a Landform or a Studio writer, or judge how terrain looks | `terrain-techniques` |
 | Write new Studio code, or rely on an engine limit | `roblox-terrain-facts` |
 | Add, change or remove what exists on the map, answer what changed or why, or restore something removed | `world-history` |
-| A check fails, a view looks wrong, or the developer asks for debug | `world-debug`, as the last step |
+| A check fails, or the developer reports a wrong view or asks for debug | `world-debug`, as the last step |
 
 ## Memory
 

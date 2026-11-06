@@ -10,6 +10,7 @@ const measure = (...args) => spawnSync(process.execPath, [path.join(root, 'tools
 test('reports the cost of a run as JSON, counting a repeated tool call once', () => {
   const run = JSON.parse(measure('--json').stdout);
   assert.strictEqual(run.durationMin, 2);
+  assert.strictEqual(run.durationSec, 120);
   assert.strictEqual(run.output, 600);
   assert.strictEqual(run.cacheRead, 9500);
   assert.strictEqual(run.contextStart, 1050);

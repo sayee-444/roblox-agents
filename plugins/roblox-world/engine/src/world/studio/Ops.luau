@@ -145,6 +145,11 @@ function Ops.height(x, z)
 	return string.format("%.1f", (Gen.Shape.height(plan, x, z)))
 end
 
+-- What a run needs to know about each Landform and River, from the pure function.
+function Ops.heights()
+	return Gen.Describe.heights(plan)
+end
+
 -- Puts the SpawnLocation on the ground, and removes the template Baseplate only when asked.
 function Ops.placeSpawn(removeBaseplate)
 	local notes = {}
