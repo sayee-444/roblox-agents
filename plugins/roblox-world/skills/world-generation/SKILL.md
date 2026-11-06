@@ -29,7 +29,7 @@ Test the Generator outside Roblox with [Lute](https://github.com/luau-lang/lute)
 
 ## Reusing a Generator
 
-A Generator is an engine driven by parameters, so a new world is a new World Plan and the engine carries over. `docs/world/rules.md` declares the engine's location and its commands. Every character sent through `execute_luau` is text the model must generate, so a script does that work:
+The Generator is an engine driven by parameters, and it ships in this plugin under `engine/`. A new world is a new World Plan, and a project keeps only that plan and its generation state. Every character sent through `execute_luau` is text the model must generate, so a script does that work:
 
 1. Run the engine's command-line tool. It reaches Studio through Studio's MCP server, pastes what differs, and returns exact facts.
 2. To get a new shape, add a parameter or a Landform kind to the engine, so that every later world can use it.

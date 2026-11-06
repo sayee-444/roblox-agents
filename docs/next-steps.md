@@ -34,7 +34,7 @@ From their definitions, untested in Studio: `search_game_tree` and `inspect_inst
 
 ## Applied changes
 
-Plugin 0.5.0 holds the instructions. The Generator repository holds the named operations, the checksum check and the capture set.
+Plugin 0.5.0 holds the instructions. The Generator holds the named operations, the checksum check and the capture set.
 
 1. The agent reuses a Generator declared in `docs/world/rules.md`.
 2. The loader compares checksums, and only modules that differ are pasted.
@@ -67,7 +67,7 @@ The aim of under 10 minutes and 15 captures was met in all three runs.
 
 ## A new world from a World Plan
 
-Plugin 0.6.0 treats a new world as a new World Plan. The Generator repository's `tools/world.js` reaches Studio through its MCP server, so the model pastes no modules and writes no Luau. One command loads, tests, describes, generates, verifies and writes captures, with views derived from the plan.
+Plugin 0.6.0 treats a new world as a new World Plan. The engine's `tools/world.js` reaches Studio through its MCP server, so the model pastes no modules and writes no Luau. One command loads, tests, describes, generates, verifies and writes captures, with views derived from the plan.
 
 One run on `sonnet` on 2026-11-06, from an empty folder with nothing loaded in Studio, on a new layout and seed. The agent found the engine through its memory.
 
@@ -84,7 +84,7 @@ The tool itself took 62 s of that, most of it the wait for the render mesh and t
 
 - **What this does not measure:** the engine's cost was paid in the baseline, and a shape the engine lacks still needs code.
 - **Captures:** the agent read 8 of the 11 views, and said so.
-- **Reach:** the engine stays local, so only this computer can use this path. A public install has to write its own Generator, and that path has not been measured since these changes.
+- **Reach:** since plugin 0.7.0 the engine ships in the plugin, so a public install can use this path. It has been tested only on Windows, and an install from the marketplace has not been tried.
 
 ## Natural look
 

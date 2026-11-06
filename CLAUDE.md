@@ -21,14 +21,14 @@ The tool knows nothing about any one game, and a game uses it by installing the 
 
 | Lives in | Holds |
 |---|---|
-| This repository | The agent, its skills, scripts, the method and verified engine facts |
-| `../roblox-world-generator`, local Git with no remote | Reusable Generator code, the test map and its captures |
+| This repository | The agent, its skills, its Generator engine, scripts, the method and verified engine facts |
+| `../roblox-world-generator`, local Git with no remote | Test worlds and their captures |
 | Each game's repository | Its World Plan, `docs/world/rules.md`, its game logic and its decisions |
 | `.local/`, ignored by Git | Private research |
 
 A game receives terrain through its published place, and its servers never generate any. Whatever must run while people play, such as Themes, weather, Gates and the World Limit check, is a separate module in the game. The game's server decides a player's progress, and a Gate only reads it.
 
-Keep game designs, map details and Generator code out of this repository, because it is public.
+Keep game designs and map details out of this repository, because it is public. The engine's test map is the one exception.
 
 ## Priorities
 

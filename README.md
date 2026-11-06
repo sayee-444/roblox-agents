@@ -30,7 +30,7 @@ Then start it from your project folder:
 claude --agent roblox-world:world
 ```
 
-On its first task in a project, the agent asks about your map and writes `docs/world/rules.md`.
+On its first task in a project, the agent asks about your map and writes `docs/world/rules.md`. A new world needs only a World Plan, because the plugin includes the Generator engine.
 
 ## Skills
 
@@ -46,7 +46,7 @@ On its first task in a project, the agent asks about your map and writes `docs/w
 
 | Place | Holds | Travels with |
 |---|---|---|
-| This plugin | The method and verified engine facts | Every installation |
+| This plugin | The Generator engine, the method and verified engine facts | Every installation |
 | `~/.claude/agent-memory/roblox-world-world/` | Lessons learned in any Roblox project | This computer. Copy the folder to move it |
 | The project's Git repository | The map plan, its rules and decisions | The project |
 

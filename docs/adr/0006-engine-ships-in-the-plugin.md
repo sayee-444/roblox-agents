@@ -1,0 +1,3 @@
+# The Generator engine ships in the public plugin
+
+A new world should cost a World Plan, not a rewritten Generator, and an engine kept on one computer gives that only there. So the engine ships in the plugin under `plugins/roblox-world/engine/`, and each project keeps only its World Plan and generation state. Publishing is hard to take back, and it means the engine is public under the MIT licence. The alternative, a private engine that every other install rewrites, would keep a run at about 30 minutes and tokens to match. The engine's test map ships too, because its tests describe it. Worlds and captures stay out.
