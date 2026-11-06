@@ -25,7 +25,7 @@ The map is the output of one pure function: terrain at a world position comes fr
 
 Keep the World Plan and generation state in Git under `src/world/`, the Generator in `src/world/generator/` and the Studio writer in `src/world/studio/`. Generation runs in Studio only and never reaches players.
 
-Test the Generator outside Roblox with [Lute](https://github.com/luau-lang/lute). If it is missing, ask the developer whether to install it. Until then, or if nobody can answer, run the pure tests through `execute_luau` in Studio without writing terrain, and report that they ran only there. That thread cannot make network calls or parent a script, so keep a loader in `shared` that stores each module's source and runs it with `loadstring`. Tests cover determinism (same input, same output) and seam agreement (two Chunks computing the same values along their shared border).
+`world.js test` runs the pure tests inside Studio without writing terrain, and they have never run outside it. Tests cover determinism (same input, same output) and seam agreement (two Chunks computing the same values along their shared border).
 
 ## Reusing a Generator
 
@@ -40,16 +40,15 @@ The Generator is an engine driven by parameters, and it ships in this plugin und
 The Generator validates the World Plan and answers these questions, so planning rests on facts:
 
 - Which Chunks are generated, and which are Locked.
-- Which Landform Regions, Rivers, Lakes and Sites exist, and which Chunks each one touches.
-- Which Chunks a proposed change would rewrite, and which Locked Chunks it reaches.
+- Which Landform Regions, Rivers and Lakes exist, and which Chunks each one touches. Sites appear only as a count.
 - How much of the maximum extent is free, meaning Chunks not yet generated.
 
 ## Changing the map
 
-1. Edit the World Plan, a seed or the Generator.
-2. Run the `describe` impact report.
-3. Regenerate only the affected Chunks.
-4. Run `describe` again, and ask the developer how it looks in Studio.
+1. Run `describe` before you edit, because something removed no longer appears in it. The Chunks listed for what you are changing are the ones to rewrite, except any Locked Chunk, which you report. A World Seed or Generator change touches every unlocked Chunk.
+2. Edit the World Plan, a seed or the Generator.
+3. Write only those Chunks with `generate <i> <j> ...`, then run `borders`.
+4. Ask the developer how it looks in Studio.
 
 To change a shape, change the World Plan or a Region Seed. A Region Seed change alters that Landform Region and its blend margin.
 
