@@ -118,24 +118,36 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 		end
 	end
 
-	-- Valleys: flatten toward a floor, then carve the River bed along the route points.
+	-- Valleys: flatten toward each floor first, and only then carve the River beds, so that a
+	-- branch's valley cannot fill the bed of the River it leaves.
 	local riverD, waterLevel = math.huge, 0
 	for _, v in ipairs(P.valleys) do
 		local def, rv = v.def, v.river
 		local d, s = Geo.dist2(rv.poly, x, z)
+		v.d, v.s = d, s
 		riverD = math.min(riverD, d)
 		if d < def.halfWidth then
 			local w = 1 - smoothstep(rv.def.halfWidth + 20, def.halfWidth, d)
 			local floor = def.floorY + 2 * Noise.perlin(x / 50, z / 50, def.seed)
 			h += (floor - h) * w
+		end
+	end
+	-- Where beds overlap, the deepest one counts, so that they meet without digging a pit.
+	local carve = 0
+	for _, v in ipairs(P.valleys) do
+		local def, rv = v.def, v.river
+		local d, s = v.d, v.s
+		if d < def.halfWidth then
 			local hw = rv.def.halfWidth * (1 + 0.3 * Noise.perlin(s / 120, 0.5, def.seed + 1))
 			local c = 1 - smoothstep(hw * 0.4, hw, d)
-			h -= c * (def.floorY - rv.def.bedY)
-			if h < rv.def.waterLevel and d < hw * 1.5 then
+			local depth = c * (def.floorY - rv.def.bedY)
+			carve = math.max(carve, depth)
+			if h - depth < rv.def.waterLevel and d < hw * 1.5 then
 				waterLevel = rv.def.waterLevel
 			end
 		end
 	end
+	h -= carve
 
 	return h, mesaP, riverD, waterLevel
 end

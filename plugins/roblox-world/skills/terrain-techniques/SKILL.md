@@ -54,6 +54,7 @@ Use a fixed capture set: one view from above and one from the ground for each La
 1. Wait 45 seconds in its own call after a large write, because Studio is still building the render mesh: dark rectangles, missing patches and sky through walls can appear when the data is fine.
 2. Take the captures one at a time, each alone in its turn. Two captures sent beside a `task.wait(40)` each timed out after about 340 s; the cause is not proven.
 3. After a fix, repeat only the views that fix affects.
+4. When a view shows a hole or a coarse patch, read its voxels. If they are there, leave `workspace.CurrentCamera.CFrame` near that area for 40 s, capture again, and put the camera back.
 
 Confirm any suspect area with a raycast or a voxel read before you change anything. Far views can show a false seam at level-of-detail boundaries.
 

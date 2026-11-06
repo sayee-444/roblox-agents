@@ -16,6 +16,7 @@ Studio Edit mode, 2026-11-06, on one test map of 9 Chunks. Generating and writin
 | A region not aligned to 4 studs returns the wrong array shape, so align before reading | Seen in the same test |
 | Occupancy reads back in 8-bit steps, a maximum error of 0.0039, so compare with that tolerance | Same read-back |
 | Studio builds the render mesh for 30 to 60 s after a large write | A grey rectangle vanished with identical data |
+| Studio builds that mesh near its real camera, and `screen_capture` moves the camera only for an instant. A Chunk rewritten far from the camera can stay missing or coarse in captures after minutes of waiting | A dark rectangle of 68,075 solid voxels stayed for over 3 minutes, and it shrank where `Camera.CFrame` was left for 40 s |
 
 ## Documented
 
