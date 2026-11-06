@@ -29,11 +29,11 @@ Test the Generator outside Roblox with [Lute](https://github.com/luau-lang/lute)
 
 ## Reusing a Generator
 
-`docs/world/rules.md` declares the Generator's location and its commands, and a run extends that code. Every character pasted through `execute_luau` is text the model must generate, so pasting is the costliest step of a run:
+A Generator is an engine driven by parameters, so a new world is a new World Plan and the engine carries over. `docs/world/rules.md` declares the engine's location and its commands. Every character sent through `execute_luau` is text the model must generate, so a script does that work:
 
-1. Compare the checksum of each local module with the one in `shared.World`. `shared` lasts until Studio closes, so an unchanged Generator needs no paste.
-2. Paste only the modules that differ, and check the checksum the loader returns.
-3. Run the operations the Generator already offers. When you write a verification twice, move it into the Generator and list it in the rules.
+1. Run the engine's command-line tool. It reaches Studio through Studio's MCP server, pastes what differs, and returns exact facts.
+2. To get a new shape, add a parameter or a Landform kind to the engine, so that every later world can use it.
+3. When you write a verification twice, move it into the tool.
 
 ## The `describe` report
 
