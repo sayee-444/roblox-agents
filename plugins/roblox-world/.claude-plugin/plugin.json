@@ -1,11 +1,12 @@
 {
   "name": "roblox-world",
-  "version": "0.11.0",
-  "description": "An agent that builds and runs a deterministic world Generator in Roblox Studio",
+  "version": "0.12.0",
+  "description": "An agent that creates, edits and recovers the context of Roblox worlds through a deterministic Generator engine",
   "author": {
     "name": "sayee-444"
   },
   "license": "MIT",
+  "homepage": "https://github.com/sayee-444/roblox-agents#readme",
   "repository": "https://github.com/sayee-444/roblox-agents",
   "keywords": ["roblox", "luau", "terrain", "procedural-generation"]
 }

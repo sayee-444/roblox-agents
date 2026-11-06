@@ -10,7 +10,7 @@
     {
       "name": "roblox-world",
       "source": "./plugins/roblox-world",
-      "description": "An agent that builds and runs a deterministic world Generator in Roblox Studio"
+      "description": "An agent that creates, edits and recovers the context of Roblox worlds through a deterministic Generator engine"
     }
   ]
 }

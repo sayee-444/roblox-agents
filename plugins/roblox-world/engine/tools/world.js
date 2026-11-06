@@ -3,22 +3,40 @@
 // the model neither pastes modules nor writes Luau. A world is a project folder holding only
 // its World Plan and generation state; the engine stays in this repository.
 //
-//   node tools/world.js new <dir> --place <name> [--seed <n>]    Start a world from the template
-//   node tools/world.js run --place <name> [--project <dir>]     load, test, describe, generate,
-//        [--remove-baseplate]                                    borders, regenerate
-//   node tools/world.js <step> --place <name> [--project <dir>]  One step of the above: load,
-//        test, describe, generate [<i> <j> ...], borders, regenerate <i> <j>, height <x> <z>,
-//        refresh (Play then Stop, which rebuilds the render)
-//   node tools/world.js capture [<view> ...] --place <name> --project <dir>   Moves the developer's camera,
-//   node tools/world.js shot <name> <camera x y z> <look x y z> --place <name> --project <dir>   so only when needed
-//   node tools/world.js wipe --place <name> --project <dir>      Writes nothing: prints what would be lost
-//        [--confirm <name>] [--include-locked]                   Deletes ALL terrain only when --confirm repeats --place
-//
 // Prints one line per fact. Exits 1 when a check fails, and writes nothing to a place whose
 // name differs from --place.
 const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
+
+const HELP = `Runs the Generator in Studio. Every command except help takes --place <name>, and all that
+touch a world take --project <dir>. Exits 1 when a check fails.
+
+Create and write terrain
+  new <dir> [--seed <n>]          Start a world from the template
+  run [--remove-baseplate]        Whole cycle: load, test, describe, generate every Chunk, borders, regenerate
+  generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
+  regenerate <i> <j>              Rewrite one Chunk and prove the result is identical
+
+Inspect, writing no terrain
+  check                           Debug start: load, test, describe, borders
+  load                            Paste into Studio only the modules that differ
+  test                            Run the engine's tests
+  describe                        What exists, which Chunks each thing touches, which are Locked
+  borders                         Compare the voxels on both sides of every Chunk border
+  height <x> <z>                  Surface height at one spot
+
+Look, only on request or when the developer is away: these move their camera
+  capture [<view> ...]            Save chosen views, or all of them, to docs/captures/run/
+  shot <name> <x y z> <x y z>     Save one view from a camera position towards a target
+  refresh                         Press Play then Stop, which rebuilds the render
+
+Delete
+  wipe [--confirm <name>] [--include-locked]   Alone, only prints what would be lost. Confirmed, deletes ALL terrain
+
+Help
+  help                            This list
+`;
 
 const ENGINE = path.resolve(__dirname, '..');
 const PLAN = 'src/world/plan';
@@ -352,7 +370,7 @@ function newWorld(dir, flags) {
 
 The engine ships with the \`roblox-world\` plugin. This project holds only \`src/world/plan.luau\` and \`src/world/state.luau\`.
 
-\`node <engine>/tools/world.js run --place ${flags.place} --project .\` loads the engine, tests it, describes the plan, generates and verifies. Run it with a Bash timeout of 600000 ms. Its header lists the single steps, among them \`capture\`, which writes to \`docs/captures/run/\`.
+\`node <engine>/tools/world.js run --place ${flags.place} --project .\` loads the engine, tests it, describes the plan, generates and verifies. Run it with a Bash timeout of 600000 ms. After a local change, run \`generate <i> <j> ...\` for the Chunks it touched instead. \`node <engine>/tools/world.js help\` lists every command.
 
 ## Decisions
 
@@ -364,14 +382,21 @@ Newest first: the date, the decision and why it was made.
 async function main() {
   const { flags, positional } = parseArgs(process.argv.slice(2));
   const [command, ...args] = positional;
+  if (!command || command === 'help') { console.log(HELP); return 0; }
   if (command === 'new') { console.log(newWorld(args[0], flags)); return 0; }
-  const order = command === 'run'
-    ? ['load', 'test', 'describe', 'generate', 'borders', 'regenerate']
-    : ['load', command];
-  if (!command || (command !== 'run' && !steps[command]) || typeof flags.place !== 'string') {
-    console.error('Usage: world.js <run|load|test|describe|generate|borders|capture|refresh|regenerate i j|height x z> --place <name> [--project <dir>]');
+  const cycles = {
+    run: ['load', 'test', 'describe', 'generate', 'borders', 'regenerate'],
+    check: ['load', 'test', 'describe', 'borders'],
+  };
+  if (!cycles[command] && !steps[command]) {
+    console.error(`Unknown command "${command}". Run: node world.js help`);
     return 2;
   }
+  if (typeof flags.place !== 'string') {
+    console.error(`${command} needs --place <name>. Run: node world.js help`);
+    return 2;
+  }
+  const order = cycles[command] || ['load', command];
   const ctx = { flags, project: path.resolve(typeof flags.project === 'string' ? flags.project : ENGINE), failed: false };
   const studio = new Studio();
   try {
