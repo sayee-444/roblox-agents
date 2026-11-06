@@ -32,15 +32,42 @@ The run had `blockReadsOutsideWorkingDirectories` on, and 8 of the 14 errors wer
 
 From their definitions, untested in Studio: `search_game_tree` and `inspect_instance` work on instances and do not read voxels, and `screen_capture` has no async option for `wait_job_finished`. `multi_edit` may keep the Generator in the place as ModuleScripts. `character_navigation` can walk a cave in play mode.
 
-## Planned changes
+## Applied changes
 
-1. Reuse a declared Generator instead of rewriting it. The plugin holds only that instruction.
-2. Compare a module's checksum in `shared.World` before pasting it, and paste only what differs.
-3. Use a fixed capture set of one view from above and one from the ground per Landform, about 10 to 12. Repeat only those a fix affects, one at a time, never beside a wait.
-4. Try a lower reasoning effort for the agent, and keep it only if captures do not get worse.
-5. Give the agent narrow answers instead of broad reading: load skills by branch, and prefer scripts such as `describe` that return exact facts.
+Plugin 0.5.0 holds the instructions. The Generator repository holds the named operations, the checksum check and the capture set.
 
-Then repeat the same map and verifications through `--plugin-dir`. That run starts from an existing Generator, so it measures reuse and not an empty folder. The aim is under 10 minutes and 15 captures.
+1. The agent reuses a Generator declared in `docs/world/rules.md`.
+2. The loader compares checksums, and only modules that differ are pasted.
+3. A fixed set of 11 views is taken one at a time, after a wait in its own call.
+4. Lower effort was tried and not adopted, as explained below.
+5. Skills load by branch, and `Ops` returns exact facts for generation and verification.
+
+## Measured after the changes
+
+Same map and verifications on `sonnet` on 2026-11-06, one run each, through `--plugin-dir` on a copy of the Generator. These runs start from existing code, so they measure reuse and are not a like-for-like match for the baseline, which wrote the Generator. Their prompt also asked to report an artificial look without redesigning it.
+
+| Measure | Baseline | Generator loaded | Loaded, `--effort low` | Fresh Studio session |
+|---|---|---|---|---|
+| Duration, minutes | 32.9 | 3.3 | 2.9 | 6.9 |
+| Model and overhead, minutes | 23.3 | 2.0 | 1.6 | 5.1 |
+| Output tokens | 192,619 | 11,533 | 10,480 | 47,362 |
+| Cache read tokens, millions | 13.9 | 1.07 | 0.90 | 2.96 |
+| Context at the end | 268k | 51k | 50k | 121k |
+| Tool calls | 141 | 30 | 28 | 64 |
+| Errors | 14 | 0 | 0 | 0 |
+| Captures | 35 | 12 | 11 | 11 |
+| `execute_luau` input characters | 103,694 | 3,704 | 3,348 | 73,635 |
+
+The aim of under 10 minutes and 15 captures was met in all three runs.
+
+- **Effort:** low saved about 10% in one run, which is within what one run cannot separate from noise. These runs wrote no terrain code, so they could not show whether lower effort harms the terrain. Repeat the trial on a run that changes the Generator before setting it in the agent.
+- **Fresh session:** pasting the Generator through the model is now the largest cost, at about 74,000 characters and four times the output tokens.
+- **Blank captures:** an earlier run took 3.4 minutes with 5 blank captures, so it is excluded. They came from a minimized Studio window. Restored but not in the foreground, Studio captured normally. A fully covered window was not tested.
+- **Crack in the ground:** `hills-ground` shows a dark crack, and `range-ground` a straight line near x 0. Each run called them render artifacts, since raycasts and voxel reads found no hole. The cause is not proven.
+
+## Next for speed
+
+Load the Generator with a script. A test script called `execute_luau` directly through Studio's MCP server and pasted a module without the model generating it, so a fresh session could cost about the same as a loaded one. Not measured in an agent run yet.
 
 ## Natural look
 

@@ -25,7 +25,15 @@ The map is the output of one pure function: terrain at a world position comes fr
 
 Keep the World Plan and generation state in Git under `src/world/`, the Generator in `src/world/generator/` and the Studio writer in `src/world/studio/`. Generation runs in Studio only and never reaches players.
 
-Test the Generator outside Roblox with [Lute](https://github.com/luau-lang/lute). If it is missing, ask the developer whether to install it. Until then, or if nobody can answer, run the pure tests through `execute_luau` in Studio without writing terrain, and report that they ran only there. That thread cannot make network calls or parent a script, so keep a loader in `shared` that stores each module's source and runs it with `loadstring`, and compare a checksum of each pasted file with the file on disk. Tests cover determinism (same input, same output) and seam agreement (two Chunks computing the same values along their shared border).
+Test the Generator outside Roblox with [Lute](https://github.com/luau-lang/lute). If it is missing, ask the developer whether to install it. Until then, or if nobody can answer, run the pure tests through `execute_luau` in Studio without writing terrain, and report that they ran only there. That thread cannot make network calls or parent a script, so keep a loader in `shared` that stores each module's source and runs it with `loadstring`. Tests cover determinism (same input, same output) and seam agreement (two Chunks computing the same values along their shared border).
+
+## Reusing a Generator
+
+`docs/world/rules.md` declares the Generator's location and its commands, and a run extends that code. Every character pasted through `execute_luau` is text the model must generate, so pasting is the costliest step of a run:
+
+1. Compare the checksum of each local module with the one in `shared.World`. `shared` lasts until Studio closes, so an unchanged Generator needs no paste.
+2. Paste only the modules that differ, and check the checksum the loader returns.
+3. Run the operations the Generator already offers. When you write a verification twice, move it into the Generator and list it in the rules.
 
 ## The `describe` report
 
@@ -74,10 +82,3 @@ The engine does not report hand edits, so the developer says which Chunks they t
 | Your agent memory | Lessons that hold in any Roblox project: measured engine behaviour, failures and their fixes, each with its date and evidence | All projects, on this computer |
 
 Your memory travels between projects, so it holds only reusable lessons. Map details, game design and credentials stay in the project. When a lesson has held in two projects, propose adding it to the `roblox-terrain-facts` skill.
-
-## Other skills
-
-- `terrain-techniques`: load it when designing a Landform or the Studio writer.
-- `world-systems`: load it when the developer asks for Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather or Graphics Profiles.
-- `roblox-terrain-facts`: load it before writing Studio code or relying on an engine limit.
-- `world-project-setup`: load it when the project has no `docs/world/rules.md`.
