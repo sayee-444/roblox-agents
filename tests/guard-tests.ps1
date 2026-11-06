@@ -10,13 +10,18 @@ $cases = @(
   @{ name='open cloud publish';  want=2; json='{"tool_name":"mcp__Roblox_Studio__open_cloud_invoke","tool_input":{"endpoint":"/universes/v1/1/places/2/versions?versionType=Published"}}' },
   @{ name='open cloud read';     want=0; json='{"tool_name":"mcp__Roblox_Studio__open_cloud_invoke","tool_input":{"endpoint":"/cloud/v2/universes/1"}}' },
   @{ name='luau SavePlace';      want=2; json='{"tool_name":"mcp__Roblox_Studio__execute_luau","tool_input":{"code":"game:GetService(\"AssetService\"):SavePlaceAsync()"}}' },
-  @{ name='luau harmless';       want=0; json='{"tool_name":"mcp__Roblox_Studio__execute_luau","tool_input":{"code":"return workspace.Terrain.MaxExtents"}}' }
+  @{ name='luau harmless';       want=0; json='{"tool_name":"mcp__Roblox_Studio__execute_luau","tool_input":{"code":"return workspace.Terrain.MaxExtents"}}' },
+  @{ name='luau terrain clear';  want=2; json='{"tool_name":"mcp__Roblox_Studio__execute_luau","tool_input":{"code":"workspace.Terrain:Clear()"}}' },
+  @{ name='luau ops wipe';       want=2; json='{"tool_name":"mcp__Roblox_Studio__execute_luau","tool_input":{"code":"return Ops.wipe()"}}' },
+  @{ name='wipe warning';        want=0; json='{"tool_name":"Bash","tool_input":{"command":"node tools/world.js wipe --place P --project ."}}' },
+  @{ name='wipe confirmed asks'; want=0; ask=$true; json='{"tool_name":"Bash","tool_input":{"command":"cd x && node tools/world.js wipe --place P --project . --confirm P"}}' }
 )
 $failures = 0
 foreach ($case in $cases) {
-  $case.json | powershell.exe -NoProfile -ExecutionPolicy Bypass -File $guard 2>$null | Out-Null
+  $out = $case.json | powershell.exe -NoProfile -ExecutionPolicy Bypass -File $guard 2>$null | Out-String
   $got = $LASTEXITCODE
-  if ($got -ne $case.want) { $failures++; "FAIL $($case.name): want $($case.want), got $got" } else { "ok   $($case.name)" }
+  $asked = $out -match '"permissionDecision":\s*"ask"'
+  if ($got -ne $case.want -or $asked -ne [bool]$case.ask) { $failures++; "FAIL $($case.name): want $($case.want), got $got, asked $asked" } else { "ok   $($case.name)" }
 }
 "failures: $failures"
 exit $failures

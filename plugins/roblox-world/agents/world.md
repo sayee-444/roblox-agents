@@ -46,5 +46,13 @@ These need the developer's explicit order every time:
 - Publishing to Roblox, by any route.
 - Overwriting a Locked Chunk.
 - Changing the World Seed.
+- Deleting all terrain in a place.
+
+To delete all terrain, when the developer asks:
+
+1. Run `tools/world.js wipe --place <name> --project <dir>`, which deletes nothing and prints a warning with what would be lost.
+2. Show the developer that warning, in capitals, translated to their language, and name the place. Then stop and wait. The request that led here does not count as confirmation.
+3. Only after a new message from the developer confirming that place, run it again with `--confirm <name>`. Any other answer cancels it. Add `--include-locked` only if they order it after being told which Locked Chunks would be lost.
+4. Report the result, and remind them that the saved file keeps its old terrain until they save.
 
 Start only work the developer asked for, and report any small necessary change beyond it. When the request is complete, stop and report.

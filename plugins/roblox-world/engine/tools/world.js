@@ -9,6 +9,8 @@
 //   node tools/world.js <step> --place <name> [--project <dir>]  One step of the above: load,
 //        test, describe, generate [<i> <j> ...], borders, capture, regenerate <i> <j>, height <x> <z>,
 //        shot <name> <camera x y z> <look x y z> [--wait <s>]
+//   node tools/world.js wipe --place <name> --project <dir>      Writes nothing: prints what would be lost
+//        [--confirm <name>] [--include-locked]                   Deletes ALL terrain only when --confirm repeats --place
 //
 // Prints one line per fact. Exits 1 when a check fails, and writes nothing to a place whose
 // name differs from --place.
@@ -210,6 +212,44 @@ const steps = {
   async height(studio, ctx, args) {
     const [x, z] = args.map(Number);
     return studio.luau(`return ${OPS}.height(${x}, ${z})`);
+  },
+
+  // Deletes all terrain in the place. Without --confirm it writes nothing and prints the warning
+  // the agent must show the developer. It needs a project, because that holds the Locked Chunks.
+  async wipe(studio, ctx) {
+    const place = ctx.flags.place;
+    if (typeof ctx.flags.project !== 'string') throw new Error('wipe needs --project, which says which Chunks are Locked');
+    const facts = JSON.parse(await studio.luau(`return ${OPS}.wipeFacts()`));
+    const locked = facts.locked.length ? facts.locked.join(' ') : 'none';
+    const includeLocked = ctx.flags['include-locked'] === true;
+    const lockedBlocks = facts.locked.length > 0 && !includeLocked;
+    if (ctx.flags.confirm !== place) {
+      return [
+        '',
+        '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',
+        `!!! WARNING: ABOUT TO DELETE ALL TERRAIN IN "${place}" !!!`,
+        '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',
+        'NOTHING HAS BEEN DELETED YET.',
+        `TERRAIN CELLS THAT WOULD BE LOST: ${facts.cells}`,
+        `CHUNKS RECORDED AS GENERATED: ${facts.generated}`,
+        `LOCKED (HAND-EDITED) CHUNKS: ${locked}`,
+        'HAND EDITS ARE LOST FOR GOOD: THE GENERATOR CANNOT REBUILD THEM.',
+        'GENERATED TERRAIN COMES BACK ONLY BY GENERATING IT AGAIN FROM THE WORLD PLAN.',
+        lockedBlocks ? 'LOCKED CHUNKS BLOCK THIS WIPE UNLESS THE DEVELOPER ALSO ORDERS --include-locked.' : '',
+        `THE DEVELOPER MUST CONFIRM. ONLY THEN RUN: wipe --place "${place}" --project <dir> --confirm "${place}"`,
+      ].filter(Boolean).join('\n');
+    }
+    if (lockedBlocks) {
+      ctx.failed = true;
+      return `REFUSED: Locked Chunks would be lost: ${locked}. Nothing was deleted`;
+    }
+    const answer = JSON.parse(await studio.luau(`return ${OPS}.wipe()`));
+    fs.writeFileSync(path.join(ctx.project, `${STATE}.luau`), `${(await studio.luau(`return ${OPS}.stateSource()`)).trim()}\n`);
+    if (answer.cellsAfter !== 0) {
+      ctx.failed = true;
+      return `WIPE INCOMPLETE: ${answer.cellsAfter} cells remain`;
+    }
+    return `DELETED all terrain in "${place}": ${facts.cells} cells to 0, in ${answer.seconds.toFixed(2)} s. Generation state emptied. The saved file keeps its old terrain until the developer saves`;
   },
 
   // One view chosen by hand, for what the capture set does not cover.
