@@ -1,0 +1,3 @@
+# Code reaches Studio through MCP, not Rojo
+
+During milestones 1 to 3, code lives in the repository as the source of truth and an agent uploads it to the Development Place through Studio MCP, instead of using Rojo, the usual tool. Rojo adds a plugin and a process that nothing needs yet, and rewriting a place with it can silently lose Expanded Terrain voxels ([rbx-dom PR 672](https://github.com/rojo-rbx/rbx-dom/pull/672)). Rojo is reconsidered at milestone 4, when code that runs for players starts to grow. If it is adopted, it manages code only and never builds or rewrites a place that holds terrain.
