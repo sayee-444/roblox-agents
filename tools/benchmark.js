@@ -5,7 +5,7 @@
 //   node tools/benchmark.js cost                               Free: what the plugin adds to context
 //   node tools/benchmark.js engine --place <name>              No tokens, needs Studio: time per engine step
 //   node tools/benchmark.js agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3]
-//        [--model sonnet] [--budget 2]                         Spends tokens: a real agent run, graded
+//        [--model sonnet] [--budget 2] [--keep <dir>]          Spends tokens: a real agent run, graded
 //   node tools/benchmark.js report                             Each measure's median, against the group before
 //
 // `engine` and the scenarios marked `studio` overwrite the terrain of --place, so use a disposable place.
@@ -243,6 +243,10 @@ function benchAgent(name, scenario, flags) {
     console.log(`${name}: ${result.passed ? 'PASSED' : 'FAILED'} | context ${run.contextStart} to ${run.contextEnd} | sent ${run.tokensSent} | output ${run.output} | ${run.toolCalls} tool calls | $${Number(output.total_cost_usd || 0).toFixed(3)}`);
     console.log(`  skills ${JSON.stringify(run.skills)}  commands ${JSON.stringify(run.commands)}`);
     for (const failure of failures) console.log(`  failed: ${failure}`);
+    if (flags.keep) {
+      fs.cpSync(dir, path.resolve(flags.keep), { recursive: true, errorOnExist: true, force: false });
+      console.log(`  world kept in ${path.resolve(flags.keep)}`);
+    }
     return result.passed;
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
@@ -281,7 +285,7 @@ function main() {
     process.exitCode = allPassed ? 0 : 1;
     return undefined;
   }
-  console.error('Usage: node tools/benchmark.js <cost|engine --place <name>|agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3] [--model sonnet] [--budget 2]|report>');
+  console.error('Usage: node tools/benchmark.js <cost|engine --place <name>|agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3] [--model sonnet] [--budget 2] [--keep <dir>]|report>');
   process.exitCode = 2;
   return undefined;
 }

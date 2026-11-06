@@ -57,6 +57,7 @@ They live in `benchmarks/scenarios.json`. `start` measures the context alone, an
 | `start` | Answer without doing any work | It calls a tool |
 | `recover` | Say what exists and what changed last, from the project's files | Its answer misses the facts, or it writes or generates |
 | `create` | Build a new world from an empty folder | `new` or `run` did not run, or it captured |
+| `create-fork` | Build a new world with a forked River on a new seed | Same as `create`, or the plan keeps the template's seed. Whether the River forks is read by hand in the kept plan |
 | `edit` | Remove a River and write only the Chunks it touched | `generate` did not run, `run` did, `world-history` did not load, or the River stayed in the plan |
 
 A failure names what was missing. Each scenario also sets a limit on tool calls, errors and captures. Scenarios grade what the agent produced, with one deliberate exception: `edit` requires `generate`, since writing few Chunks is the point of that job.
@@ -65,7 +66,7 @@ Add a scenario when a real run fails in a new way, up to about five for now.
 
 ## How a run is kept apart
 
-Each agent run starts in a new temporary folder, on `sonnet`, with a budget limit of 2 dollars unless `--budget` says otherwise. It loads only this checkout's plugin, with `--setting-sources project`, so other plugins installed on the computer add no cost. `--bare` is avoided, because it needs an API key and skips plugin hooks.
+Each agent run starts in a new temporary folder, on `sonnet`, with a budget limit of 2 dollars unless `--budget` says otherwise. The folder is deleted afterwards, unless `--keep <dir>` copies the world there first, for a map worth keeping. It loads only this checkout's plugin, with `--setting-sources project`, so other plugins installed on the computer add no cost. `--bare` is avoided, because it needs an API key and skips plugin hooks.
 
 The agent's memory still loads, because `memory: user` is part of what it is. Each result records the memory's size and the Claude Code version, so a change in either can be told apart from a change in the plugin.
 

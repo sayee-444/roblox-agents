@@ -37,6 +37,21 @@
       "maxCaptures": 0
     }
   },
+  "create-fork": {
+    "about": "Create with a forked River: a new world on a new seed, through a World Plan and the engine",
+    "studio": true,
+    "setup": "empty",
+    "prompt": "Create a new world in {place}, which is open in Studio with empty terrain, on a new random World Seed: a mountain range, a mesa and a River that forks into two branches. Use defaults for anything you would ask me. Do not commit.",
+    "expect": {
+      "commands": ["new", "run"],
+      "absentCommands": ["capture", "shot", "wipe"],
+      "files": { "docs/world/rules.md": "{place}" },
+      "absentFiles": { "src/world/plan.luau": "worldSeed = 12345" },
+      "maxToolCalls": 15,
+      "maxErrors": 0,
+      "maxCaptures": 0
+    }
+  },
   "edit": {
     "about": "Edit: remove a River from a generated world, and regenerate only what it touched",
     "studio": true,
