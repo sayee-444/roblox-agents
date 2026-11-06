@@ -25,12 +25,11 @@ Carry each order from start to finish in one pass, and debug only at the end.
 
 ## A new world
 
-Four actions, in order, with nothing else to read:
+Two messages, then your report, with nothing else to read:
 
 1. Run `node ${CLAUDE_PLUGIN_ROOT}/engine/tools/world.js new . --place <name>`. It chooses the World Seed and the Region Seeds, and prints the World Plan template.
-2. Write `src/world/plan.luau` in one Write: the template, with every `<...>` chosen for this request, and only the Landforms it asks for.
-3. Run `world.js run --place <name> --project .` with a Bash timeout of 600000 ms. Fix the plan and run again only if it exits 1.
-4. Add the layout to the Decisions in `docs/world/rules.md`, and report as in "Every task" step 7.
+2. Send these together in one message, in this order. Write `src/world/plan.luau`: the template, with every `<...>` chosen for this request, and only the Landforms it asks for. Append the layout as one line to `docs/world/rules.md` with Bash, since Decisions is its last section. Run `world.js run --place <name> --project .` with a Bash timeout of 600000 ms.
+3. Fix the plan and run again only if `run` exits 1. Then report as in "Every task" step 7.
 
 Done when `run` exits 0 and its heights show each requested Landform.
 

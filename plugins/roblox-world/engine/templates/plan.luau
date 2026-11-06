@@ -1,7 +1,8 @@
 -- World Plan: declares what exists where. It wins over the seeds.
 -- Chunk (i, j) covers x in [i*512-256, i*512+256) and z in [j*512-256, j*512+256),
 -- so this extent spans -768 to 768 on x and z. Choose every <...> for this world, stay within
--- 740 of the centre, keep Landforms apart, and delete what was not asked for.
+-- 740 of the centre, keep Landforms apart, and delete what was not asked for. The seeds are
+-- already chosen for this world.
 
 return {
 	worldSeed = {{worldSeed}},
@@ -19,7 +20,7 @@ return {
 			id = "range",
 			kind = "mountain",
 			seed = {{regionSeed}},
-			points = <4 to 6 { x, z } points along the crest>,
+			points = { { <x>, <z> }, { <x>, <z> }, { <x>, <z> }, { <x>, <z> } }, -- the crest, 4 to 6 points
 			halfWidth = 170, -- blend margin included: nothing of it reaches beyond this distance
 			height = 250,
 			ridgeScale = 150,
@@ -29,14 +30,14 @@ return {
 			id = "mesa",
 			kind = "mesa",
 			seed = {{regionSeed}},
-			center = <{ x, z }>,
+			center = { <x>, <z> },
 			radius = 60, -- flat top
 			margin = 150, -- flank, from the top radius out to the foot
 			levels = 5,
 			height = 100,
 			warp = 40, -- largest shift of the outline, in studs
 			elongate = 1.3, -- length over width of the footprint
-			angle = <direction of its long axis, in degrees>,
+			angle = <degrees>, -- direction of its long axis
 			gully = 8, -- how far gullies bite into the flank, in studs
 		},
 		{
@@ -50,20 +51,20 @@ return {
 		-- For a forked River, a valley for the branch:
 		-- { id = "forkValley", kind = "valley", seed = {{regionSeed}}, riverId = "fork", halfWidth = 90, floorY = 24 },
 		-- For a cave, a path of { x, y, z } points, one radius above the ground that `height` reports:
-		-- { id = "cave", kind = "cave", seed = {{regionSeed}}, points = <3 or more { x, y, z } points>, radius = 14 },
+		-- { id = "cave", kind = "cave", seed = {{regionSeed}}, points = { { <x>, <y>, <z> }, { <x>, <y>, <z> }, { <x>, <y>, <z> } }, radius = 14 },
 	},
 
 	-- A River follows its route points; the still water sits at a constant level.
 	rivers = {
 		{
 			id = "river",
-			points = <4 to 6 { x, z } points from one map edge to another>,
+			points = { { <x>, <z> }, { <x>, <z> }, { <x>, <z> }, { <x>, <z> } }, -- edge to edge, 4 to 6 points
 			halfWidth = 20,
 			bedY = 10,
 			waterLevel = 20, -- multiple of the voxel size, so the surface meets a voxel boundary
 		},
 		-- A fork is a second River whose first point is one of this River's route points:
-		-- { id = "fork", points = <that point, then 2 to 4 { x, z } points>, halfWidth = 14, bedY = 10, waterLevel = 20 },
+		-- { id = "fork", points = { { <that x>, <that z> }, { <x>, <z> }, { <x>, <z> } }, halfWidth = 14, bedY = 10, waterLevel = 20 },
 	},
 	lakes = {},
 	sites = {},

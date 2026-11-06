@@ -31,8 +31,8 @@ test('new prints a World Plan template that holds no position of the test map', 
     const { status, stdout } = world('new', dir, '--place', 'P', '--seed', '555');
     assert.strictEqual(status, 0);
     assert.match(stdout, /worldSeed = 555/);
-    assert.match(stdout, /points = <[^>]+>/);
-    assert.match(stdout, /center = <[^>]+>/);
+    assert.match(stdout, /points = \{ \{ <x>, <z> \}, \{ <x>, <z> \}/, 'a point is written as an array, as the engine reads it');
+    assert.match(stdout, /center = \{ <x>, <z> \}/);
     for (const testMap of ['-720, -380', '520, 440', '-740, 40', 'seed = 7001']) assert.ok(!stdout.includes(testMap), testMap);
     assert.ok(!fs.existsSync(path.join(dir, 'src/world/plan.luau')), 'the agent writes the plan in one go');
     assert.match(fs.readFileSync(path.join(dir, 'docs/world/rules.md'), 'utf8'), /\| 555 \|/);
