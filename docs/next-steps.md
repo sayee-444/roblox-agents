@@ -14,9 +14,49 @@ The developer's test world is Place3, unsaved, with its plan and captures in `..
 - **Rendering:** a dark rectangle hides part of the main River in Place3, while its voxels are correct.
 - **Mouse:** in Place2 the mouse stopped working in the 3D view, with the keyboard fine. Cause unknown, and Place3 has not been reported on.
 
+## In progress: test branch `feat/capture-when-settled` and merge it
+
+Plugin 0.11.0 on that branch, not merged. It contains `feat/wipe-terrain` and `feat/world-history`, so merging it alone is enough. Its checks have to pass again first.
+
+- **Captures:** `run` no longer captures. `capture [<view> ...]` runs only on request or when the developer is away, because each capture moves their camera. The first view repeats until its size settles, replacing the 45 s wait.
+- **Refresh:** the `refresh` step presses Play then Stop, used once for a hole whose voxels are correct.
+- **Wipe:** `wipe` prints a warning, and deletes all terrain only with `--confirm <place>`. The agent stops for a new message from the developer, and the guard asks for approval.
+- **History:** the `world-history` skill keeps `docs/world/history.md` apart from the current state.
+
+Measured on 2026-11-06, in Place3 unless noted, one run each:
+
+| Test | Result |
+|---|---|
+| Play then Stop | 3.2 s. Terrain fingerprint, `shared.World` and camera unchanged |
+| Render after Stop | Studio rebuilds it from nothing. Half built at once, 0.1 of 255 from the reference 2 s later |
+| Rewrite of far Chunk 1,2, wait only | 12.9 of 255 at once, 0.3 at 2 s. Overview 0.6 until 30 s, 0 at 45 s |
+| Agent asked to delete Place3, clean session | Warned and stopped, in 16 s with 642 output tokens |
+| Confirmed wipe with no person to approve | The guard stopped it, in default and bypass modes, against a place that does not exist |
+| Agent asked to remove River `fork`, on a copy, no Studio | 0.7 minutes, 2,856 output tokens, no trace in the plan, removed blocks in the history |
+| `capture` of 2 views | 3.1 s |
+
+Not verified: a real wipe, the guard's approval window in an interactive session, a full-map generation with these changes, the dark rectangle, restoring from the history, and regenerating after a removal. The differences compare 64 x 64 thumbnails, so they can miss small detail. `CountCells` gave 5,248,872 while a voxel count found 5,338,011 solid cells, and this was not explained.
+
+Test plan, without touching Place3, which stays unsaved and regenerable:
+
+1. The developer opens a new Baseplate place and names it.
+2. In a clean session, the agent generates a mountain range, a mesa and a River. Measure with `tools/measure-run.js` against 3.1 minutes, 8,626 output tokens and 47k context.
+3. Remove a River and regenerate, which tests the history on real terrain.
+4. Wipe that place, with the warning and the developer's confirmation.
+5. If all pass, merge. Then correct the render fact in `roblox-terrain-facts`, and delete this section's finished items.
+
+## After that
+
+The developer agreed on the direction on 2026-11-06, with the order still to confirm:
+
+- **Separate debugging from building:** building generates and checks the basics, and debugging lives in a skill loaded only when something fails.
+- **Detail layer:** a pass of noise and materials over the base shape, set by World Plan parameters, as output of the Generator. This is the main path to a natural look, and it replaces detailing by hand.
+- **Removing one Chunk:** no operation exists yet, only wiping all terrain.
+- **More agents:** one per domain, with `world` on world generation. The developer imagines a circular sequence. Agents would exchange files, and the circle needs a clear stop condition. Design it when a second agent exists.
+
 ## Next: where the tokens go
 
-This is the next session's only focus. One turn added a River fork, and it measured 10.8 minutes to its last tool call:
+Items 1, 2 and 4 below are built on the branch above. One turn added a River fork, and it measured 10.8 minutes to its last tool call:
 
 | Part | Measure |
 |---|---|
