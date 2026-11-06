@@ -5,10 +5,14 @@
 //
 //   node tools/world.js new <dir> --place <name> [--seed <n>]    Start a world from the template
 //   node tools/world.js run --place <name> [--project <dir>]     load, test, describe, generate,
-//        [--remove-baseplate]                                    borders, regenerate, capture
+//        [--remove-baseplate]                                    borders, regenerate
 //   node tools/world.js <step> --place <name> [--project <dir>]  One step of the above: load,
-//        test, describe, generate [<i> <j> ...], borders, capture, regenerate <i> <j>, height <x> <z>,
-//        shot <name> <camera x y z> <look x y z>, refresh (Play then Stop, which rebuilds the render)
+//        test, describe, generate [<i> <j> ...], borders, regenerate <i> <j>, height <x> <z>,
+//        refresh (Play then Stop, which rebuilds the render)
+//   node tools/world.js capture [<view> ...] --place <name> --project <dir>   Moves the developer's camera,
+//   node tools/world.js shot <name> <camera x y z> <look x y z> --place <name> --project <dir>   so only when needed
+//   node tools/world.js wipe --place <name> --project <dir>      Writes nothing: prints what would be lost
+//        [--confirm <name>] [--include-locked]                   Deletes ALL terrain only when --confirm repeats --place
 //
 // Prints one line per fact. Exits 1 when a check fails, and writes nothing to a place whose
 // name differs from --place.
@@ -21,20 +25,25 @@ const PLAN = 'src/world/plan';
 const STATE = 'src/world/state';
 const OPS = 'shared.World.require("src/world/studio/Ops")';
 const BLANK_CAPTURE_CHARS = 15000; // Blank captures measured about 7,400 base64 characters, real ones over 79,000.
-// A view has settled when two captures in a row differ in size by this fraction or less. A settled
-// view measured under 1% of variation, and a half-built one 18% to 70%. Some settled far views jump
-// about 6% between two sizes, so tries are capped and a view that never settles is only reported.
+// The render has settled when two captures in a row differ in size by this fraction or less. A
+// settled view measured under 1% of variation, and a half-built one 18% to 70%. Some settled far
+// views jump about 6% between two sizes, so tries are capped and an unsettled view is only reported.
 const SETTLE_TOLERANCE = 0.02;
 const SETTLE_PAUSE_MS = 2000;
 const SETTLE_TRIES = 5;
+
+async function oneCapture(studio, id, camera, look) {
+  const result = await studio.tool('screen_capture', { capture_id: id, camera_position: camera, look_at_position: look });
+  const image = result.content.find((c) => c.type === 'image');
+  if (!image) throw new Error(`No image for ${id}`);
+  return image;
+}
 
 // Repeats a capture until its size stops changing, and returns the last image with the tries used.
 async function settledCapture(studio, id, camera, look) {
   let previous = null;
   for (let tries = 1; ; tries += 1) {
-    const result = await studio.tool('screen_capture', { capture_id: id, camera_position: camera, look_at_position: look });
-    const image = result.content.find((c) => c.type === 'image');
-    if (!image) throw new Error(`No image for ${id}`);
+    const image = await oneCapture(studio, id, camera, look);
     const size = image.data.length;
     const settled = previous !== null && Math.abs(size - previous) <= SETTLE_TOLERANCE * Math.max(size, previous);
     if (settled || tries === SETTLE_TRIES) return { data: image.data, tries, settled };
@@ -233,6 +242,44 @@ const steps = {
     return studio.luau(`return ${OPS}.height(${x}, ${z})`);
   },
 
+  // Deletes all terrain in the place. Without --confirm it writes nothing and prints the warning
+  // the agent must show the developer. It needs a project, because that holds the Locked Chunks.
+  async wipe(studio, ctx) {
+    const place = ctx.flags.place;
+    if (typeof ctx.flags.project !== 'string') throw new Error('wipe needs --project, which says which Chunks are Locked');
+    const facts = JSON.parse(await studio.luau(`return ${OPS}.wipeFacts()`));
+    const locked = facts.locked.length ? facts.locked.join(' ') : 'none';
+    const includeLocked = ctx.flags['include-locked'] === true;
+    const lockedBlocks = facts.locked.length > 0 && !includeLocked;
+    if (ctx.flags.confirm !== place) {
+      return [
+        '',
+        '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',
+        `!!! WARNING: ABOUT TO DELETE ALL TERRAIN IN "${place}" !!!`,
+        '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!',
+        'NOTHING HAS BEEN DELETED YET.',
+        `TERRAIN CELLS THAT WOULD BE LOST: ${facts.cells}`,
+        `CHUNKS RECORDED AS GENERATED: ${facts.generated}`,
+        `LOCKED (HAND-EDITED) CHUNKS: ${locked}`,
+        'HAND EDITS ARE LOST FOR GOOD: THE GENERATOR CANNOT REBUILD THEM.',
+        'GENERATED TERRAIN COMES BACK ONLY BY GENERATING IT AGAIN FROM THE WORLD PLAN.',
+        lockedBlocks ? 'LOCKED CHUNKS BLOCK THIS WIPE UNLESS THE DEVELOPER ALSO ORDERS --include-locked.' : '',
+        `THE DEVELOPER MUST CONFIRM. ONLY THEN RUN: wipe --place "${place}" --project <dir> --confirm "${place}"`,
+      ].filter(Boolean).join('\n');
+    }
+    if (lockedBlocks) {
+      ctx.failed = true;
+      return `REFUSED: Locked Chunks would be lost: ${locked}. Nothing was deleted`;
+    }
+    const answer = JSON.parse(await studio.luau(`return ${OPS}.wipe()`));
+    fs.writeFileSync(path.join(ctx.project, `${STATE}.luau`), `${(await studio.luau(`return ${OPS}.stateSource()`)).trim()}\n`);
+    if (answer.cellsAfter !== 0) {
+      ctx.failed = true;
+      return `WIPE INCOMPLETE: ${answer.cellsAfter} cells remain`;
+    }
+    return `DELETED all terrain in "${place}": ${facts.cells} cells to 0, in ${answer.seconds.toFixed(2)} s. Generation state emptied. The saved file keeps its old terrain until the developer saves`;
+  },
+
   // One view chosen by hand, for what the capture set does not cover.
   async shot(studio, ctx, args) {
     const [name, ...numbers] = args;
@@ -251,22 +298,27 @@ const steps = {
     return 'Play then Stop done';
   },
 
-  // Views come from the World Plan, so a new map needs no camera positions.
-  async capture(studio, ctx) {
-    const views = JSON.parse(await studio.luau(`return ${OPS}.views()`));
+  // Views come from the World Plan, so a new map needs no camera positions. Each capture moves the
+  // developer's camera, so only the first repeats until the render settles, and the rest are taken once.
+  async capture(studio, ctx, args) {
+    const all = JSON.parse(await studio.luau(`return ${OPS}.views()`));
+    const views = args.length ? all.filter((view) => args.includes(view.name)) : all;
+    if (args.length && views.length !== args.length) throw new Error(`Unknown view. Views: ${all.map((v) => v.name).join(' ')}`);
     const dir = path.join(ctx.project, 'docs/captures/run');
     fs.mkdirSync(dir, { recursive: true });
     const saved = [];
     const unsettled = [];
     for (let n = 0; n < views.length; n += 1) {
       const view = views[n];
-      const image = await settledCapture(studio, `world_${view.name}`, view.camera, view.look);
-      if (!image.settled) unsettled.push(view.name);
+      const image = n === 0
+        ? await settledCapture(studio, `world_${view.name}`, view.camera, view.look)
+        : await oneCapture(studio, `world_${view.name}`, view.camera, view.look);
+      if (n === 0 && !image.settled) unsettled.push(view.name);
       if (image.data.length < BLANK_CAPTURE_CHARS) {
         ctx.failed = true;
         return `BLANK capture at ${view.name}. The Studio window is probably minimized: ask the developer to restore it, then run the capture step`;
       }
-      const name = `${String(n + 1).padStart(2, '0')}-${view.name}.jpg`;
+      const name = `${String(all.indexOf(view) + 1).padStart(2, '0')}-${view.name}.jpg`;
       fs.writeFileSync(path.join(dir, name), Buffer.from(image.data, 'base64'));
       saved.push(name);
     }
@@ -300,7 +352,7 @@ function newWorld(dir, flags) {
 
 The engine ships with the \`roblox-world\` plugin. This project holds only \`src/world/plan.luau\` and \`src/world/state.luau\`.
 
-\`node <engine>/tools/world.js run --place ${flags.place} --project .\` loads the engine, tests it, describes the plan, generates, verifies and writes captures to \`docs/captures/run/\`. Run it with a Bash timeout of 600000 ms. Its header lists the single steps.
+\`node <engine>/tools/world.js run --place ${flags.place} --project .\` loads the engine, tests it, describes the plan, generates and verifies. Run it with a Bash timeout of 600000 ms. Its header lists the single steps, among them \`capture\`, which writes to \`docs/captures/run/\`.
 
 ## Decisions
 
@@ -314,7 +366,7 @@ async function main() {
   const [command, ...args] = positional;
   if (command === 'new') { console.log(newWorld(args[0], flags)); return 0; }
   const order = command === 'run'
-    ? ['load', 'test', 'describe', 'generate', 'borders', 'regenerate', 'capture']
+    ? ['load', 'test', 'describe', 'generate', 'borders', 'regenerate']
     : ['load', command];
   if (!command || (command !== 'run' && !steps[command]) || typeof flags.place !== 'string') {
     console.error('Usage: world.js <run|load|test|describe|generate|borders|capture|refresh|regenerate i j|height x z> --place <name> [--project <dir>]');

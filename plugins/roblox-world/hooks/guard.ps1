@@ -20,6 +20,15 @@ if ($tool -eq 'Bash' -or $tool -eq 'PowerShell') {
         if ($segment -match '^\s*(\S*[\\/])?rojo(\.exe)?\s+(build|upload|syncback)\b') {
             Deny 'rewriting a place with Rojo can lose terrain. The developer runs these commands.'
         }
+        if ($segment -match 'world\.js.*\bwipe\b.*--confirm') {
+            # A second stop that does not depend on the model: Claude Code asks the developer itself.
+            @{ hookSpecificOutput = @{
+                hookEventName = 'PreToolUse'
+                permissionDecision = 'ask'
+                permissionDecisionReason = 'THIS DELETES ALL TERRAIN IN THE PLACE. Approve only if you confirmed it.'
+            } } | ConvertTo-Json -Compress
+            exit 0
+        }
     }
 
     if ($command -match '/places/[^/\s]+/versions') {
@@ -44,6 +53,9 @@ if ($tool -eq 'mcp__Roblox_Studio__open_cloud_invoke') {
 if ($tool -eq 'mcp__Roblox_Studio__execute_luau') {
     if ([string]$toolInput.code -match '\b(SavePlaceAsync|SavePlace|CreatePlaceAsync)\b') {
         Deny $publishReason
+    }
+    if ([string]$toolInput.code -match 'Terrain\s*:\s*Clear\s*\(' -or [string]$toolInput.code -match '\.wipe\s*\(') {
+        Deny 'deleting all terrain goes through tools/world.js wipe, which warns the developer first.'
     }
 }
 

@@ -49,9 +49,9 @@ Choose each voxel's material from height, slope and noise. Calculate slope from 
 
 ## Judging the result
 
-Use a fixed capture set: one view from above and one from the ground for each Landform, about 10 to 12 in all, with a sun angle that shows relief. List its camera positions in `docs/world/rules.md`, so each run compares the same views.
+Ask the developer first, since they watch Studio. When captures are needed, choose from a fixed capture set: one view from above and one from the ground for each Landform, about 10 to 12 in all, with a sun angle that shows relief. List its camera positions in `docs/world/rules.md`, so each run compares the same views.
 
-1. Use `tools/world.js`, which repeats each view until its size stops changing. Studio may still be building the render mesh after a write: dark rectangles, missing patches and sky through walls can appear when the data is fine.
+1. Use `tools/world.js capture <view> ...`, which repeats the first view until its size stops changing and takes the others once. Studio may still be building the render mesh after a write: dark rectangles, missing patches and sky through walls can appear when the data is fine.
 2. Without that tool, take the captures one at a time, each alone in its turn. Two captures sent beside a `task.wait(40)` each timed out after about 340 s; the cause is not proven.
 3. After a fix, repeat only the views that fix affects.
 4. When a view shows a hole or a coarse patch, read its voxels. If they are there, it is only rendering: run the `refresh` step once, capture again, and report it if it stays.

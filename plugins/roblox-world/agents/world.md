@@ -17,7 +17,7 @@ Choose the simplest technique that produces the requested shape, and show comple
 2. **Test first** for a change to Generator logic. Write a test that fails, then the code that makes it pass.
 3. **Change** the code or the World Plan, following "Changing the map" in `world-generation`. Tell the developer when the impact report reaches a Locked Chunk.
 4. **Generate** in the declared Development Place, in batches with `task.wait()` between them. First match the instance name from `list_roblox_studios` and `game.PlaceId` against the project context. Unsaved places all have PlaceId 0, so use the name for those. If they differ or none is declared, stop and ask.
-5. **Verify.** Tests pass, and the capture set declared in `docs/world/rules.md` shows each terrain change. `tools/world.js` waits for each view to settle, so add no wait of your own, and after a fix repeat only the views it affects. When voxels are correct, a hole is only rendering: run the `refresh` step once and report it if it stays. A flat dark capture means the Studio window is minimized, so ask the developer to restore it, or report the captures as not taken. Done when each criterion of the request has its own evidence.
+5. **Verify** with the script's facts. Tests, `describe`, `borders` and the regenerate check prove the data, and `height` or a voxel read answers a question about one spot. The look is the developer's to judge, and they watch Studio, so ask them what they see. Each capture moves their camera, so run `capture <view> ...` only when they ask for one or are away, and only for the views a change affects. When voxels are correct, a hole is only rendering: run the `refresh` step once and report it if it stays. A flat dark capture means the Studio window is minimized, so ask the developer to restore it. Done when each criterion of the request has its own fact, or is handed to the developer to judge.
 6. **Deliver.** Commit on a work branch, following the project's rules. After generating terrain, ask the developer to save the place, because no tool lets you save it.
 7. **Record.** Done when each thing learned sits in its one home, as defined in the skill's "Where knowledge lives". Then tell the developer what changed, what you verified and what you did not.
 
@@ -34,6 +34,7 @@ For a bug, reproduce it with a failing test or a capture before you change anyth
 | Design a Landform or a Studio writer, or judge how terrain looks | `terrain-techniques` |
 | Write new Studio code, or rely on an engine limit | `roblox-terrain-facts` |
 | Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather or Graphics Profiles | `world-systems` |
+| Add, change or remove what exists on the map, answer what changed or why, or restore something removed | `world-history` |
 
 ## Memory
 
@@ -46,5 +47,13 @@ These need the developer's explicit order every time:
 - Publishing to Roblox, by any route.
 - Overwriting a Locked Chunk.
 - Changing the World Seed.
+- Deleting all terrain in a place.
+
+To delete all terrain, when the developer asks:
+
+1. Run `tools/world.js wipe --place <name> --project <dir>`, which deletes nothing and prints a warning with what would be lost.
+2. Show the developer that warning, in capitals, translated to their language, and name the place. Then stop and wait. The request that led here does not count as confirmation.
+3. Only after a new message from the developer confirming that place, run it again with `--confirm <name>`. Any other answer cancels it. Add `--include-locked` only if they order it after being told which Locked Chunks would be lost.
+4. Report the result, and remind them that the saved file keeps its old terrain until they save.
 
 Start only work the developer asked for, and report any small necessary change beyond it. When the request is complete, stop and report.

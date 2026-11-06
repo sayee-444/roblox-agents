@@ -165,6 +165,39 @@ function Ops.placeSpawn(removeBaseplate)
 	return table.concat(notes, ", ")
 end
 
+-- What wiping would lose, as JSON. Writes nothing.
+function Ops.wipeFacts()
+	local generated, locked = 0, {}
+	for key, entry in pairs(state.chunks) do
+		if entry.generated == true then
+			generated += 1
+		end
+		if entry.locked == true then
+			table.insert(locked, key)
+		end
+	end
+	table.sort(locked)
+	return game:GetService("HttpService"):JSONEncode({
+		cells = workspace.Terrain:CountCells(),
+		generated = generated,
+		locked = locked,
+	})
+end
+
+-- Deletes all terrain and forgets every Chunk, Locked ones included. Only tools/world.js calls
+-- this, after the developer has confirmed. Returns the cells left, as JSON.
+function Ops.wipe()
+	local t = workspace.Terrain
+	local started = os.clock()
+	t:Clear()
+	state.chunks = {}
+	task.wait()
+	return game:GetService("HttpService"):JSONEncode({
+		cellsAfter = t:CountCells(),
+		seconds = os.clock() - started,
+	})
+end
+
 -- Source of the current generation state. Locked Chunks stay as they were.
 function Ops.stateSource()
 	local lines = { "return {", "\tgeneratorVersion = " .. tostring(state.generatorVersion or 1) .. ",", "\tchunks = {" }
