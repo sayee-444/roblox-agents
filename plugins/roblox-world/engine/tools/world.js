@@ -193,7 +193,7 @@ class Studio {
     } catch (error) {
       if (!error.message.includes('Target is not reachable')) throw error;
       // The code keeps running after this error, so sending it again would run the work twice.
-      throw new Error(`Studio did not answer and the code may still be running in it. Wait a minute, then run the command again. ${error.message.slice(0, 200)}`);
+      throw new Error(`Studio did not answer and the code may still be running in it, so running the command now could do the work twice. Wait about 1 s for each Chunk it writes, then run it again. ${error.message.slice(0, 200)}`);
     }
     return (result.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
   }
