@@ -69,6 +69,77 @@ local function prepare(plan)
 	return P
 end
 
+-- How far one River lowers the valley floor at this spot, then its half width there and how far out
+-- its water can reach. `d` and `s` are the spot's distance to the River's line and along it.
+local function bedCarve(v, d: number, s: number, x: number, z: number): (number, number, number)
+	local def, rv = v.def, v.river
+	local hw = rv.width.at(s) * (1 + WIDTH_NOISE * Noise.perlin(s / 120, 0.5, def.seed + 1))
+	local bed = rv.def.waterLevel - Bank.pools(rv.depth.at(s), rv.def.depthVary, def.seed, s, 80)
+	if rv.def.bedRough then
+		bed += rv.def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
+	end
+	local banks = rv.def.banks
+	if banks then
+		local inside = hw - d
+		local shore = Bank.shoreAt(banks, def.seed, x, z)
+		local aboveWater = def.floorY - rv.def.waterLevel
+		local waterTo = math.max(hw * 1.5, hw + shore)
+		if inside > 0 then
+			local deepest = math.max(1, rv.def.waterLevel - bed)
+			return aboveWater + Bank.depth(banks, def.seed, x, z, inside, hw, deepest), hw, waterTo
+		end
+		return aboveWater * (1 - smoothstep(0, shore, -inside)), hw, hw + shore
+	end
+	local c = 1 - smoothstep(hw * 0.4, hw, d)
+	-- The banks and the water's edge come from the first BOWL_FROM studs. Anything deeper is a bowl
+	-- under them, deepest on the River's line, so a shallow River keeps its shape.
+	local shelf = rv.def.waterLevel - BOWL_FROM
+	return c * (def.floorY - math.max(bed, shelf)) + (1 - smoothstep(0, hw, d)) * math.max(0, shelf - bed), hw, hw * 1.5
+end
+
+-- One River's carve at a spot, then how far its water reaches there, relative to the nearest pass.
+-- A River with banks takes the deepest of every pass near the spot: going by the nearest pass alone,
+-- width and depth would jump halfway between two passes, and that step reads as a cliff.
+local function riverCarve(v, d: number, s: number, x: number, z: number): (number, number, number)
+	local depth, hw, waterTo = bedCarve(v, d, s, x, z)
+	local banks = v.river.def.banks
+	if banks then
+		local reach = v.river.width.widest * (1 + WIDTH_NOISE) + Bank.widestShore(banks)
+		local found = Geo.stretches2(v.river.poly, x, z, reach)
+		for i = 1, #found, 2 do
+			depth = math.max(depth, (bedCarve(v, found[i], found[i + 1], x, z)))
+		end
+	end
+	return depth, hw, waterTo
+end
+
+local function carveAt(P, x: number, z: number): number
+	local carve = 0
+	for _, v in ipairs(P.valleys) do
+		local d, s = Geo.dist2(v.river.poly, x, z)
+		if d < v.def.halfWidth then
+			carve = math.max(carve, (riverCarve(v, d, s, x, z)))
+		end
+	end
+	return carve
+end
+
+local RIDGE_AXES = { { 1, 0 }, { 0, 1 }, { 0.7071, 0.7071 }, { 0.7071, -0.7071 } }
+
+-- Where water runs close to itself or to another River, each stretch digs towards its own line and a
+-- thin crest stands between them. A spot on a crest has deeper ground on both opposite sides, and a
+-- spot on a plain wall never does, so this fills crests and leaves walls and shores where they are.
+local function fillRidge(P, x: number, z: number, reach: number): number
+	local filled = 0
+	for _, axis in ipairs(RIDGE_AXES) do
+		local a = carveAt(P, x + axis[1] * reach, z + axis[2] * reach)
+		if a > filled then
+			filled = math.max(filled, math.min(a, carveAt(P, x - axis[1] * reach, z - axis[2] * reach)))
+		end
+	end
+	return filled
+end
+
 -- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
 -- distance to the nearest River's sand band centre line or lake water, and the water level over this column (0 = dry).
 function Shape.height(plan, x: number, z: number): (number, number, number, number)
@@ -152,38 +223,28 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 		end
 	end
 	-- Where beds overlap, the deepest one counts, so that they meet without digging a pit.
-	local carve = 0
+	local carve, smooth, smoothLevel = 0, 0, 0
 	for _, v in ipairs(P.valleys) do
 		local def, rv = v.def, v.river
 		local d, s = v.d, v.s
 		if d < def.halfWidth then
-			local hw = rv.width.at(s) * (1 + WIDTH_NOISE * Noise.perlin(s / 120, 0.5, def.seed + 1))
-			local c = 1 - smoothstep(hw * 0.4, hw, d)
-			local bed = rv.def.waterLevel - Bank.pools(rv.depth.at(s), rv.def.depthVary, def.seed, s, 80)
-			if rv.def.bedRough then
-				bed += rv.def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
-			end
-			-- The banks and the water's edge come from the first BOWL_FROM studs. Anything deeper is a bowl
-			-- under them, deepest on the River's line, so a shallow River keeps its shape.
-			local shelf = rv.def.waterLevel - BOWL_FROM
-			local depth = c * (def.floorY - math.max(bed, shelf)) + (1 - smoothstep(0, hw, d)) * math.max(0, shelf - bed)
-			local waterTo = hw * 1.5
-			local banks = rv.def.banks
-			if banks then
-				local inside = hw - d
-				local shore = Bank.shoreAt(banks, def.seed, x, z)
-				local aboveWater = def.floorY - rv.def.waterLevel
-				if inside > 0 then
-					local deepest = math.max(1, rv.def.waterLevel - bed)
-					depth = aboveWater + Bank.depth(banks, def.seed, x, z, inside, hw, deepest)
-				else
-					depth = aboveWater * (1 - smoothstep(0, shore, -inside))
-				end
-				waterTo = math.max(waterTo, hw + shore)
-			end
+			local depth, hw, waterTo = riverCarve(v, d, s, x, z)
 			carve = math.max(carve, depth)
 			if h - depth < rv.def.waterLevel and d < waterTo then
 				waterLevel = rv.def.waterLevel
+			end
+			local banks = rv.def.banks
+			if banks and d < waterTo + Bank.smooth(banks) and Bank.smooth(banks) > smooth then
+				smooth, smoothLevel = Bank.smooth(banks), rv.def.waterLevel
+			end
+		end
+	end
+	if smooth > 0 then
+		local filled = fillRidge(P, x, z, smooth)
+		if filled > carve then
+			carve = filled
+			if h - carve < smoothLevel then
+				waterLevel = smoothLevel
 			end
 		end
 	end

@@ -12,6 +12,7 @@ local smoothstep = Geo.smoothstep
 local DEFAULT_SHORE = 20
 local DEFAULT_SHALLOW_DEPTH = 3
 local DEFAULT_BED_FLAT = 0.3
+local DEFAULT_SMOOTH = 24
 local VARY_SCALE = 80 -- studs for one change of the banks, short enough that two sides of a River differ
 local ROUGH_SCALE = 18 -- studs for one small slope in a wall
 local DEPTH_SCALE = 160 -- studs for one pool or shallow
@@ -28,6 +29,11 @@ end
 
 function Bank.shore(banks): number
 	return banks.shore or DEFAULT_SHORE
+end
+
+-- Studs of reach for filling thin crests between stretches of water. 0 turns it off.
+function Bank.smooth(banks): number
+	return banks.smooth or DEFAULT_SMOOTH
 end
 
 -- The widest the shore can get, which a Valley must leave room for.

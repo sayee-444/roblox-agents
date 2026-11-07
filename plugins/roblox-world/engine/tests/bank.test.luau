@@ -161,6 +161,43 @@ return {
 		t.ok(high - low > 10, "the Lake's bed spans " .. (high - low) .. " studs")
 	end,
 
+	["a River passing close to itself leaves no crest between its two stretches"] = function(t)
+		local plan = riverPlan({ points = { { 0, 0 }, { 400, 0 }, { 400, 60 }, { 0, 60 } }, depths = { 40, 40, 40, 40 }, banks = { shore = 30 } })
+		local crest, _, _, water = Shape.height(plan, 200, 30)
+		t.ok(crest < ground(plan, 200, 0) + 8, "between the stretches the bed is at " .. crest .. ", and under a stretch at " .. ground(plan, 200, 0))
+		t.eq(water, WATER, "water covers it")
+	end,
+
+	["the bed has no step halfway between two stretches of different widths"] = function(t)
+		local plan = riverPlan({
+			points = { { 0, 0 }, { 400, 0 }, { 400, 120 }, { 0, 120 } },
+			widths = { 30, 30, 70, 70 },
+			depths = { 40, 40, 40, 40 },
+			banks = { shore = 30, smooth = 0 },
+		})
+		for x = 120, 280, 40 do
+			local step = math.abs(ground(plan, x, 59) - ground(plan, x, 61))
+			t.ok(step < 3, "the ground steps " .. step .. " studs in 2 at x " .. x)
+		end
+	end,
+
+	["a wide island between two stretches stays dry"] = function(t)
+		local plan = riverPlan({ points = { { 0, 0 }, { 400, 0 }, { 400, 300 }, { 0, 300 } }, depths = { 40, 40, 40, 40 }, banks = { shore = 30 } })
+		local island, _, _, water = Shape.height(plan, 200, 150)
+		t.ok(island > WATER, "the island stands at " .. island)
+		t.eq(water, 0, "and has no water")
+	end,
+
+	["smooth leaves a plain wall and the water's edge where they were"] = function(t)
+		local filled = riverPlan({ banks = { shore = 30, smooth = 24 } })
+		local plain = riverPlan({ banks = { shore = 30, smooth = 0 } })
+		for x = 100, 900, 25 do
+			for _, d in ipairs({ 10, 25, 34, 40, 46, 55 }) do
+				t.near(ground(filled, x, d), ground(plain, x, d), 1, "at " .. x .. ", " .. d)
+			end
+		end
+	end,
+
 	["the plan refuses banks it cannot use"] = function(t)
 		t.eq(errorsOf(riverPlan({ banks = { shore = 40, shallows = 20, shallowDepth = 3, bedFlat = 0.3, steep = 1.5, rough = 3, vary = 0.5 }, depthVary = 0.5 })), "", "a sound River")
 		t.ok(errorsOf(riverPlan({ banks = { bedFlat = 2 } })):find("bedFlat"), "bedFlat above 0.9")

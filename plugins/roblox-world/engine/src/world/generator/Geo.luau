@@ -67,6 +67,49 @@ function Geo.dist2(poly: any, px: number, pz: number): (number, number)
 	return math.sqrt(best), bestS
 end
 
+-- Every stretch of the polyline passing within `reach` of the point, as a flat list of distance and
+-- position along the line: d1, s1, d2, s2... A line that comes back near itself gives one for each pass.
+function Geo.stretches2(poly: any, px: number, pz: number, reach: number): { number }
+	local found = {}
+	local segs = poly.segs
+	local reach2 = reach * reach
+	local before, beforeS, falling, lastIndex = math.huge, 0, false, -1
+	for _, block in ipairs(poly.blocks) do
+		local gapX = math.max(block[1] - px, 0, px - block[2])
+		local gapZ = math.max(block[3] - pz, 0, pz - block[4])
+		if gapX * gapX + gapZ * gapZ < reach2 then
+			for i = block[5], block[6] do
+				local s = segs[i]
+				local wx, wz = px - s[1], pz - s[2]
+				local t = math.clamp((wx * s[3] + wz * s[4]) / s[5], 0, 1)
+				local qx, qz = wx - t * s[3], wz - t * s[4]
+				local d2 = qx * qx + qz * qz
+				local here = s[7] + t * s[6]
+				if i ~= lastIndex + 1 then
+					before, falling = math.huge, true
+				end
+				if d2 > before and falling and before < reach2 then
+					table.insert(found, math.sqrt(before))
+					table.insert(found, beforeS)
+				end
+				falling = d2 <= before
+				before, beforeS, lastIndex = d2, here, i
+			end
+		else
+			if falling and before < reach2 then
+				table.insert(found, math.sqrt(before))
+				table.insert(found, beforeS)
+			end
+			before, falling = math.huge, false
+		end
+	end
+	if falling and before < reach2 then
+		table.insert(found, math.sqrt(before))
+		table.insert(found, beforeS)
+	end
+	return found
+end
+
 function Geo.polyline3(points: { { number } })
 	local c = cache3[points]
 	if c then

@@ -102,7 +102,7 @@ return {
 			bendWiden = 0.5,
 			depths = { 12, 34, 18, 60, 30, 90 }, -- below the water
 			depthVary = 0.5,
-			banks = { shore = 50, shallows = 30, shallowDepth = 4, bedFlat = 0.2, steep = 1.6, rough = 3, vary = 0.6 },
+			banks = { shore = 50, shallows = 30, shallowDepth = 4, bedFlat = 0.2, steep = 1.6, rough = 3, vary = 0.6, smooth = 48 },
 			bedRough = 6,
 			waterLevel = 20,
 		},
@@ -117,7 +117,7 @@ return {
 			bendWiden = 0.5,
 			depths = { 8, 24, 12, 44, 70 }, -- below the water
 			depthVary = 0.5,
-			banks = { shore = 36, shallows = 20, shallowDepth = 3, bedFlat = 0.2, steep = 1.4, rough = 2.5, vary = 0.6 },
+			banks = { shore = 36, shallows = 20, shallowDepth = 3, bedFlat = 0.2, steep = 1.4, rough = 2.5, vary = 0.6, smooth = 40 },
 			bedRough = 3,
 			waterLevel = 20,
 		},
@@ -131,7 +131,7 @@ return {
 			bendWiden = 0.5,
 			depths = { 8, 18, 40, 14, 22 }, -- below the water
 			depthVary = 0.5,
-			banks = { shore = 30, shallows = 12, shallowDepth = 2, bedFlat = 0.3, steep = 2, rough = 3, vary = 0.5 },
+			banks = { shore = 30, shallows = 12, shallowDepth = 2, bedFlat = 0.3, steep = 2, rough = 3, vary = 0.5, smooth = 40 },
 			bedRough = 3,
 			waterLevel = 20,
 		},

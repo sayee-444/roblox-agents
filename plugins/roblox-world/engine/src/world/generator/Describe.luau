@@ -60,6 +60,7 @@ local BANK_FIELDS = {
 	steep = { 0.1, 10 },
 	rough = { 0, math.huge },
 	vary = { 0, 0.9 },
+	smooth = { 0, 100 },
 }
 
 local function checkBanks(errors, label, def, isLake)

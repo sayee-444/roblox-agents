@@ -76,6 +76,7 @@ $1			depthVary = 0.5, -- pools and shallows along the line, placed by the valley
 				steep = 1.4, -- 1 falls evenly, higher falls sooner after the shallows
 				rough = 2.5, -- studs of small slopes in the wall, which leave the bottom and the edge alone
 				vary = 0.5, -- how much all of these change along each side, placed by the seed. 0 to 0.9
+				smooth = 24, -- crests thinner than about twice this, between stretches of water, are filled. 0 turns it off
 			},
 			waterLevel = 20, -- multiple of the voxel size, so the surface meets a voxel boundary
 		},
