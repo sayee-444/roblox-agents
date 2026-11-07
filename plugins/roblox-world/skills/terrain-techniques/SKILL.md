@@ -29,6 +29,7 @@ Noise below is `n(x, z)`, in the range 0 to 1, from the Generator's own noise. C
 | Mesa | Quantize part of the height with `round(e * levels) / levels`, inside a plateau mask. Keep risers at or below about 3.6 rise over run, since 5.6 made needles. Warp the outline and vary the steps: evenly stacked rings looked like a tiered cake |
 | Valley | Subtract a smooth profile of the distance to a polyline |
 | River | Carve the bed from the distance to its route, keeping the bed below a stretch's constant water level. Use `curve` and `meander`, with `widths` per point and `bendWiden` for the bends, because even width on straight legs looked like a canal. `loops` draws a bend close to a circle, and any other shape comes from placing `points` by hand |
+| Deep water | Use `depths` per point, or a Lake's `bedY`, with `bedRough` to vary the bed. Any depth works: ground goes below `floorY` by itself, only under that water, with `rockUnder` studs of rock |
 | Oxbow lake | A short River in a crescent, connected to nothing, with its own Valley and thin `widths` at both ends, beside the River that left it |
 | Natural distortion | Offset the sample position with other noise before evaluating: [domain warping](https://iquilezles.org/articles/warp/) |
 | Joining shapes | Blend with a bounded radius, so each Landform Region reaches only its margin: [smooth minimum](https://iquilezles.org/articles/smin/) |
