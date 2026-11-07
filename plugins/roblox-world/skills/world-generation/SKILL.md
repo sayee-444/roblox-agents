@@ -46,7 +46,7 @@ The Generator validates the World Plan and answers these questions, so planning 
 
 1. Run `describe` before you edit, because something removed no longer appears in it. The Chunks listed for what you are changing are the ones to rewrite, except any Locked Chunk, which you report. A World Seed or Generator change touches every unlocked Chunk.
 2. Edit the World Plan, a seed or the Generator.
-3. Write only those Chunks with `generate <i> <j> ...`, then run `borders`.
+3. Write only those Chunks with `generate <i> <j> ...`, then run `borders <i> <j> ...` for the same Chunks.
 4. Ask the developer how it looks in Studio.
 
 To change a shape, change the World Plan or a Region Seed. A Region Seed change alters that Landform Region and its blend margin.

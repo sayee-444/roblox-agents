@@ -58,7 +58,7 @@ Debugging runs last, and only when a check fails or the developer reports a wron
 | Check without writing terrain | `check`: `load`, `test`, `describe`, `borders` | Built |
 | Run the engine's tests | `test` | Measured |
 | Make Studio hold the current code | `load` | Measured |
-| Compare the Chunk borders | `borders` | Measured |
+| Compare the Chunk borders | `borders <i> <j> ...` for the Chunks a change wrote, or `borders` for all | Measured |
 
 ## Look
 

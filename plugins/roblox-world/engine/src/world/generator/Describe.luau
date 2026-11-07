@@ -247,6 +247,36 @@ function Describe.impact(plan, state, change)
 	return { rewrite = rewrite, lockedReached = lockedReached }
 end
 
+-- Each border between two generated Chunks, as { axis, ci, cj }, where (ci, cj) is the Chunk on its
+-- lower side. With a list of { i, j }, only the borders that touch one of those Chunks.
+function Describe.bordersOf(plan, state, list)
+	local chosen
+	if list then
+		chosen = {}
+		for _, c in ipairs(list) do
+			chosen[Chunk.key(c[1], c[2])] = true
+		end
+	end
+	local function generated(i, j)
+		return stateOf(state, Chunk.key(i, j)).generated == true
+	end
+	local out = {}
+	local e = plan.extent
+	for cj = e.minZ, e.maxZ do
+		for ci = e.minX, e.maxX do
+			for _, axis in ipairs({ "x", "z" }) do
+				local ni, nj = if axis == "x" then ci + 1 else ci, if axis == "z" then cj + 1 else cj
+				local inside = ni <= e.maxX and nj <= e.maxZ
+				local wanted = chosen == nil or chosen[Chunk.key(ci, cj)] or chosen[Chunk.key(ni, nj)]
+				if inside and wanted and generated(ci, cj) and generated(ni, nj) then
+					table.insert(out, { axis = axis, ci = ci, cj = cj })
+				end
+			end
+		end
+	end
+	return out
+end
+
 -- The surface height of each Landform and River, one per line. A range reports its highest route
 -- point or midpoint, a mesa its centre, a cave the ground at its mouth, a River both ends and a
 -- lake its centre.

@@ -98,32 +98,28 @@ function Ops.generate(list)
 	)
 end
 
--- Reads voxels on both sides of every border between two generated Chunks and compares them
--- with the Generator. Lists only the borders that disagree.
-function Ops.borders()
+-- Reads voxels on both sides of each border between two generated Chunks and compares them with
+-- the Generator. With a list of { i, j }, only the borders touching those Chunks. Lists only the
+-- borders that disagree.
+function Ops.borders(list)
 	local t = workspace.Terrain
 	local count, voxels, mat, occ, liq, worstErr, worstCross, worstInside = 0, 0, 0, 0, 0, 0, 0, 0
 	local bad = {}
-	eachGenerated(function(ci, cj)
-		for _, axis in ipairs({ "x", "z" }) do
-			local ni, nj = if axis == "x" then ci + 1 else ci, if axis == "z" then cj + 1 else cj
-			if isGenerated(ni, nj) then
-				local r = Writer.borderReport(t, plan, Gen, axis, ci, cj)
-				count += 1
-				voxels += r.voxelsCompared
-				mat += r.matMismatch
-				occ += r.occMismatch
-				liq += r.liqMismatch
-				worstErr = math.max(worstErr, r.maxOccErr)
-				worstCross = math.max(worstCross, r.maxCross)
-				worstInside = math.max(worstInside, r.maxInside)
-				if r.matMismatch + r.occMismatch + r.liqMismatch > 0 then
-					table.insert(bad, r.axis .. " " .. r.between)
-				end
-				task.wait()
-			end
+	for _, border in ipairs(Gen.Describe.bordersOf(plan, state, list)) do
+		local r = Writer.borderReport(t, plan, Gen, border.axis, border.ci, border.cj)
+		count += 1
+		voxels += r.voxelsCompared
+		mat += r.matMismatch
+		occ += r.occMismatch
+		liq += r.liqMismatch
+		worstErr = math.max(worstErr, r.maxOccErr)
+		worstCross = math.max(worstCross, r.maxCross)
+		worstInside = math.max(worstInside, r.maxInside)
+		if r.matMismatch + r.occMismatch + r.liqMismatch > 0 then
+			table.insert(bad, r.axis .. " " .. r.between)
 		end
-	end)
+		task.wait()
+	end
 	return string.format(
 		"%d borders, %d voxels: material %d, occupancy %d, water %d mismatches; worst occupancy error %.4f; surface step max %.2f across, %.2f inside; disagreeing: %s",
 		count, voxels, mat, occ, liq, worstErr, worstCross, worstInside,
