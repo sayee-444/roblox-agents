@@ -179,7 +179,7 @@ function benchEngine(place) {
   const dir = tempWorld();
   try {
     runWorld('new', dir, '--place', place, '--seed', '12345', '--test-map');
-    const result = parseEngine(runWorld('run', '--place', place, '--project', dir));
+    const result = parseEngine(runWorld('run', '--place', place, '--project', dir, '--over-terrain'));
     record('engine', result);
     showComparison('engine');
     for (const [step, seconds] of Object.entries(result.steps)) console.log(`  ${step.padEnd(12)} ${seconds} s`);
@@ -192,7 +192,7 @@ function setUp(kind, dir, place) {
   if (kind === 'empty') return;
   runWorld('new', dir, '--place', place || 'NoPlace', '--seed', '12345', '--test-map');
   if (kind === 'world-with-history') fs.copyFileSync(path.join(ROOT, 'benchmarks/history-fixture.md'), path.join(dir, 'docs/world/history.md'));
-  if (kind === 'generated-world') runWorld('run', '--place', place, '--project', dir);
+  if (kind === 'generated-world') runWorld('run', '--place', place, '--project', dir, '--over-terrain');
 }
 
 function findTranscript(session) {

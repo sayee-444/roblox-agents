@@ -742,3 +742,47 @@ test('a Luau call Studio does not answer is not sent again, since its code may s
     assert.match(stderr, /Target is not reachable/);
   });
 });
+
+test('run of a world that has written nothing stops on a place holding terrain, before any step', () => {
+  withPlan({}, (dir) => {
+    const { status, stderr, stdout, calls } = inStudio(dir, { FAKE_STUDIO_CELLS: '1234567' }, 'run', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /P already holds 1,234,567 terrain cells that this world did not write, so nothing was written/);
+    assert.match(stderr, /--over-terrain/);
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.ok(!stdout.includes('sync'), 'it stops before spending time on sync and test');
+  });
+});
+
+test('generate stops in the same way, since it writes too', () => {
+  withPlan({}, (dir) => {
+    const { status, calls } = inStudio(dir, { FAKE_STUDIO_CELLS: '5' }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+  });
+});
+
+test('--over-terrain writes over it', () => {
+  withPlan({}, (dir) => {
+    const { status, calls } = inStudio(dir, { FAKE_STUDIO_CELLS: '5' }, 'generate', '0', '0', '--place', 'P', '--project', dir, '--over-terrain');
+    assert.strictEqual(status, 0);
+    assert.ok(calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+  });
+});
+
+test('a world that has written Chunks goes on, since the terrain may be its own', () => {
+  const state = 'return {\n\tgeneratorVersion = 1,\n\tchunks = {\n\t\t["0,0"] = { generated = true, locked = false },\n\t},\n}\n';
+  withPlan({ state }, (dir) => {
+    const { status, calls } = inStudio(dir, { FAKE_STUDIO_CELLS: '5' }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0);
+    assert.ok(calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+  });
+});
+
+test('a new world writes at once on a place with no terrain', () => {
+  withPlan({}, (dir) => {
+    const { status, calls } = inStudio(dir, { FAKE_STUDIO_CELLS: '0' }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0);
+    assert.ok(calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+  });
+});
