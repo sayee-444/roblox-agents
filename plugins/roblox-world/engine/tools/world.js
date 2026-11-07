@@ -33,7 +33,9 @@ Inspect, writing no terrain
 Look, only on request or when the developer is away: these move their camera
   capture [<view> ...]            Save chosen views, or all of them, to docs/captures/run/
   shot <name> <x y z> <x y z>     Save one view from a camera position towards a target
-  refresh                         Press Play then Stop, which rebuilds the render
+  refresh                         Press Play then Stop, which rebuilds the render, and wait for it
+                                  After a write, capture and shot do this first. Play runs the place's scripts,
+                                  so add --no-refresh after the views for a place where that matters
 
 Delete
   wipe [--confirm <name>] [--include-locked]   Alone, only prints what would be lost. Confirmed, deletes ALL terrain
@@ -47,12 +49,13 @@ const PLAN = 'src/world/plan';
 const STATE = 'src/world/state';
 const OPS = 'shared.World.require("src/world/studio/Ops")';
 const BLANK_CAPTURE_CHARS = 15000; // Blank captures measured about 7,400 base64 characters, real ones over 79,000.
-// The render has settled when two captures in a row differ in size by this fraction or less. A
-// settled view measured under 1% of variation, and a half-built one 18% to 70%. Some settled far
-// views jump about 6% between two sizes, so tries are capped and an unsettled view is only reported.
-const SETTLE_TOLERANCE = 0.02;
-const SETTLE_PAUSE_MS = 2000;
-const SETTLE_TRIES = 5;
+// After a write, broken water stayed for 60 s until Play then Stop cleared it. A capture 0.4 s after Stop
+// came out half blank and one at 5 s was right, so that is the wait. A capture's size cannot prove the
+// render finished: it was the same with the water broken and whole.
+const RENDER_WAIT_MS = Number(process.env.WORLD_RENDER_WAIT_MS || 5000);
+// After a write, a view from about 1,860 studs left the water near the Lake broken for over 60 s, and
+// one from about 965 studs did not, so a view farther than this asks the next look to rebuild the render.
+const FAR_VIEW_STUDS = 1000;
 
 async function oneCapture(studio, id, camera, look) {
   const result = await studio.tool('screen_capture', { capture_id: id, camera_position: camera, look_at_position: look });
@@ -61,17 +64,25 @@ async function oneCapture(studio, id, camera, look) {
   return image;
 }
 
-// Repeats a capture until its size stops changing, and returns the last image with the tries used.
-async function settledCapture(studio, id, camera, look) {
-  let previous = null;
-  for (let tries = 1; ; tries += 1) {
-    const image = await oneCapture(studio, id, camera, look);
-    const size = image.data.length;
-    const settled = previous !== null && Math.abs(size - previous) <= SETTLE_TOLERANCE * Math.max(size, previous);
-    if (settled || tries === SETTLE_TRIES) return { data: image.data, tries, settled };
-    previous = size;
-    await new Promise((resolve) => { setTimeout(resolve, SETTLE_PAUSE_MS); });
-  }
+async function afterView(studio, camera, look) {
+  const distance = Math.hypot(...camera.map((value, axis) => value - look[axis]));
+  if (distance > FAR_VIEW_STUDS) await studio.luau(`return ${OPS}.markRenderStale()`);
+}
+
+async function rebuildRender(studio) {
+  await studio.tool('start_stop_play', { is_start: true });
+  await studio.tool('start_stop_play', { is_start: false });
+  await new Promise((resolve) => { setTimeout(resolve, RENDER_WAIT_MS); });
+}
+
+// Before a look: a render that has not been rebuilt since a write can show what the voxels do not hold.
+// Returns what to report. Play runs the place's scripts, so --no-refresh keeps a game's place out of it.
+async function renderNote(studio, ctx) {
+  const stale = (await studio.luau(`return tostring(${OPS}.takeRenderStale())`)).trim() === 'true';
+  if (!stale) return '';
+  if (ctx.flags['no-refresh'] !== undefined) return 'Render not rebuilt since a write, so glitches may show. ';
+  await rebuildRender(studio);
+  return 'Render rebuilt after a write. ';
 }
 
 function parseArgs(argv) {
@@ -92,7 +103,11 @@ class Studio {
   constructor() {
     this.pending = new Map();
     this.nextId = 1;
-    this.child = spawn('cmd.exe', ['/c', 'cd /d %LOCALAPPDATA%\\Roblox && .\\mcp.bat'], { stdio: ['pipe', 'pipe', 'inherit'] });
+    // WORLD_FAKE_STUDIO names a stand-in for Studio's server, for the tests.
+    const fake = process.env.WORLD_FAKE_STUDIO;
+    this.child = fake
+      ? spawn(process.execPath, [fake], { stdio: ['pipe', 'pipe', 'inherit'] })
+      : spawn('cmd.exe', ['/c', 'cd /d %LOCALAPPDATA%\\Roblox && .\\mcp.bat'], { stdio: ['pipe', 'pipe', 'inherit'] });
     let buffer = '';
     this.child.stdout.on('data', (data) => {
       buffer += data;
@@ -309,37 +324,39 @@ const steps = {
   // One view chosen by hand, for what the capture set does not cover.
   async shot(studio, ctx, args) {
     const [name, ...numbers] = args;
-    const image = await settledCapture(studio, `world_${name}`, numbers.slice(0, 3).map(Number), numbers.slice(3, 6).map(Number));
+    const note = await renderNote(studio, ctx);
+    const camera = numbers.slice(0, 3).map(Number);
+    const look = numbers.slice(3, 6).map(Number);
+    const image = await oneCapture(studio, `world_${name}`, camera, look);
+    await afterView(studio, camera, look);
     if (image.data.length < BLANK_CAPTURE_CHARS) { ctx.failed = true; return 'BLANK capture. The Studio window is probably minimized'; }
     const dir = path.join(ctx.project, 'docs/captures/run');
     fs.mkdirSync(dir, { recursive: true });
     fs.writeFileSync(path.join(dir, `${name}.jpg`), Buffer.from(image.data, 'base64'));
-    return `${path.join(dir, `${name}.jpg`)}${image.settled ? '' : ' (not settled)'}`;
+    return `${note}${path.join(dir, `${name}.jpg`)}`;
   },
 
   // Rebuilds the render without changing the map, for a hole whose voxels are correct.
   async refresh(studio) {
-    await studio.tool('start_stop_play', { is_start: true });
-    await studio.tool('start_stop_play', { is_start: false });
-    return 'Play then Stop done';
+    await studio.luau(`return tostring(${OPS}.takeRenderStale())`);
+    await rebuildRender(studio);
+    return 'Play then Stop done, and the render had time to rebuild';
   },
 
-  // Views come from the World Plan, so a new map needs no camera positions. Each capture moves the
-  // developer's camera, so only the first repeats until the render settles, and the rest are taken once.
+  // Views come from the World Plan, so a new map needs no camera positions. The overview goes last,
+  // because a jump from its height left the next view broken for about 15 s.
   async capture(studio, ctx, args) {
     const all = JSON.parse(await studio.luau(`return ${OPS}.views()`));
     const views = args.length ? all.filter((view) => args.includes(view.name)) : all;
     if (args.length && views.length !== args.length) throw new Error(`Unknown view. Views: ${all.map((v) => v.name).join(' ')}`);
+    const note = await renderNote(studio, ctx);
+    const ordered = [...views.filter((view) => view.name !== 'overview'), ...views.filter((view) => view.name === 'overview')];
     const dir = path.join(ctx.project, 'docs/captures/run');
     fs.mkdirSync(dir, { recursive: true });
     const saved = [];
-    const unsettled = [];
-    for (let n = 0; n < views.length; n += 1) {
-      const view = views[n];
-      const image = n === 0
-        ? await settledCapture(studio, `world_${view.name}`, view.camera, view.look)
-        : await oneCapture(studio, `world_${view.name}`, view.camera, view.look);
-      if (n === 0 && !image.settled) unsettled.push(view.name);
+    for (const view of ordered) {
+      const image = await oneCapture(studio, `world_${view.name}`, view.camera, view.look);
+      await afterView(studio, view.camera, view.look);
       if (image.data.length < BLANK_CAPTURE_CHARS) {
         ctx.failed = true;
         return `BLANK capture at ${view.name}. The Studio window is probably minimized: ask the developer to restore it, then run the capture step`;
@@ -348,8 +365,7 @@ const steps = {
       fs.writeFileSync(path.join(dir, name), Buffer.from(image.data, 'base64'));
       saved.push(name);
     }
-    const note = unsettled.length ? `. Not settled, look at these first: ${unsettled.join(' ')}` : '';
-    return `${saved.length} views in ${dir}: ${saved.join(' ')}${note}`;
+    return `${note}${saved.length} views in ${dir}: ${saved.join(' ')}`;
   },
 };
 

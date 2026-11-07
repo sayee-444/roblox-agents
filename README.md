@@ -10,9 +10,9 @@ The map is always the output of a program: the agent changes a declared World Pl
 
 ## Example
 
-A test world made by the agent: 36 Chunks with hills, a range, a mesa, a River with a fork, and a Lake where they end. These are raw captures from Studio on 2026-11-06, with no hand edits, so they show the current state of the look and not a finished one.
+A test world made by the agent: 36 Chunks with hills, a range, a mesa, a River with a fork, and a Lake where they end. These are raw captures from Studio on 2026-11-06, with no hand edits, so they show the current state of the look and not a finished one. The whole map appears through Studio's fog.
 
-![The whole map from above, through Studio's fog](docs/images/world-overview.jpg)
+![The whole map from above](docs/images/world-overview.jpg)
 
 Each change is a change to the World Plan. Moving the mesa closer to the range took one line of the plan, and the engine wrote only the 8 Chunks it touched, in 3.7 seconds.
 

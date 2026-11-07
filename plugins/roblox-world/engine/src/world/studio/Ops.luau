@@ -36,6 +36,19 @@ local function eachGenerated(fn)
 	end)
 end
 
+-- Says whether terrain was written since the last call, and clears it. It lives in `shared`, which
+-- stays between commands and goes away with the Studio session, as a stale render does.
+function Ops.takeRenderStale()
+	local stale = shared.World.renderStale == true
+	shared.World.renderStale = false
+	return stale
+end
+
+function Ops.markRenderStale()
+	shared.World.renderStale = true
+	return "stale"
+end
+
 local function sameData(a, b)
 	return a.s1 == b.s1 and a.s2 == b.s2 and a.solid == b.solid and a.liquid == b.liquid
 end
@@ -62,6 +75,7 @@ function Ops.generate(list)
 			return
 		end
 		local stats = Writer.writeChunk(t, plan, Gen, ci, cj)
+		shared.World.renderStale = true
 		table.insert(seconds, stats.wall)
 		total += stats.wall
 		state.chunks[key] = { generated = true, locked = false }
@@ -131,6 +145,7 @@ function Ops.regenerate(ci, cj)
 	task.wait()
 	local wiped = Writer.checksum(t, plan, Gen, ci, cj, cols.ymin, cols.ymax)
 	local stats = Writer.writeChunk(t, plan, Gen, ci, cj)
+	shared.World.renderStale = true
 	task.wait()
 	local after = Writer.checksum(t, plan, Gen, ci, cj, cols.ymin, cols.ymax)
 	return string.format(

@@ -123,3 +123,84 @@ test('check needs a place, like every command that reaches Studio', () => {
   assert.strictEqual(status, 2);
   assert.match(stderr, /--place/);
 });
+
+// The steps of a command that reaches Studio, against a stand-in for Studio's MCP server.
+function withStudio(env, args, check) {
+  const dir = tempDir();
+  try {
+    const log = path.join(dir, 'calls.log');
+    fs.mkdirSync(path.join(dir, 'src/world'), { recursive: true });
+    for (const name of ['plan', 'state']) fs.writeFileSync(path.join(dir, `src/world/${name}.luau`), 'return {}\n');
+    const fake = path.resolve(__dirname, 'fixtures/fake-studio.js');
+    const result = spawnSync(process.execPath, [cli, ...args, '--place', 'P', '--project', dir], {
+      encoding: 'utf8',
+      timeout: 15000,
+      env: { ...process.env, ...env, FAKE_STUDIO_LOG: log, WORLD_FAKE_STUDIO: fake, WORLD_RENDER_WAIT_MS: '1' },
+    });
+    const calls = fs.readFileSync(log, 'utf8').trim().split('\n').filter((line) => line !== 'execute_luau');
+    check(result, calls);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('a capture after a write rebuilds the render first, and only once', () => {
+  withStudio({ FAKE_STUDIO_STALE: 'true' }, ['capture'], ({ status, stdout }, calls) => {
+    assert.strictEqual(status, 0, stdout);
+    assert.deepStrictEqual(calls.slice(0, 3), ['list_roblox_studios', 'start_stop_play', 'start_stop_play']);
+    assert.strictEqual(calls.filter((call) => call === 'start_stop_play').length, 2);
+    assert.strictEqual(calls.filter((call) => call.startsWith('capture')).length, 3);
+    assert.match(stdout, /rebuilt/);
+  });
+});
+
+test('a capture with no write since the last rebuild leaves Play alone', () => {
+  withStudio({}, ['capture'], (_, calls) => {
+    assert.ok(!calls.includes('start_stop_play'));
+  });
+});
+
+test('a shot after a write rebuilds the render first', () => {
+  withStudio({ FAKE_STUDIO_STALE: 'true' }, ['shot', 'one', '1', '2', '3', '4', '5', '6'], (_, calls) => {
+    assert.deepStrictEqual(calls, ['list_roblox_studios', 'start_stop_play', 'start_stop_play', 'capture world_one']);
+  });
+});
+
+test('--no-refresh keeps a place from entering Play, and warns that glitches may show', () => {
+  withStudio({ FAKE_STUDIO_STALE: 'true' }, ['capture', '--no-refresh'], ({ stdout }, calls) => {
+    assert.ok(!calls.includes('start_stop_play'));
+    assert.match(stdout, /glitch/i);
+  });
+});
+
+test('capture takes the overview last, since a jump from its height leaves the next view broken', () => {
+  withStudio({}, ['capture'], (_, calls) => {
+    assert.deepStrictEqual(calls.filter((call) => call.startsWith('capture')), [
+      'capture world_hills-above', 'capture world_river-above', 'capture world_overview',
+    ]);
+  });
+});
+
+test('capture takes each view once, since its file size cannot prove the render finished', () => {
+  withStudio({}, ['capture', 'overview'], (_, calls) => {
+    assert.strictEqual(calls.filter((call) => call.startsWith('capture')).length, 1);
+  });
+});
+
+test('a view from far away leaves the next look to rebuild the render, since the near terrain stays broken', () => {
+  withStudio({}, ['capture', 'overview'], (_, calls) => {
+    assert.deepStrictEqual(calls.slice(-2), ['capture world_overview', 'mark render stale']);
+  });
+  withStudio({}, ['shot', 'far', '0', '1500', '1500', '0', '0', '0'], (_, calls) => {
+    assert.strictEqual(calls[calls.length - 1], 'mark render stale');
+  });
+});
+
+test('a view from nearby leaves the render as it is', () => {
+  withStudio({}, ['capture', 'river-above'], (_, calls) => {
+    assert.ok(!calls.includes('mark render stale'));
+  });
+  withStudio({}, ['shot', 'near', '760', '250', '500', '1250', '110', '-320'], (_, calls) => {
+    assert.ok(!calls.includes('mark render stale'));
+  });
+});
