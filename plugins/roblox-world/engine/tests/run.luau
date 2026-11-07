@@ -31,6 +31,7 @@ function T.near(a, b, tol, msg)
 end
 
 local lines, passed, failed = {}, 0, 0
+local lastYield = os.clock()
 for _, entry in ipairs(suites) do
 	local names = {}
 	for name in pairs(entry[2]) do
@@ -45,6 +46,11 @@ for _, entry in ipairs(suites) do
 		else
 			failed += 1
 			table.insert(lines, "FAIL " .. entry[1] .. " / " .. name .. " -> " .. tostring(err))
+		end
+		-- Under Lute there is no `task`. In Studio a long block keeps it from answering any call.
+		if task and os.clock() - lastYield >= 0.25 then
+			task.wait()
+			lastYield = os.clock()
 		end
 	end
 end

@@ -7,6 +7,20 @@ local Writer = {}
 
 local V = 4
 local CHANNELS = { "SolidMaterial", "SolidOccupancy", "LiquidOccupancy" }
+-- Seconds of work between yields. Blocks of 0.5 and 1 s pass, and repeated blocks of 2 to 3 s make
+-- Studio stop answering with "Target is not reachable", measured in issue #53.
+local BREATH = 0.25
+
+-- A function for long work to call often. It yields once BREATH seconds have passed since it last did.
+function Writer.breather()
+	local last = os.clock()
+	return function()
+		if os.clock() - last >= BREATH then
+			task.wait()
+			last = os.clock()
+		end
+	end
+end
 
 function Writer.materialLookup(Materials)
 	local lookup = {}
@@ -29,6 +43,7 @@ end
 
 -- Generates and writes one Chunk. Returns measured seconds: columns (height pass), slab
 -- (voxel arrays), write (WriteVoxelChannels), clear, total CPU-clock and wall time.
+-- opts.cols takes columns the caller already has, so they are not worked out twice.
 function Writer.writeChunk(terrain: Terrain, plan, Gen, ci: number, cj: number, opts)
 	opts = opts or {}
 	local slabWidth = opts.slabWidth or 16
@@ -36,7 +51,7 @@ function Writer.writeChunk(terrain: Terrain, plan, Gen, ci: number, cj: number, 
 	local wall0 = DateTime.now().UnixTimestampMillis
 	local t0 = os.clock()
 
-	local cols = Gen.Chunk.columns(plan, ci, cj)
+	local cols = opts.cols or Gen.Chunk.columns(plan, ci, cj, Writer.breather())
 	stats.columns = os.clock() - t0
 	stats.ymin, stats.ymax, stats.ny = cols.ymin, cols.ymax, cols.ny
 
@@ -85,7 +100,9 @@ function Writer.checksum(terrain: Terrain, plan, Gen, ci: number, cj: number, y0
 	local M = 4294967296
 	local s1, s2, solid, liquid = 1, 0, 0, 0
 	local mat, occ, liq = data.SolidMaterial, data.SolidOccupancy, data.LiquidOccupancy
+	local breathe = Writer.breather()
 	for ix = 1, #mat do
+		breathe()
 		local mx, ox, lx = mat[ix], occ[ix], liq[ix]
 		for iy = 1, #mx do
 			local my, oy, ly = mx[iy], ox[iy], lx[iy]

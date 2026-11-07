@@ -140,13 +140,13 @@ function Ops.verify(ci, cj)
 		return "refused: Chunk " .. Gen.Chunk.key(ci, cj) .. " is Locked"
 	end
 	local t = workspace.Terrain
-	local cols = Gen.Chunk.columns(plan, ci, cj)
+	local cols = Gen.Chunk.columns(plan, ci, cj, Writer.breather())
 	local before = Writer.checksum(t, plan, Gen, ci, cj, cols.ymin, cols.ymax)
 	task.wait()
 	Writer.clear(t, plan, Gen, ci, cj, cols.ymin, cols.ymax)
 	task.wait()
 	local wiped = Writer.checksum(t, plan, Gen, ci, cj, cols.ymin, cols.ymax)
-	local stats = Writer.writeChunk(t, plan, Gen, ci, cj)
+	local stats = Writer.writeChunk(t, plan, Gen, ci, cj, { cols = cols })
 	shared.World.renderStale = true
 	task.wait()
 	local after = Writer.checksum(t, plan, Gen, ci, cj, cols.ymin, cols.ymax)

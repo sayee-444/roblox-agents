@@ -25,6 +25,18 @@ local function slabSum(cols, i0, i1)
 end
 
 return {
+	["columns lets its caller pause on every row and gives the same Chunk"] = function(t)
+		local plain = Chunk.columns(plan, 0, 0)
+		local pauses = 0
+		local paced = Chunk.columns(plan, 0, 0, function()
+			pauses += 1
+		end)
+		t.ok(pauses >= 2 * plain.n, "one on each row of both passes, pauses: " .. pauses)
+		for k, h in ipairs(plain.H) do
+			t.eq(paced.H[k], h, "height " .. k)
+		end
+	end,
+
 	["chunk origin and size follow the plan"] = function(t)
 		local x0, z0 = Chunk.origin(plan, -1, 1)
 		t.eq(x0, -768)

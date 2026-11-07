@@ -24,7 +24,8 @@ end
 -- Column facts for Chunk (ci, cj). Heights are kept on a grid padded by one voxel on
 -- every side, so slopes at the border use the neighbour's true values.
 -- Padded index of interior column (i, j), both 0-based: (j + 1) * (n + 2) + (i + 1) + 1.
-function Chunk.columns(plan, ci: number, cj: number)
+-- `breathe`, when given, is called on every row, so a caller in Studio can yield during the work.
+function Chunk.columns(plan, ci: number, cj: number, breathe: (() -> ())?)
 	assert(plan.voxel == V, "plan.voxel must be 4")
 	local n = math.floor(plan.chunkSize / V)
 	local x0, z0 = Chunk.origin(plan, ci, cj)
@@ -51,6 +52,9 @@ function Chunk.columns(plan, ci: number, cj: number)
 				end
 			end
 		end
+		if breathe then
+			breathe()
+		end
 	end
 
 	local G = table.create(n * n, 0)
@@ -71,6 +75,9 @@ function Chunk.columns(plan, ci: number, cj: number)
 			B[k] = if MP[k] > 0.02 then id.Sandstone else id.Rock
 			BOTTOM[k] = Shape.bottom(plan, xc, zc, math.min(H[p], H[p - 1], H[p + 1], H[p - w], H[p + w]))
 			ymin = math.min(ymin, BOTTOM[k])
+		end
+		if breathe then
+			breathe()
 		end
 	end
 
