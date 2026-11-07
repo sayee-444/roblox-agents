@@ -457,6 +457,17 @@ function composedPlan(seed, layout) {
 const extentText = (e) => (e.minX === e.minZ && e.maxX === e.maxZ ? `${e.minX}..${e.maxX}` : `${e.minX}..${e.maxX} x ${e.minZ}..${e.maxZ}`);
 
 // Puts an entry at the top of a world's history, creating the file when it is missing.
+const whyOf = (flags) => (typeof flags.why === 'string' ? flags.why : 'the developer asked for it.');
+
+// Decisions run newest first, under the line that says so.
+function addDecision(project, decision) {
+  const file = path.join(project, 'docs/world/rules.md');
+  if (!fs.existsSync(file)) return;
+  const text = readModule(file);
+  const first = /^(Newest first:.*)\n*/m;
+  fs.writeFileSync(file, first.test(text) ? text.replace(first, (_, line) => `${line}\n\n${decision}\n`) : `${text.trimEnd()}\n\n${decision}\n`);
+}
+
 function addHistory(project, entry) {
   const file = path.join(project, 'docs/world/history.md');
   const before = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
@@ -498,10 +509,15 @@ function worldLines(project) {
     const held = plans.facts(plan);
     const { generated, locked } = plans.stateFacts(readIfThere(path.join(project, `${STATE}.luau`)));
     const e = held.extent;
+    const inExtent = generated.filter((key) => {
+      const [i, j] = key.split(',').map(Number);
+      return i >= e.minX && i <= e.maxX && j >= e.minZ && j <= e.maxZ;
+    }).length;
+    const outside = generated.length - inExtent;
     const names = (things) => things.map((thing) => thing.id).join(', ') || 'none';
     lines.push(
       `Seed ${held.seed}, extent ${extentText(e)}, ${e.maxX - e.minX + 1} x ${e.maxZ - e.minZ + 1}, ${held.chunks} Chunks`,
-      `${generated.length} of ${held.chunks} Chunks generated. Locked: ${locked.join(' ') || 'none'}`,
+      `${inExtent} of ${held.chunks} Chunks generated${outside ? `, and ${outside} outside the extent` : ''}. Locked: ${locked.join(' ') || 'none'}`,
       `Regions: ${held.regions.map((region) => `${region.id} (${region.kind})`).join(', ') || 'none'}`,
       `Rivers: ${names(held.rivers)}`,
       `Lakes: ${names(held.lakes)}`,
@@ -542,9 +558,8 @@ function scaleWorld(args, flags) {
   fs.writeFileSync(planFile, scaled.text);
   const date = new Date().toISOString().slice(0, 10);
   const change = `extent ${extentText(scaled.before)} to ${extentText(scaled.extent)}`;
-  const rules = path.join(project, 'docs/world/rules.md');
-  if (fs.existsSync(rules)) fs.appendFileSync(rules, `\n- ${date}: scaled by ${factor}, ${change}.\n`);
-  addHistory(project, `## ${date}: Scaled the world by ${factor}\n\n- **Why:** ${typeof flags.why === 'string' ? flags.why : 'the developer asked for it.'}\n- **Chunks written:** none yet, until \`run\` writes every Chunk.\n- **Restore:** the World Plan before this entry, in Git, and generate every Chunk again.\n`);
+  addDecision(project, `- ${date}: scaled by ${factor}, ${change}. Why: ${whyOf(flags)}`);
+  addHistory(project, `## ${date}: Scaled the world by ${factor}\n\n- **Why:** ${whyOf(flags)}\n- **Chunks written:** none yet, until \`run\` writes every Chunk.\n- **Restore:** the World Plan before this entry, in Git, and generate every Chunk again.\n`);
   const side = (min, max) => max - min + 1;
   const e = scaled.extent;
   const notes = [`Scaled by ${factor}: ${change}, ${side(e.minX, e.maxX)} x ${side(e.minZ, e.maxZ)} Chunks.`];
