@@ -380,14 +380,14 @@ function Describe.report(plan, state)
 	return r
 end
 
--- Chunks a change would rewrite. change = { regionId = "mesa" }, { regionIds = { "river", "valley" } }
+-- Chunks a change would rewrite. change = { regionId = "mesa" }, { removedIds = { "river", "valley" } }
 -- or { all = true } (a seed or Generator change). Locked Chunks are never rewritten but are reported.
--- With regionIds, what is on the map now: each Chunk once, and only those already generated.
+-- With removedIds, only what is on the map now: each Chunk once, and only those already generated.
 function Describe.impact(plan, state, change)
 	local touched = {}
-	if change.regionIds then
+	if change.removedIds then
 		local wanted = {}
-		for _, id in ipairs(change.regionIds) do
+		for _, id in ipairs(change.removedIds) do
 			for _, key in ipairs(touching(plan, id)) do
 				wanted[key] = true
 			end

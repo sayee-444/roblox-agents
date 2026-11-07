@@ -88,7 +88,7 @@ return {
 		local s = allGenerated()
 		s.chunks["1,1"] = { generated = true, locked = true }
 		s.chunks["0,0"] = nil
-		local impact = Describe.impact(plan, s, { regionIds = { "mesa", "cave" } })
+		local impact = Describe.impact(plan, s, { removedIds = { "mesa", "cave" } })
 		t.ok(has(impact.lockedReached, "1,1"), "locked chunk reported")
 		t.eq(#impact.lockedReached, 1, "reported once, though both touch it")
 		t.ok(not has(impact.rewrite, "1,1"), "locked chunk is not rewritten")
