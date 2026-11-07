@@ -1,0 +1,2 @@
+# Git stores text with LF, and the engine writes state files with LF, so a checkout on Windows must match.
+* text=auto eol=lf
