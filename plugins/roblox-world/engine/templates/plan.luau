@@ -61,7 +61,7 @@ return {
 			points = { { <x>, <z> }, { <x>, <z> }, { <x>, <z> }, { <x>, <z> } }, -- edge to edge, 4 to 6 points
 			curve = 1, -- 0 follows straight legs between the points, 1 a smooth curve through them
 			meander = 40, -- largest swing away from that line, in studs. It fades to nothing at each point
-			halfWidth = 20, -- or widths = { 14, 20, 32, 40 }, one per point, changing gradually between them
+			halfWidth = 20, -- or widths = { 14, 20, 32, 40 }, half widths, one per point, changing gradually between them
 			-- bendWiden = 0.5, -- widens by this fraction at a 90 degree bend, and in proportion at gentler ones
 			bedY = 10,
 			waterLevel = 20, -- multiple of the voxel size, so the surface meets a voxel boundary

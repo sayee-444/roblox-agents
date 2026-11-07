@@ -105,7 +105,7 @@ function Describe.validate(plan): { string }
 		if isNum(rv.bedY) and isNum(plan.floorY) and rv.bedY - plan.floorY < 64 then
 			table.insert(e, "river " .. tostring(rv.id) .. ": less than 64 studs of ground under the bed")
 		end
-		-- Only a River whose line and widths are sound can be measured.
+		-- Any error here already refuses the plan, so only a sound River is measured.
 		if #e == before then
 			widest[rv.id] = Route.width(rv).widest
 		end
@@ -351,7 +351,8 @@ function Describe.heights(plan): string
 		local a, b = rv.points[1], rv.points[#rv.points]
 		local route = Geo.polyline2(Route.points(rv)).length
 		local width = Route.width(rv)
-		local span = if width.narrowest == width.widest then string.format("%d", width.widest) else string.format("%d to %d", width.narrowest, width.widest)
+		local narrowest, widest = math.round(width.narrowest), math.round(width.widest)
+		local span = if narrowest == widest then tostring(widest) else narrowest .. " to " .. widest
 		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d, route %d studs, curve %s, meander %d, width %s", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2], route, tostring(rv.curve or 0), rv.meander or 0, span))
 	end
 	for _, lk in ipairs(plan.lakes or {}) do

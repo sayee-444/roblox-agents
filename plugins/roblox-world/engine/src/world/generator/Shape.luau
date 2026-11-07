@@ -66,7 +66,7 @@ local function prepare(plan)
 end
 
 -- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
--- distance to the nearest River route or lake water, and the water level over this column (0 = dry).
+-- distance to the nearest River's sand band centre line or lake water, and the water level over this column (0 = dry).
 function Shape.height(plan, x: number, z: number): (number, number, number, number)
 	local P = prepare(plan)
 	local b = plan.base
@@ -130,10 +130,12 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 		local def, rv = v.def, v.river
 		local d, s = Geo.dist2(rv.poly, x, z)
 		v.d, v.s = d, s
-		local width = rv.width.at(s)
-		-- Past BANK_WIDTH the sand band moves out with the bank, or it would end under the water.
-		riverD = math.min(riverD, math.max(0, d - math.max(0, width - BANK_WIDTH)))
-		if d < def.halfWidth then
+		if d >= def.halfWidth then
+			riverD = math.min(riverD, d)
+		else
+			local width = rv.width.at(s)
+			-- Past BANK_WIDTH the sand band moves out with the bank, or it would end under the water.
+			riverD = math.min(riverD, math.max(0, d - math.max(0, width - BANK_WIDTH)))
 			local w = 1 - smoothstep(width + 20, def.halfWidth, d)
 			local floor = def.floorY + 2 * Noise.perlin(x / 50, z / 50, def.seed)
 			h += (floor - h) * w

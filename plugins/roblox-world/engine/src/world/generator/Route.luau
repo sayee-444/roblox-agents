@@ -147,7 +147,9 @@ function Route.width(rv)
 		end
 		local place = s / BEND_STEP
 		local k = math.min(math.floor(place), #bends - 2)
-		local tight = bends[k + 1] + (bends[k + 2] - bends[k + 1]) * (place - k)
+		-- The last gap ends at the route's end, so it can be shorter than a step.
+		local gap = math.min(k + 1, length / BEND_STEP) - k
+		local tight = bends[k + 1] + (bends[k + 2] - bends[k + 1]) * (place - k) / gap
 		return declared(s) * (1 + bendWiden * tight)
 	end
 

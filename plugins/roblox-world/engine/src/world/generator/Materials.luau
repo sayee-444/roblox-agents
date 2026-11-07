@@ -28,7 +28,7 @@ Materials.sub = {
 }
 
 -- Surface material of one column. `g` is the slope (rise over run), `mesaP` the mesa
--- parameter (0 outside, 1 on top) and `riverD` the distance to a River route or lake water.
+-- parameter (0 outside, 1 on top) and `riverD` the distance to a River route, moved out where the River is wide, or to lake water.
 function Materials.surface(plan, x: number, z: number, h: number, g: number, mesaP: number, riverD: number): number
 	local M = plan.materials
 	local n = Noise.perlin(x / 18, z / 18, plan.worldSeed + 77)

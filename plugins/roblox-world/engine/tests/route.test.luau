@@ -211,6 +211,12 @@ return {
 		end
 	end,
 
+	["bendWiden is measured right up to the end of a route that is no multiple of the step"] = function(t)
+		-- 300 studs long, with the corner 10 studs from the end. Nothing turns at the very end.
+		local width = Route.width({ id = "r", points = { { 0, 0 }, { 290, 0 }, { 290, 10 } }, halfWidth = 20, bendWiden = 0.5 })
+		t.near(width.at(300), 20, 0.001, "the last point")
+	end,
+
 	["bendWiden 0, or none, leaves a bend even"] = function(t)
 		local corner = { { 0, 0 }, { 200, 0 }, { 200, 200 } }
 		t.eq(Route.width({ id = "r", points = corner, halfWidth = 20, bendWiden = 0 }).at(200), 20)
@@ -245,7 +251,7 @@ return {
 	["the sand band follows the bank where a River widens"] = function(t)
 		local wide = straightPlan({ widths = { 20, 60, 20 } })
 		local _, _, near = Shape.height(wide, 500, 50)
-		t.ok(near < wide.materials.bankDist, string.format("%.1f from the band, inside the water", near))
+		t.near(near, 10, 0.001, "50 from the route, with the bank moved out by 60 - 20")
 		local _, _, plain = Shape.height(straightPlan({ widths = { 20, 20, 20 } }), 500, 10)
 		t.near(plain, 10, 0.001, "an even River measures from its route")
 	end,
@@ -290,7 +296,9 @@ return {
 
 	["heights report the range of a River's width"] = function(t)
 		t.ok(Describe.heights(straightPlan({ widths = { 14, 20, 32 } })):find("width 14 to 32", 1, true) ~= nil, "a range")
-		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20 } })):find("width 20", 1, true) ~= nil, "one width")
+		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20 } })):find("width 20$") ~= nil, "one width")
+		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 29.6 } })):find("width 20 to 30$") ~= nil, "rounded, not cut")
+		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20.3 } })):find("width 20$") ~= nil, "one width once rounded")
 	end,
 
 	["heights say how a River is shaped, so a run knows without reading the plan"] = function(t)
