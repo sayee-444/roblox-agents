@@ -45,9 +45,11 @@ function startContext({ shape, snapshot, listing, renderedChars }, firstRequest)
 }
 
 function measure(file) {
-  const entries = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean)
+  const lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean)
     .map((line) => { try { return JSON.parse(line); } catch { return null; } })
-    .filter((entry) => entry && entry.timestamp);
+    .filter(Boolean);
+  const entries = lines.filter((entry) => entry.timestamp);
+  const request = lines.find((entry) => entry.message?.output_config?.effort);
   const time = (entry) => Date.parse(entry.timestamp);
   const start = time(entries[0]);
   const end = time(entries[entries.length - 1]);
@@ -156,6 +158,7 @@ function measure(file) {
     busyMin: minutes(busy),
     modelMin: minutes(end - start - busy),
     requests: messages.size,
+    effort: request ? request.message.output_config.effort : null,
     ...usage,
     contextStart: context[0] || 0,
     contextEnd: context[context.length - 1] || 0,

@@ -87,3 +87,19 @@ test('prints the context parts for a person to read', () => {
   assert.match(stdout, /Tools at the start: Bash 200, Read 100/);
   assert.match(stdout, /Added, estimated: skill world-history 100/);
 });
+
+test('reports the effort the requests of a run really used', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'measure-'));
+  try {
+    const file = path.join(dir, 'run.jsonl');
+    const lines = [
+      { type: 'user', timestamp: '2026-11-06T10:00:00.000Z', message: { content: 'hello' } },
+      { type: 'api-request-blob', message: { output_config: { effort: 'low' } } },
+    ];
+    fs.writeFileSync(file, lines.map((line) => `${JSON.stringify(line)}\n`).join(''));
+    const run = JSON.parse(spawnSync(process.execPath, [path.join(root, 'tools/measure-run.js'), file, '--json'], { encoding: 'utf8' }).stdout);
+    assert.strictEqual(run.effort, 'low');
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

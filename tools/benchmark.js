@@ -4,7 +4,7 @@
 //
 //   node tools/benchmark.js cost                               Free: what the plugin adds to context
 //   node tools/benchmark.js engine --place <name>              No tokens, needs Studio: time per engine step
-//   node tools/benchmark.js agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3]
+//   node tools/benchmark.js agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3] [--model sonnet] [--effort <level>] [--effort <level>]
 //        [--model sonnet] [--budget 2] [--keep <dir>]          Spends tokens: a real agent run, graded
 //   node tools/benchmark.js report                             Each measure's median, against the group before
 //
@@ -214,7 +214,8 @@ function benchAgent(name, scenario, flags) {
     const session = crypto.randomUUID();
     const model = flags.model || 'sonnet';
     // The agent runs alone: only the project's settings, so the developer's other plugins cost it nothing.
-    const claude = `claude -p --plugin-dir "${PLUGIN}" --agent roblox-world:world --model ${model} --session-id ${session}`
+    // --effort stands for the level of the session, since these settings hide the developer's own.
+    const claude = `claude -p --plugin-dir "${PLUGIN}" --agent roblox-world:world --model ${model} --session-id ${session}${flags.effort ? ` --effort ${flags.effort}` : ''}`
       + ` --setting-sources project --strict-mcp-config --permission-mode bypassPermissions --max-budget-usd ${flags.budget || 2} --output-format json`;
     const started = spawnSync(claude, { cwd: dir, shell: true, encoding: 'utf8', input: fill(scenario.prompt), timeout: 900000 });
     let output = {};
@@ -226,6 +227,7 @@ function benchAgent(name, scenario, flags) {
     if (started.status !== 0) failures.unshift(`claude exited with ${started.status}`);
     const result = {
       model,
+      effort: run.effort,
       label: flags.label,
       passed: failures.length === 0,
       failures,
@@ -285,7 +287,7 @@ function main() {
     process.exitCode = allPassed ? 0 : 1;
     return undefined;
   }
-  console.error('Usage: node tools/benchmark.js <cost|engine --place <name>|agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3] [--model sonnet] [--budget 2] [--keep <dir>]|report>');
+  console.error('Usage: node tools/benchmark.js <cost|engine --place <name>|agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3] [--model sonnet] [--effort <level>] [--budget 2] [--keep <dir>]|report>');
   process.exitCode = 2;
   return undefined;
 }

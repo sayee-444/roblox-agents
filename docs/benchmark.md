@@ -117,6 +117,23 @@ From 0.34.0 the `create` and `create-fork` prompts call the place disposable, wh
 
 All of these ran on `sonnet`, whose default `effort` is `medium` and which reasoned for almost nothing: 74 tokens in the median `edit`. So they say little about a session on another model or a higher `effort`.
 
+## What a model, an `effort` and the memory cost
+
+Medians of 3 runs on plugin 0.37.0, all passed. `--effort` stands for the session's level, and each result records the level its requests really used, read from the transcript.
+
+| Session | `edit` seconds | `edit` output | `create-fork` seconds | `create-fork` output |
+|---|---|---|---|---|
+| `sonnet`, `medium`, its default | 13 | 561 | 20 | 631 |
+| `sonnet`, `low` | 13 | 523 | 20 | 596 |
+| `opus`, `low` | 15 | 756 | 28 | 1,264 |
+| `opus`, `xhigh` | 21 | 1,402 | 48 | 3,158 |
+
+Tokens sent stay within 1% across them. These two jobs leave the model little to work out, since the engine composes the world and `remove` does the edit, so a plan the model composes, or a debugging session, may gain from a higher level and has not been measured.
+
+- **`effort` in the agent's frontmatter has no effect on a session started with `--agent`.** With `effort: low`, `sonnet` stayed on `medium` and an `opus` session at `xhigh` stayed on `xhigh`, one run each. So the file holds none.
+- **`model: sonnet` in the frontmatter loses to `--model opus`** on the command line, one run. Without that flag it has not been measured.
+- **Without `memory: user`, tokens sent fall 24%** and nothing else moves: `start` 16,213 to 12,317, `recover` 33,336 to 25,495, `create-fork` 34,242 to 26,169, `edit` 51,240 to 39,137, with the same seconds, requests and output. The field is still there, because it decides whether the agent keeps lessons between projects, which no scenario grades.
+
 ## Reading a result
 
 - **Compare with three runs.** One run of an agent says little, so use `--runs 3` when comparing two versions.
