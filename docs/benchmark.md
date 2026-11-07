@@ -87,6 +87,7 @@ What the next run is compared against. `agent create-fork`, 3 runs each, medians
 | 0.18.0: `new --landforms` composes the plan from the seed, on a plainer prompt | 27 | 3 | 51,596 | 3 of 3 |
 | 0.33.0: the baseline of #53 | 24 | 3 | 51,562 | 3 of 3 |
 | 0.34.2: a request for a new world goes straight to `new` | 25 | 2 | 34,061 | 3 of 3 |
+| 0.37.0: a height does its costly part only near water | 20 | 2 | 34,242 | 3 of 3 |
 
 `edit`, 3 runs each:
 
@@ -102,6 +103,9 @@ What the next run is compared against. `agent create-fork`, 3 runs each, medians
 |---|---|---|
 | 0.33.0 | | 0 of 1: `Target is not reachable` at `generate` |
 | 0.36.0: a yield every 0.25 s of work | 168 | 3 of 3 |
+| 0.37.0: a height does its costly part only near water | 121 | 3 of 3 |
+
+The map stayed the same on 0.37.0, measured two ways on `lab`. Every value `Shape.height` returns over the 144 Chunks gave the same fingerprint as on 0.36.0. The 49 Chunks with water, written by the engine of 0.33.0, passed `verify` on 0.37.0 with `identical=true` on all 49. The worst Chunk's heights went from 4.88 s to 2.06 s.
 
 On 0.33.0 one `edit` passed its limit of 12 tool calls, and two lost a call to `python`, which this computer does not have. Each run wrote the River's block twice by hand, once to take it out of the plan and once into the history.
 
