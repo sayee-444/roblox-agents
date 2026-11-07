@@ -29,7 +29,7 @@ The developer wants fewer tokens so that generations run faster and more of them
 | 0.15.0: points shown as arrays, plan and `run` sent together | 38 | 3 | 54,620 | 2 of 3 |
 | 0.18.0: `new --landforms` composes the plan from the seed, on a plainer prompt | 27 | 3 | 51,596 | 3 of 3 |
 
-Plugin 0.14.0 gained little because its template let every run write points the engine rejects, so each ran the cycle 3 times. A 0.15.0 run still spends about 16 s in Studio, of which `test`, `borders` and `regenerate` take about 11 s, so these are the next place to look.
+Plugin 0.14.0 gained little because its template let every run write points the engine rejects, so each ran the cycle 3 times. A 0.15.0 run still spends about 16 s in Studio, of which `test`, `borders` and `regenerate`, now `verify`, take about 11 s, so these are the next place to look.
 
 `edit` on 0.18.0, 3 runs: 47 s, 6 requests, 117,551 tokens, 3 of 3 passed. Plugin 0.13.0 passed 2 of 3 at about 124,000 tokens, and its time was not kept. The one-pass rule first made 2 of 3 `edit` runs skip `world-history`, which 0.18.0 fixed by loading it before the plan is edited. `recover` was run once, on 0.17.0, and passed.
 

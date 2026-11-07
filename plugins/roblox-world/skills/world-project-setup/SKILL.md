@@ -28,7 +28,7 @@ Terms are defined in `GLOSSARY.md`.
 
 ## Generator
 
-Its location, how to load it, its commands and the output each one returns.
+Its location, how to sync it, its commands and the output each one returns.
 
 ## Target map
 

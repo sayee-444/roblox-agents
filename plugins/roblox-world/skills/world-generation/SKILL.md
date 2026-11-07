@@ -5,7 +5,7 @@ description: Method for deterministic Roblox terrain generation from a World Pla
 
 ## How the map works
 
-The map is the output of one pure function: terrain at a world position comes from the World Plan, the seeds and that position. Chunks are only the unit in which that output is written. Two neighbouring Chunks agree on their border because both evaluate the same function at the same world coordinates. A change to the function's output breaks this guarantee, so regenerate every unlocked Chunk.
+The map is the output of one pure function: terrain at a world position comes from the World Plan, the seeds and that position. Chunks are only the unit in which that output is written. Two neighbouring Chunks agree on their border because both evaluate the same function at the same world coordinates. A change to the function's output breaks this guarantee, so write every unlocked Chunk again.
 
 | Term | Meaning |
 |---|---|

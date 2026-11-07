@@ -7,7 +7,7 @@ The current state is the World Plan, the generation state and `describe`. Orient
 
 ## Removing something
 
-A removal leaves the World Plan as if the thing never existed, with no commented code, disabled flag or leftover reference. Regenerate the unlocked Chunks it touched, because terrain is the Generator's output. Then record it, and the history becomes the only place it remains.
+A removal leaves the World Plan as if the thing never existed, with no commented code, disabled flag or leftover reference. Write the unlocked Chunks it touched again, because terrain is the Generator's output. Then record it, and the history becomes the only place it remains.
 
 ## Adding an entry
 
@@ -20,7 +20,7 @@ Add the entry at the top of `docs/world/history.md`, creating the file if it is 
 
 - **Why:** the developer wanted one River in the valley.
 - **Chunks written:** 1,1 1,2
-- **Restore:** paste the block below into `rivers` in the World Plan, and regenerate those Chunks.
+- **Restore:** paste the block below into `rivers` in the World Plan, and generate those Chunks again.
 
 ```luau
 { id = "fork", ... the exact block taken out of the World Plan ... },
@@ -31,4 +31,4 @@ Include the block only for a removal or a change, holding the previous version e
 
 ## Reading it
 
-Search by name or date, and read only the matching entries. To restore, paste the block back, run `describe` to confirm it still fits the current World Plan, regenerate, and add a new entry. Entries stay as written, and a correction is a new entry.
+Search by name or date, and read only the matching entries. To restore, paste the block back, run `describe` to confirm it still fits the current World Plan, generate, and add a new entry. Entries stay as written, and a correction is a new entry.

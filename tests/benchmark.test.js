@@ -83,8 +83,8 @@ test('the context cost is read from the report of claude plugin details', () => 
 });
 
 test('the time of each engine step is read from the output of world.js', () => {
-  const text = 'load (0.4 s): 21 modules match, pasted 0\ntest (1.2 s): 33 passed\ndescribe (0.1 s): \nregion mesa (0.0 s) is not a step\nTotal 5.7 s';
-  assert.deepStrictEqual(parseEngine(text), { steps: { load: 0.4, test: 1.2, describe: 0.1 }, totalSec: 5.7 });
+  const text = 'sync (0.4 s): 21 modules match, pasted 0\ntest (1.2 s): 33 passed\ndescribe (0.1 s): \nregion mesa (0.0 s) is not a step\nTotal 5.7 s';
+  assert.deepStrictEqual(parseEngine(text), { steps: { sync: 0.4, test: 1.2, describe: 0.1 }, totalSec: 5.7 });
 });
 
 test('a comparison gives the change for each measure against the previous run', () => {

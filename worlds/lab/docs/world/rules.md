@@ -18,7 +18,7 @@ The engine ships with the `roblox-world` plugin. This project holds only `src/wo
 
 `node <engine>/tools/world.js run --place <open place> --project .` syncs the engine, tests it, describes the plan, generates and verifies. Run it with a Bash timeout of 600000 ms. After a local change, run `generate <i> <j> ...` for the Chunks it touched instead. `node <engine>/tools/world.js help` lists every command.
 
-On this world `run` and any `generate` holding several River Chunks can fail with `Target is not reachable`, as `docs/next-steps.md` records. One Chunk per call has not failed, so write River Chunks that way until it is fixed.
+On this world `run`, `verify` and any `generate` holding several River Chunks can fail with `Target is not reachable`, as `docs/next-steps.md` records. `generate` with one Chunk per call has not failed, so write River Chunks that way until it is fixed, and do not count a failed `verify` as a wrong map.
 
 ## Decisions
 
