@@ -25,7 +25,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 | A new world with chosen positions | `new`, writing the World Plan from the template it prints, then `run` | Measured |
 | Set up a project with no world context | `world-project-setup` | Measured |
 | The whole cycle again | `run`: `sync`, `test`, `describe`, `generate`, `verify`, `heights` | Measured |
-| The same world at another size | `scale <factor>`, then `run`. It multiplies the extent, positions, lengths and heights and keeps the seeds. Writes no terrain | Measured: `scale 2` gave the 160 lines of a double written by hand, apart from one field that double added |
+| The same world at another size | `scale <factor>`, then `run`. It multiplies the extent, positions, lengths and heights and keeps the seeds. Writes no terrain | Measured: `scale 2` gave the 160 lines of a double written by hand, apart from one field that double added, and `run` passed after `scale 2` and `scale 0.5` on the test map |
 
 ## Edit
 
