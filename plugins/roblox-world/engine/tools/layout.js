@@ -164,12 +164,12 @@ function renderLuau(layout, regionSeed) {
   if (range) regions.push(`{ id = "range", kind = "mountain", seed = ${regionSeed()}, points = ${points(range.points)}, halfWidth = ${range.halfWidth}, height = ${range.height}, ridgeScale = ${range.ridgeScale}, crestScale = ${range.crestScale} }`);
   if (mesa) regions.push(`{ id = "mesa", kind = "mesa", seed = ${regionSeed()}, center = { ${mesa.center[0]}, ${mesa.center[1]} }, radius = ${mesa.radius}, margin = ${mesa.margin}, levels = ${mesa.levels}, height = ${mesa.height}, warp = ${mesa.warp}, elongate = ${mesa.elongate}, angle = ${mesa.angle}, gully = ${mesa.gully} }`);
   if (river) {
-    regions.push(`{ id = "valley", kind = "valley", seed = ${regionSeed()}, riverId = "river", halfWidth = 130, floorY = 24 }`);
-    rivers.push(`{ id = "river", points = ${points(river.points)}, curve = 1, meander = ${river.meander}, bendWiden = ${river.bendWiden}, halfWidth = ${river.halfWidth}, bedY = ${river.bedY}, bedRough = ${river.bedRough}, waterLevel = ${river.waterLevel} }`);
+    regions.push(`{ id = "valley", kind = "valley", seed = ${regionSeed()}, riverId = "river", halfWidth = 260, floorY = 24 }`);
+    rivers.push(`{ id = "river", points = ${points(river.points)}, curve = 1, meander = ${river.meander}, bendWiden = ${river.bendWiden}, halfWidth = ${river.halfWidth}, bedY = ${river.bedY}, bedRough = ${river.bedRough}, depthVary = 0.5, banks = { shore = 24, shallows = 16, shallowDepth = 3, bedFlat = 0.25, steep = 1.4, rough = 2.5, vary = 0.5 }, waterLevel = ${river.waterLevel} }`);
   }
   if (fork) {
-    regions.push(`{ id = "forkValley", kind = "valley", seed = ${regionSeed()}, riverId = "fork", halfWidth = 90, floorY = 24 }`);
-    rivers.push(`{ id = "fork", points = ${points(fork.points)}, curve = 1, meander = ${fork.meander}, bendWiden = ${fork.bendWiden}, halfWidth = ${fork.halfWidth}, bedY = ${fork.bedY}, bedRough = ${fork.bedRough}, waterLevel = ${fork.waterLevel} }`);
+    regions.push(`{ id = "forkValley", kind = "valley", seed = ${regionSeed()}, riverId = "fork", halfWidth = 180, floorY = 24 }`);
+    rivers.push(`{ id = "fork", points = ${points(fork.points)}, curve = 1, meander = ${fork.meander}, bendWiden = ${fork.bendWiden}, halfWidth = ${fork.halfWidth}, bedY = ${fork.bedY}, bedRough = ${fork.bedRough}, depthVary = 0.5, banks = { shore = 24, shallows = 16, shallowDepth = 3, bedFlat = 0.25, steep = 1.4, rough = 2.5, vary = 0.5 }, waterLevel = ${fork.waterLevel} }`);
   }
   const block = (name, items) => `\t${name} = {\n${items.map((item) => `\t\t${item},`).join('\n')}\n\t},`;
   return `${block('regions', regions)}\n\n${block('rivers', rivers)}`;
