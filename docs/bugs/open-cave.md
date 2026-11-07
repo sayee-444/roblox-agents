@@ -38,7 +38,7 @@ Along the whole axis, sampled about every 4 studs, 36 of 36 samples were open to
 
 **Measured from the agent's run, with `height`:** the ground the plan declares is 46.9 at (1092, 1250), 60.4 at (1180, 1262) and 56.5 at (1240, 1250). All are below the roof the cave would need at y 74. `height` ignores the cave: at (1180, 1262) it says 60.4 while the carved floor is at 47.2. So the plan alone holds what a check needs, with no voxels to read.
 
-**What the run reported:** `generate` wrote 8 Chunks and `borders` found 0 differences on 60 borders. No output mentioned the cave. The agent found the problem only because it read heights by itself, as the developer's request had pointed it at the cave, and it then described it wrongly: it said the mouth was still a tunnel, while the rays show no roof there either.
+**What the run reported:** `generate` wrote 8 Chunks and `borders` found 0 differences on 60 borders. No output mentioned the cave. The agent found the problem only because the prompt told it to report on the cave, so it read heights by itself, and it then described it wrongly: it said the mouth was still a tunnel, while the rays show no roof there either.
 
 ## Reproduce
 
