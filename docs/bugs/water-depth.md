@@ -62,8 +62,8 @@ Said on 2026-11-07, translated: the sand does not follow the bed, the ground fro
 
 On plugin 0.26.1, in Place1:
 
-- **The old ground is not there.** A voxel read of 42 columns across the River, at x 72 and 120, found no solid above the bed where water lies, and 56 raycasts ignoring water hit the planned bed, down to -6.7.
-- **The render was not holding old ground when looked at.** The first capture of the session already rebuilt the render, so the developer's state was not captured. A later write showed new materials in a capture about 1 s after `generate`, with no rebuild. So cause 2 is unlikely and not ruled out for a far camera.
+- **The old ground is not there.** A voxel read of 42 columns across the River, at x 72 and 120, found no solid above the bed where water lies, and 56 raycasts ignoring water hit ground no lower than -6.7, in line with those voxels. They were not compared with the plan one by one.
+- **The render was not holding old ground when looked at.** The first capture of the session already rebuilt the render, so the developer's state was not captured. A later write showed new materials in a capture taken seconds after `generate`, with no rebuild. So cause 2 is unlikely and not ruled out for a far camera.
 - **Cause 1 was real.** The bed was Sand at every depth.
 
 ## The change
