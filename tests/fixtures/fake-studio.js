@@ -7,6 +7,7 @@
 //   FAKE_STUDIO_CELLS=<n>        the terrain cells a place holds
 //   FAKE_STUDIO_IMPACT=<json>    what a change to a Landform would rewrite
 //   FAKE_STUDIO_INVALID=true     the plan fails validation
+//   FAKE_STUDIO_UNREACHABLE=<s>  Luau holding this text fails as Studio fails when it is too busy to answer
 const fs = require('fs');
 const readline = require('readline');
 
@@ -43,6 +44,10 @@ function call(name, args) {
   if (name === 'list_roblox_studios') {
     if (misses > 0) { misses -= 1; return text(JSON.stringify({ studios: [] })); }
     return text(JSON.stringify({ studios: (process.env.FAKE_STUDIO_PLACES || 'P').split(',').map((name) => ({ id: name, name })) }));
+  }
+  if (name === 'execute_luau' && process.env.FAKE_STUDIO_UNREACHABLE && args.code.includes(process.env.FAKE_STUDIO_UNREACHABLE)) {
+    luau(args.code);
+    return { isError: true, content: [{ type: 'text', text: 'Network action ExecuteLuau.runCode sent to DMN_ID_EDIT failed - Target is not reachable' }] };
   }
   if (name === 'execute_luau') return text(luau(args.code));
   if (name === 'screen_capture') return { content: [{ type: 'image', data: 'A'.repeat(20000) }] };

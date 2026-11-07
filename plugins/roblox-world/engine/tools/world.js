@@ -27,7 +27,7 @@ Create and write terrain
                                   keeping its seeds. Writes no terrain, so run comes next
   run [--remove-baseplate]        Whole cycle: sync, test, describe, generate every Chunk, verify, heights
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
-  remove <id> [--why <reason>]    Take a Landform, River or Lake out of the plan, with a River's Valley, write only
+  remove <id> [--why <reason>]    Take a Landform, River or Lake out of the plan, a River with its valley, write only
                                   the generated Chunks it touched and record the exact block in the history
   verify <i> <j>                  Rewrite one Chunk and prove the result is identical
 
@@ -301,28 +301,48 @@ const steps = {
     return text;
   },
 
-  // Takes a Landform, River or Lake out of the plan, writes the Chunks it touched and records it, so
-  // that no model copies its block twice. A plan invalid without it is put back before any write.
+  // Takes a Landform, River or Lake out of the plan, writes the Chunks it touched and records it, so that
+  // no model copies its block twice. Until the new plan is known to be valid, any failure puts the old one
+  // back. After that the history holds the block, so a failed write leaves only the write to repeat.
   async remove(studio, ctx, args) {
     const planFile = path.join(ctx.project, `${PLAN}.luau`);
     const before = readModule(planFile);
     const { text, taken } = plans.remove(before, args[0]);
     const ids = taken.map((block) => JSON.stringify(block.id)).join(', ');
-    const { rewrite, lockedReached } = JSON.parse(await studio.luau(`return ${OPS}.impact({ regionIds = { ${ids} } })`));
+    const { rewrite, lockedReached } = JSON.parse(await studio.luau(`return ${OPS}.impact({ removedIds = { ${ids} } })`));
     fs.writeFileSync(planFile, text);
-    await steps.sync(studio, ctx);
-    const described = await studio.luau(`return ${OPS}.describe()`);
+    let described;
+    try {
+      await steps.sync(studio, ctx);
+      described = await studio.luau(`return ${OPS}.describe()`);
+    } catch (error) {
+      fs.writeFileSync(planFile, before);
+      throw new Error(`Nothing was removed, and the plan is as it was. ${error.message}`);
+    }
     if (described.startsWith('INVALID PLAN')) {
       fs.writeFileSync(planFile, before);
       await steps.sync(studio, ctx);
       ctx.failed = true;
       return `Nothing was removed, since the plan would be invalid:\n${described}`;
     }
-    const why = typeof ctx.flags.why === 'string' ? ctx.flags.why : 'the developer asked for it.';
-    addHistory(ctx.project, plans.removalEntry(new Date().toISOString().slice(0, 10), why, taken, rewrite));
-    const written = rewrite.length ? await steps.generate(studio, ctx, rewrite.flatMap((key) => key.split(','))) : 'No generated Chunk to write';
-    const locked = lockedReached.length ? `\nLocked Chunks it reached, not written, so tell the developer: ${lockedReached.join(' ')}` : '';
-    return `Removed ${taken.map((block) => block.id).join(' and ')}, recorded in docs/world/history.md. Chunks: ${rewrite.join(' ') || 'none'}\n${written}${locked}`;
+    const names = taken.map((block) => block.id).join(' and ');
+    const lockedNote = lockedReached.length ? `\nLocked Chunks it reached, not written, so tell the developer: ${lockedReached.join(' ')}` : '';
+    const record = (written, unwritten) => addHistory(ctx.project, plans.removalEntry({
+      date: new Date().toISOString().slice(0, 10), why: whyOf(ctx.flags), taken, written, unwritten, locked: lockedReached,
+    }));
+    let result = 'No generated Chunk to write';
+    if (rewrite.length) {
+      const pairs = rewrite.flatMap((key) => key.split(','));
+      try {
+        result = await steps.generate(studio, ctx, pairs);
+      } catch (error) {
+        record([], rewrite);
+        ctx.failed = true;
+        return `Removed ${names} from the plan and recorded it, but its Chunks were not all written. ${error.message}\nTo finish, run: generate ${pairs.join(' ')} --place ${ctx.flags.place} --project ${ctx.project}${lockedNote}`;
+      }
+    }
+    record(rewrite, []);
+    return `Removed ${names}, recorded in docs/world/history.md. Chunks: ${rewrite.join(' ') || 'none'}\n${result}${lockedNote}`;
   },
 
   async borders(studio, ctx, args) {

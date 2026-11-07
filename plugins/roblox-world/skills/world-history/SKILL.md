@@ -7,7 +7,7 @@ The current state is the World Plan, the generation state and `describe`. Orient
 
 ## Removing something
 
-`world.js remove <id> --place <name> --project <dir> --why "<reason>"` takes it out of the World Plan with a River's Valley, writes the generated unlocked Chunks it touched and adds its entry, with the exact block. The history becomes the only place it remains, so the World Plan keeps no commented code, disabled flag or leftover reference. Done when it exits 0.
+`world.js remove <id> --place <name> --project <dir> --why "<reason>"` takes it out of the World Plan, a River with its valley, writes the generated unlocked Chunks it touched and adds its entry, with the exact block. The history becomes the only place it remains, so the World Plan keeps no commented code, disabled flag or leftover reference. Done when it exits 0.
 
 ## Adding an entry
 
