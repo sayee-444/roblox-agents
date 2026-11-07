@@ -105,7 +105,7 @@ What the next run is compared against. `agent create-fork`, 3 runs each, medians
 | 0.36.0: a yield every 0.25 s of work | 168 | 3 of 3 |
 | 0.37.0: a height does its costly part only near water | 121 | 3 of 3 |
 
-The map stayed the same on 0.37.0, measured two ways on `lab`. Every value `Shape.height` returns over the 144 Chunks gave the same fingerprint as on 0.36.0. The 49 Chunks with water, written by the engine of 0.33.0, passed `verify` on 0.37.0 with `identical=true` on all 49. The worst Chunk's heights went from 4.88 s to 2.06 s.
+The map stayed the same on 0.37.0, measured two ways on `lab`. Every value `Shape.height` returns over the 144 Chunks gave the same fingerprint as on 0.36.0. The 49 Chunks with water, written by the engine of 0.33.0, passed `verify` on 0.37.0 with `identical=true` on all 49. The fingerprint also held against the engine of 0.33.0 on the test map, whose River has no banks, which `lab` cannot cover, and on a composed world with a fork. The worst Chunk's heights went from 4.88 s to 2.06 s.
 
 On 0.33.0 one `edit` passed its limit of 12 tool calls, and two lost a call to `python`, which this computer does not have. Each run wrote the River's block twice by hand, once to take it out of the plan and once into the history.
 
