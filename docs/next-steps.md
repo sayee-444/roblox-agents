@@ -35,7 +35,7 @@ Plugin 0.14.0 gained little because its template let every run write points the 
 
 ## Open defects
 
-- **Banks:** `banks` and `depthVary` on plugin 0.28.0 are measured in tests and voxels on `test-map-x2`, which is now 144 Chunks. On that map the River's bed ranged from +11 to -81 and most dry slopes stayed under 0.3, with 0.83 where three Rivers meet. The developer has not judged the look. Sand stays wide on a large River. Water still shows a saw tooth where voxels meet a very gentle shore.
+- **Banks:** `banks` and `depthVary` on plugin 0.28.0 are measured in tests and voxels on `test-map-x2`, which is now 144 Chunks. Read at 30 stations along the River's legs, one of which missed the water: its bed ranged from +14 to -80, and the steepest dry slope on one side stayed under 0.3 at 27 stations, with 0.39 at one and about 0.8 at the two where three Rivers meet. The developer has not judged the look. Sand stays wide on a large River. Water still shows a saw tooth where voxels meet a very gentle shore.
 - **Open cave:** a cave stays carved as an open trench after the ground over it moves, and nothing reports it. Evidence in `docs/bugs/open-cave.md` and #22, design in #30.
 - **Empty listing of places:** Studio lists no place for about 3 s when a command starts right after another ends, in 14 of 14 such runs on 2026-11-06, and the cause is unknown. `world.js` waits it out, for up to about 20 s, so a command with Studio closed takes that long to fail.
 - **River widths:** measured in tests, borders and cost on `test-map-x2`, and the developer approved its curves on 2026-11-07. New worlds start with `bendWiden` 0.5, which each River can change, and a plan that leaves it out gets 0.
