@@ -122,4 +122,6 @@ The transcript of a session is the record. A skill that loaded and an engine com
 
 Nothing has gone into deep water in Play or walked a Shore. Nothing has walked or dug on ground with `floorY` at 0, or seen the underside of a map from below. Streaming, play mode and phones. What the render rebuild does to a place with scripts, since Play runs them. A character walking a cave. The tests under Lute. Any system other than Windows. The guard's approval window in an interactive session. Opening a World Snapshot from a command.
 
+`remove` when Studio fails partway has run only against the fake Studio of the tests. `scale` followed by `run` has run on the test map, and not on `lab`. A session's `effort` was measured on `edit` and `create-fork`, and not on a plan the model composes or on debugging.
+
 Measured on 2026-11-07: `lab` at 144 Chunks saves to a place file of 4.66 MB. On Haiku, a headless agent resumed with `--resume` keeps its context and answered in 2.5 s, and plugin hooks run under `--setting-sources project`, since a headless agent's `world.js wipe --confirm` was denied there.
