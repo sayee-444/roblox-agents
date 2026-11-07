@@ -27,6 +27,8 @@ Create and write terrain
                                   keeping its seeds. Writes no terrain, so run comes next
   run [--remove-baseplate]        Whole cycle: sync, test, describe, generate every Chunk, verify, heights
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
+                                  run and generate stop when a world that has written nothing meets a place
+                                  holding terrain. --over-terrain writes over it, on the developer's word
   remove <id> [--why <reason>]    Take a Landform, River or Lake out of the plan, a River with its valley, write only
                                   the generated Chunks it touched and record the exact block in the history
   verify <i> <j>                  Rewrite one Chunk and prove the result is identical
@@ -633,6 +635,16 @@ Newest first: the date, the decision and why it was made.
   return `World started in ${project}, seed ${seed}. Write src/world/plan.luau from this template, in one go:\n\n${fillTemplate(seed)}`;
 }
 
+// A world that has written nothing cannot have written what the place holds, which may be another world or a
+// game's map. Checked before any step, so a refusal costs no sync and no test.
+async function refuseOtherTerrain(studio, ctx) {
+  if (ctx.project === ENGINE || ctx.flags['over-terrain'] !== undefined) return;
+  const { generated } = plans.stateFacts(readIfThere(path.join(ctx.project, `${STATE}.luau`)));
+  if (generated.length) return;
+  const cells = Number(await studio.luau('return workspace.Terrain:CountCells()'));
+  if (cells > 0) throw new Error(`${ctx.flags.place} already holds ${cells.toLocaleString('en-US')} terrain cells that this world did not write, so nothing was written. It may be another world or a game's map. Tell the developer, and only on their word run this again with --over-terrain, which replaces the terrain in this world's Chunks and leaves the rest.`);
+}
+
 async function main() {
   const { flags, positional } = parseArgs(process.argv.slice(2));
   const [command, ...args] = positional;
@@ -668,6 +680,7 @@ async function main() {
   const studio = new Studio();
   try {
     await studio.connect(flags.place);
+    if (['run', 'generate'].includes(command)) await refuseOtherTerrain(studio, ctx);
     const started = Date.now();
     for (const name of [...new Set(order)]) {
       if (ctx.failed && ['generate', 'borders', 'verify', 'heights', 'capture'].includes(name)) {

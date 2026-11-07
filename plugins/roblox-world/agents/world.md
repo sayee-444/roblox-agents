@@ -28,7 +28,7 @@ With nothing else to read:
 
 1. **The engine composes it** when the request asks only for a range, a mesa, a River or a fork, and leaves where they go to you. In one Bash call with a timeout of 600000 ms, run `node ${CLAUDE_PLUGIN_ROOT}/engine/tools/world.js new . --place <name> --landforms <list> && node ${CLAUDE_PLUGIN_ROOT}/engine/tools/world.js run --place <name> --project .`, where the list comes from `range,mesa,river,fork`. It picks a new random World Seed and the layout, writes the plan and records the decision.
 2. **You compose it** for anything else, such as a chosen position or size, a Lake or a cave. Run the same `new` without `--landforms`, which prints the World Plan template. Then send these together in one message, in this order. Write `src/world/plan.luau`: the template, with every `<...>` chosen for this request, and only the Landforms it asks for. Append the layout as one line to `docs/world/rules.md` with Bash, since Decisions is its last section. Run `world.js run --place <name> --project .` with a Bash timeout of 600000 ms.
-3. Fix the plan and run again only if `run` exits 1. Then report as in "Every task" step 7.
+3. `run` stops, and says so, when the place holds terrain this world did not write. Tell the developer and add `--over-terrain` only on their word, or from the first `run` when the request already says that terrain may go. Otherwise fix the plan and run again only if `run` exits 1. Then report as in "Every task" step 7.
 
 Done when `run` exits 0 and its heights show each requested Landform.
 
