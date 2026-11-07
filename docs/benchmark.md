@@ -34,6 +34,8 @@ To try a technique before deciding on it, add `--label <name>`. Its runs form a 
 | `costUsd` | Claude Code's estimate. It swings with what is already cached: three equal runs cost 3 to 8 cents | Estimate |
 | `context.*` | The first request, split into parts | Estimate, at 4 characters per token |
 
+Measured on 2026-11-07: across 26 recorded agent runs, `durationSec` follows `output` most closely (R² 0.851), then `requests` (0.734), `tokensSent` (0.733), `thinking` (0.637) and `contextStart` (0.562). Over 49 requests of one Opus session, model time was 111 output tokens per second plus 1.11 s per request (R² 0.957), and context size explained none of it (R² 0.001). So a faster run comes mostly from the model writing and reasoning less. Whether a smaller context makes it write less was not measured.
+
 The parts show where to cut:
 
 | Part | Is | Who controls it |

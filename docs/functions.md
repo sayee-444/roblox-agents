@@ -41,6 +41,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 
 | Ask for | What answers | Status |
 |---|---|---|
+| Load a Test World | Open the World Snapshot its `docs/world/history.md` names, which generates nothing. `docs/world/rules.md` says what to do when there is none | Built |
 | What exists now | `describe`, the World Plan and the generation state | Measured |
 | What changed, and why | `docs/world/history.md`, through `world-history` | Measured |
 | How high the ground is at one spot | `height <x> <z>` | Measured |

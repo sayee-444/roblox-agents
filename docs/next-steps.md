@@ -6,7 +6,7 @@ One agent, `world`, that creates a world, edits it and recovers its context, thr
 
 ## Order
 
-Pending work lives in GitHub issues, each with its spec: `gh issue list`. The developer chooses what follows, and on 2026-11-06 left this order:
+Pending work lives in GitHub issues, each with its spec: `gh issue list`. The developer chooses what follows. On 2026-11-07 they put optimization first: reasoning time, tokens and generation, starting by measuring the current agent, in an issue opened after PR #51. On 2026-11-06 they had left this order:
 
 1. #32: Lakes that are not round.
 2. #30: the cave system, one delivery at a time, each only on the developer's order. It closes #22.
@@ -15,8 +15,7 @@ Not yet placed in that order: #33, the detail layer, which the developer chose e
 
 ## Waiting on the developer
 
-- **`memory: user`.** Measured on 2026-11-06 with `--label no-memory`, 3 runs against 3 on plugin 0.13.0. Without the field, the starting context falls from 15,588 to 11,366 tokens (27%), and `recover` sends 25% fewer tokens at about the same cost, because cached tokens are cheap. The agent's memory holds 3 lines, and removing the field ends its memory across sessions.
-- **The place for #34.** `create`, `edit`, `engine` and `check` write terrain, so they need a disposable place.
+- **`memory: user`.** Measured on 2026-11-06 with `--label no-memory`, 3 runs against 3 on plugin 0.13.0. Without the field, the starting context falls from 15,588 to 11,366 tokens (27%), and `recover` sends 25% fewer tokens at about the same cost, because cached tokens are cheap. The agent's memory file is empty, 0 bytes on 2026-11-07, and removing the field ends its memory across sessions.
 
 ## Speed of a new world
 
@@ -33,10 +32,41 @@ Plugin 0.14.0 gained little because its template let every run write points the 
 
 `edit` on 0.18.0, 3 runs: 47 s, 6 requests, 117,551 tokens, 3 of 3 passed. Plugin 0.13.0 passed 2 of 3 at about 124,000 tokens, and its time was not kept. The one-pass rule first made 2 of 3 `edit` runs skip `world-history`, which 0.18.0 fixed by loading it before the plan is edited. `recover` was run once, on 0.17.0, and passed.
 
+## Speed of generating
+
+Measured on 2026-11-07 on `lab`, rewriting four Chunks with the same data, in seconds:
+
+| Chunk | Heights | Voxel arrays | Clear | Write | Whole Chunk | Voxels |
+|---|---|---|---|---|---|---|
+| -3,-5 | 0.31 | 0.02 | 0.04 | 0.01 | 0.48 | 327,680 |
+| -5,-1 | 1.81 | 0.01 | 0.05 | 0.01 | 1.98 | 278,528 |
+| 1,2 | 2.31 | 0.02 | 0.05 | 0.02 | 2.50 | 802,816 |
+| 0,0 | 3.18 | 0.01 | 0.05 | 0.01 | 3.37 | 409,600 |
+
+Writing is about 0.01 s and the voxel count does not explain the time. Calculating heights does: `Chunk.columns` works out 130 x 130 heights without a yield, and -3,-5, which holds no water, took the least. The time Studio then takes to build the render was not measured.
+
+The developer asked whether a seed could replace these calculations. Seeds already supply the detail, and the time goes to following what the World Plan declares, so a seed would probably not remove it. That is reasoning, since no seed was measured.
+
+A larger map was measured on plugin 0.31.0 and then undone in #50: 576 Chunks generated in 874 s, a mean of 1.50 s and a maximum of 13.85 s per Chunk, as a background job in Studio that a second call polled, with no failures.
+
 ## Open defects
 
 - **Banks:** `banks` and `depthVary` on plugin 0.28.0 are measured in tests and voxels on `lab`, which is now 144 Chunks. Read at 30 stations along the River's legs, one of which missed the water: its bed ranged from +14 to -80, and the steepest dry slope on one side stayed under 0.3 at 27 stations, with 0.39 at one and about 0.8 at the two where three Rivers meet. The developer has not judged the look. Sand stays wide on a large River. Water still shows a saw tooth where voxels meet a very gentle shore. Needles between close passes of a River are filled by `smooth`, and thin straight ridges can remain where the fill changes between its sample points. Filling makes a River Chunk take about 5 s, up from about 0.6 s. On plugin 0.29.0 all 144 Chunks generated in 161 s and Chunk 0,1 rewrote identical. On 2026-11-07 all 264 borders of that terrain were compared, 4,224,000 voxels with 0 mismatches, in about 8.7 minutes through a temporary background job, and a control with another World Seed in memory found mismatches on the one border it tried. The look of the bed was judged from one capture and by the developer, not along every River.
-- **`borders` on heavy Chunks:** since plugin 0.30.0 `run` and `check` leave it out, and it runs only when the agent gives a reason and the developer agrees (#47). On `lab` it fails with `Target is not reachable` on Chunks such as -5,-1, on every try that day, while the same borders pass in a background job in Studio. With test code that touches no terrain, a call that blocks for 2 s or more between yields failed in 4 of 6 cases, and blocks of up to 1 s passed in 3 of 3. Some of those cases may have overlapped, so the exact rule is not known. The code keeps running after the error, and `Studio.luau` then retries it, which probably caused the freeze seen earlier. On a large map, run it as a background job and poll, or one Chunk at a time without retries.
+- **`borders` on heavy Chunks:** since plugin 0.30.0 `run` and `check` leave it out, and it runs only when the agent gives a reason and the developer agrees (#47). On `lab` it fails as the next defect says, while the same borders pass in a background job in Studio.
+- **`Target is not reachable` on long Studio calls:** this reaches more than `borders`. On `lab` at 144 Chunks, measured on 2026-11-07, `run` fails in one call, `generate` of rows -5 to -2 passes at 6 to 7 s each and row -1 fails, `generate` of one Chunk per call passed 96 of 96 in 513 s, and `verify 0 0` fails while the same code passes in a thread that a second call polls. On plugin 0.29.0 the same map passed in one call, in 161 s. The World Plan and the code that generates are the same today apart from names, so what differs lies outside them, and it was not found. The table below used code that touches no terrain, with one call at a time and no retry. Neither the total time nor one long block decides it: failures came from blocks of several seconds with pauses between them, in calls of about 8 s or more. That rests on few repetitions, and Studio's internals are unknown. The code keeps running after the error, and `luau` in `world.js` then retries once, so the work can run twice, which probably caused the freeze seen earlier. Until this is fixed, write River Chunks one per call. A failed `verify` says nothing about the map.
+
+  | Block between yields | Result |
+  |---|---|
+  | None, a 15 s wait | Passed |
+  | 0.5 s, 30 times | Passed |
+  | 1 s, 15 times | Passed 2 of 2 |
+  | 2 s, 8 times | Failed 2 of 2, at 10.0 s and 8.0 s, while the code ran on to 16 s |
+  | 3 s, 4 times | Failed at 9.0 s, in an earlier session |
+  | 4 s, 4 times | Passed |
+  | 8 s, once | Passed |
+  | 8 s, twice | Failed 1 of 2 |
+  | 16 s, once | Passed |
+
 - **Open cave:** a cave stays carved as an open trench after the ground over it moves, and nothing reports it. Evidence in `docs/bugs/open-cave.md` and #22, design in #30.
 - **Empty listing of places:** Studio lists no place for about 3 s when a command starts right after another ends, in 14 of 14 such runs on 2026-11-06, and the cause is unknown. `world.js` waits it out, for up to about 20 s, so a command with Studio closed takes that long to fail.
 - **River widths:** measured in tests, borders and cost on `lab`, and the developer approved its curves on 2026-11-07. New worlds start with `bendWiden` 0.5, which each River can change, and a plan that leaves it out gets 0.
@@ -67,7 +97,9 @@ Plugin 0.14.0 gained little because its template let every run write points the 
 
 ## Not verified
 
-Nothing has gone into deep water in Play or walked a Shore. How large a place 144 Chunks makes. Nothing has walked or dug on ground with `floorY` at 0, or seen the underside of a map from below. Place file size, streaming, play mode and phones. What the render rebuild does to a place with scripts, since Play runs them. An agent run on plugins 0.20.0 to 0.22.0, which were measured piece by piece. A character walking a cave. The tests under Lute. Any system other than Windows. The guard's approval window in an interactive session. Whether plugin hooks run under `--setting-sources project`, which the benchmark uses.
+Nothing has gone into deep water in Play or walked a Shore. How large a place 144 Chunks makes. Nothing has walked or dug on ground with `floorY` at 0, or seen the underside of a map from below. Place file size, streaming, play mode and phones. What the render rebuild does to a place with scripts, since Play runs them. An agent run on plugins 0.20.0 to 0.22.0, which were measured piece by piece. A character walking a cave. The tests under Lute. Any system other than Windows. The guard's approval window in an interactive session. Opening a World Snapshot from a command. An agent run on any plugin after 0.18.0, whose changes may have slowed it (#34).
+
+Measured on 2026-11-07, on Haiku: a headless agent resumed with `--resume` keeps its context, and answered in 2.5 s. Plugin hooks run under `--setting-sources project`, since a headless agent's `world.js wipe --confirm` was denied there.
 
 ## Ideas held for later
 
