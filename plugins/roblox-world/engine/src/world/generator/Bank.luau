@@ -45,24 +45,31 @@ function Bank.shoreAt(banks, varied: number): number
 	return math.max(1, Bank.shore(banks) * varied)
 end
 
+-- Studs the ground would fall across `span` at `slope`, never so few that the water has no depth.
+local function fall(slope: number, span: number): number
+	return math.max(2 * MIN_DEPTH, slope * span)
+end
+
 -- How deep the deepest line gets, and the power of the curve that falls to it. The ground meets the
 -- water at `slope`, rise over run, and the deepest line lies `span` studs in, so a gentle slope reaches
--- only so deep. `ceiling`, the depth the World Plan asks for, is the most it may reach.
-function Bank.deepest(slope: number, span: number, ceiling: number): (number, number)
-	local fall = math.max(2 * MIN_DEPTH, slope * span)
-	local deepest = math.max(MIN_DEPTH, math.min(ceiling, fall / 2))
-	return deepest, fall / deepest
+-- only so deep. `moved` moves that depth by the pools and rough bed the World Plan asks for, as a
+-- multiple of it, and `ceiling`, the depth the World Plan asks for, is the most it may reach.
+function Bank.deepest(slope: number, span: number, ceiling: number, moved: number): (number, number)
+	local drop = fall(slope, span)
+	-- Never past `drop` either, or the curve would come to a point at the deepest line.
+	local deepest = math.max(MIN_DEPTH, math.min(ceiling, drop / 2 * moved, drop))
+	return deepest, drop / deepest
 end
 
 -- The slope at the water's edge of a half of the water whose deepest line lies `reach` studs in, where
 -- the water as a whole meets its ground at `slope` across `span`. Equal to the curve's own slope there.
 function Bank.edgeSlope(slope: number, span: number, reach: number): number
-	return math.max(2 * MIN_DEPTH, slope * span) / reach
+	return fall(slope, span) / reach
 end
 
 -- Studs under the water `inside` studs in from its edge, on a half that reaches its deepest line, `deepest`
 -- studs down, `reach` studs in. The curve keeps the slope of the ground at the edge and flattens into the
--- deepest line, and `rough` adds small slopes that leave both ends alone.
+-- deepest line, and `rough` adds small slopes that leave both ends alone and never pass the deepest.
 function Bank.depth(banks, seed: number, x: number, z: number, inside: number, reach: number, deepest: number, power: number): number
 	local f = math.clamp(inside / reach, 0, 1)
 	local depth = deepest * (1 - (1 - f) ^ power)
@@ -70,13 +77,13 @@ function Bank.depth(banks, seed: number, x: number, z: number, inside: number, r
 		local rough = math.min(banks.rough, deepest * 0.5)
 		depth += rough * wave(x / ROUGH_SCALE, z / ROUGH_SCALE, seed + 5) * 16 * f * f * (1 - f) * (1 - f)
 	end
-	return depth
+	return math.min(depth, deepest)
 end
 
 -- Studs above the water `out` studs from its edge, where the ground leaves the water at `edgeSlope` and
--- levels out `rise` studs up, at the ground around.
-function Bank.rise(out: number, edgeSlope: number, rise: number): number
-	return rise * (1 - math.exp(-edgeSlope * out / rise))
+-- levels out `height` studs up, at the ground around.
+function Bank.rise(out: number, edgeSlope: number, height: number): number
+	return height * (1 - math.exp(-edgeSlope * out / height))
 end
 
 -- A depth moved by `vary`, a fraction of itself, into pools and shallows. `u` and `v` are positions

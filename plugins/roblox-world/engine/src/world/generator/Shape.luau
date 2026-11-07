@@ -15,8 +15,10 @@ local BANK_WIDTH = 20 -- the half width whose bank the sand band of Materials is
 local ROCK_UNDER = 16 -- studs of rock kept under any ground that goes below the plan's floor
 local BOWL_FROM = 10 -- depth below the water where a River's bed stops being flat and becomes a bowl
 local BED_SCALE = 45 -- studs for one swell of a rough bed
+local FLOOR_BUMP = 2 -- studs a valley's floor rises and falls in bumps
 local DEFAULT_SIDES = 0.3 -- medium Valley Sides, rise over run at the water's edge
 local PASS_FADE = 40 -- studs over which another pass of a River fades out at the edge of its reach
+local PASS_SPREAD = 0.5 -- further studs of that fade per stud from the nearest pass, so away from the water it is gentle
 local RING = 32 -- spots on the ground around a Lake where its slope is measured
 local GENTLEST = 0.02 -- the gentlest ground that comes down to a Lake, rise over run
 local BAR_GAIN = 2 -- how far a bend moves the deepest line out, as a fraction of the half width, per unit of half width over radius
@@ -69,7 +71,7 @@ local function prepare(plan)
 				carveLimit = math.min(r.halfWidth, carveReach),
 				effectReach = if banks then carveReach + Bank.smooth(banks) else edge * 1.5,
 				-- Another pass of the River counts within this, past its water and its Shore.
-				passReach = if banks then river.width.widest * (1 + WIDTH_NOISE) + Bank.widestShore(banks) + PASS_FADE else 0,
+				passReach = if banks then river.width.widest * (1 + WIDTH_NOISE) + Bank.widestShore(banks) + PASS_FADE else nil,
 				sides = if type(sides) == "table" then Route.along(river.def, sides) else function()
 					return sides
 				end,
@@ -110,9 +112,9 @@ local function halfWidthAt(v, s: number): number
 	return v.river.width.at(s) * (1 + WIDTH_NOISE * Noise.perlin(s / 120, 0.5, v.def.seed + 1))
 end
 
--- How far a River without banks lowers the valley floor at this spot, then its half width there and how
--- far out its water can reach. `d` and `s` are the spot's distance to the River's line and along it.
-local function bedCarve(v, d: number, s: number, x: number, z: number): (number, number, number)
+-- How far a River without banks lowers the valley floor at this spot, then how far out its water can
+-- reach. `d` and `s` are the spot's distance to the River's line and along it.
+local function bedCarve(v, d: number, s: number, x: number, z: number): (number, number)
 	local def, rv = v.def, v.river
 	local hw = halfWidthAt(v, s)
 	local bed = bedAt(v, s, x, z)
@@ -120,7 +122,7 @@ local function bedCarve(v, d: number, s: number, x: number, z: number): (number,
 	-- The banks and the water's edge come from the first BOWL_FROM studs. Anything deeper is a bowl
 	-- under them, deepest on the River's line, so a shallow River keeps its shape.
 	local shelf = rv.def.waterLevel - BOWL_FROM
-	return c * (def.floorY - math.max(bed, shelf)) + (1 - smoothstep(0, hw, d)) * math.max(0, shelf - bed), hw, hw * 1.5
+	return c * (def.floorY - math.max(bed, shelf)) + (1 - smoothstep(0, hw, d)) * math.max(0, shelf - bed), hw * 1.5
 end
 
 -- The ground of one pass of a River with banks at a spot. Its Valley Side falls from `around`, the ground
@@ -136,37 +138,40 @@ local function valleySide(v, d: number, s: number, side: number, x: number, z: n
 	local slope = v.sides(s) * varied
 	local across = side * d
 	-- Where the deepest line lies across the water, on the side the line turns away from.
-	local deep = -hw * math.clamp(BAR_GAIN * hw * rv.bend.at(s), -BAR_MOST, BAR_MOST)
-	local bar = if across * deep < 0 then BAR_SAND * math.abs(deep) else 0
+	local deepLine = -hw * math.clamp(BAR_GAIN * hw * rv.bend.at(s), -BAR_MOST, BAR_MOST)
+	local bar = if across * deepLine < 0 then BAR_SAND * math.abs(deepLine) else 0
 	local inside, reach
-	if across >= deep then
-		inside, reach = hw - across, hw - deep
+	if across >= deepLine then
+		inside, reach = hw - across, hw - deepLine
 	else
-		inside, reach = hw + across, hw + deep
+		inside, reach = hw + across, hw + deepLine
 	end
 	local waterTo = math.max(hw * 1.5, hw + Bank.shoreAt(banks, varied))
 	if inside > 0 then
-		local deepest, power = Bank.deepest(slope, hw, level - bedAt(v, s, x, z))
+		local asked = rv.depth.at(s)
+		local deepest, power = Bank.deepest(slope, hw, asked, (level - bedAt(v, s, x, z)) / asked)
 		return level - Bank.depth(banks, def.seed, x, z, inside, reach, deepest, power), waterTo, bar
 	end
-	local up = Bank.rise(-inside, Bank.edgeSlope(slope, hw, reach), around - level)
+	local above = Bank.rise(-inside, Bank.edgeSlope(slope, hw, reach), around - level)
 	-- A bump of the valley floor fades out towards the water, or it would leave puddles.
-	return level + up + 2 * Noise.perlin(x / 50, z / 50, def.seed) * smoothstep(0, 8, up), waterTo, bar
+	return level + above + FLOOR_BUMP * Noise.perlin(x / 50, z / 50, def.seed) * smoothstep(0, 8, above), waterTo, bar
 end
 
 -- The ground of a River with banks at a spot, the lowest of every pass near it: going by the nearest pass
--- alone, width and depth would jump halfway between two passes, and that step reads as a cliff. Another
--- pass fades out at the edge of its reach, so it joins without a step. `near` is the nearest pass's ground.
-local function riverGround(v, d: number, s: number, x: number, z: number, around: number, varied: number, near: number): number
-	local reach = v.passReach
-	local lift = around + 2 - v.river.def.waterLevel
+-- alone, width, depth and steepness would jump halfway between two passes, and that step reads as a cliff.
+-- Another pass fades out towards the edge of its reach, rising to the nearest pass's ground, `nearest`,
+-- so it joins without a step. Near the water the fade lies past the widest shore, and away from it, it
+-- starts at the nearest pass and widens with the distance, where a short one would make a ramp.
+local function riverGround(v, d: number, s: number, x: number, z: number, around: number, varied: number, nearest: number): number
+	local from = math.max(v.passReach - PASS_FADE, d)
+	local reach = math.max(v.passReach, d + PASS_FADE + d * PASS_SPREAD)
 	local found = Geo.stretches2(v.river.poly, x, z, reach)
-	local low = near
+	local low = nearest
 	for i = 1, #found, 3 do
 		-- The nearest pass is one of these, and its ground is already known.
 		if found[i] ~= d or found[i + 1] ~= s then
 			local ground = valleySide(v, found[i], found[i + 1], found[i + 2], x, z, around, varied)
-			low = math.min(low, ground + lift * smoothstep(reach - PASS_FADE, reach, found[i]))
+			low = math.min(low, ground + math.max(0, nearest - ground) * smoothstep(from, reach, found[i]))
 		end
 	end
 	return low
@@ -278,7 +283,7 @@ local function land(P, plan, x: number, z: number): (number, number, number, num
 			-- Past BANK_WIDTH the sand band moves out with the bank, or it would end under the water.
 			riverD = math.min(riverD, math.max(0, d - math.max(0, width - BANK_WIDTH)))
 			local w = 1 - smoothstep(width + 20, def.halfWidth, d)
-			h += (def.floorY + 2 * Noise.perlin(x / 50, z / 50, def.seed) - h) * w
+			h += (def.floorY + FLOOR_BUMP * Noise.perlin(x / 50, z / 50, def.seed) - h) * w
 		end
 	end
 	-- A valley whose River has banks is its Valley Sides, which fall from the ground around towards the
@@ -294,12 +299,15 @@ local function land(P, plan, x: number, z: number): (number, number, number, num
 			v.varied = Bank.varied(banks, def.seed, x, z)
 			v.around = math.max(around, def.floorY)
 			local bar
-			v.near, v.waterTo, bar = valleySide(v, d, s, v.side, x, z, v.around, v.varied)
+			local nearest
+			nearest, v.waterTo, bar = valleySide(v, d, s, v.side, x, z, v.around, v.varied)
+			v.ground = riverGround(v, d, s, x, z, v.around, v.varied, nearest)
 			-- On a shore, sand covers about half of it, so that grass comes down towards the water, and a
-			-- Point Bar is a beach.
+			-- Point Bar is sand.
 			riverD = math.min(riverD, math.max(0, d - math.max(0, width - BANK_WIDTH) - Bank.shoreAt(banks, v.varied) * 0.5 - bar))
-			local flatTo = width * (1 + WIDTH_NOISE) + math.max(20, Bank.widestShore(banks))
-			sided = math.min(sided, around + (v.near - around) * (1 - smoothstep(flatTo, def.halfWidth, d)))
+			-- From the widest the River gets, since a width taken here would change between two passes.
+			local flatTo = rv.width.widest * (1 + WIDTH_NOISE) + math.max(20, Bank.widestShore(banks))
+			sided = math.min(sided, around + (v.ground - around) * (1 - smoothstep(flatTo, def.halfWidth, d)))
 		end
 	end
 	if sided < math.huge then
@@ -313,7 +321,7 @@ local function land(P, plan, x: number, z: number): (number, number, number, num
 		if d < def.halfWidth and d < v.effectReach then
 			local banks = rv.def.banks
 			if banks then
-				local ground = riverGround(v, d, s, x, z, v.around, v.varied, v.near)
+				local ground = v.ground
 				low = math.min(low, ground)
 				if ground < rv.def.waterLevel and d < v.waterTo then
 					waterLevel = rv.def.waterLevel
@@ -322,7 +330,7 @@ local function land(P, plan, x: number, z: number): (number, number, number, num
 					smooth, smoothLevel = Bank.smooth(banks), rv.def.waterLevel
 				end
 			else
-				local depth, _, waterTo = bedCarve(v, d, s, x, z)
+				local depth, waterTo = bedCarve(v, d, s, x, z)
 				carve = math.max(carve, depth)
 				if h - depth < rv.def.waterLevel and d < waterTo then
 					waterLevel = rv.def.waterLevel
@@ -376,13 +384,11 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 			local d = math.sqrt((along / stretch) ^ 2 + (across * stretch) ^ 2)
 			d += math.clamp(Noise.fbm(x / 240, z / 240, def.seed, 2) * 2, -1, 1) * def.warp
 			if d < outer then
-				local beach = def.waterLevel + 3
-				local deep = smoothstep(0, 1, math.clamp((def.radius - d) / (def.radius * 0.4), 0, 1))
 				local bed = def.waterLevel - Bank.pools(def.waterLevel - def.bedY, def.depthVary, def.seed, x, z)
 				if def.bedRough then
 					bed += def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
 				end
-				local target = beach + (bed - beach) * deep
+				local target
 				if def.banks then
 					-- The ground keeps the slope it comes down with under the water, and `bedY` is the deepest it may reach.
 					local slopes = P.lakeSlopes
@@ -390,11 +396,16 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 					local slope = slopes[def] * Bank.varied(def.banks, def.seed, x, z)
 					local inside = def.radius - d
 					if inside > 0 then
-						local deepest, power = Bank.deepest(slope, def.radius, def.waterLevel - bed)
+						local asked = def.waterLevel - def.bedY
+						local deepest, power = Bank.deepest(slope, def.radius, asked, (def.waterLevel - bed) / asked)
 						target = def.waterLevel - Bank.depth(def.banks, def.seed, x, z, inside, def.radius, deepest, power)
 					else
 						target = def.waterLevel + Bank.rise(-inside, Bank.edgeSlope(slope, def.radius, def.radius), math.max(1, h - def.waterLevel))
 					end
+				else
+					local beach = def.waterLevel + 3
+					local deep = smoothstep(0, 1, math.clamp((def.radius - d) / (def.radius * 0.4), 0, 1))
+					target = beach + (bed - beach) * deep
 				end
 				if target < h then
 					h += (target - h) * (1 - smoothstep(def.radius, outer, d))

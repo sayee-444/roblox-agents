@@ -216,16 +216,57 @@ return {
 		end
 	end,
 
-	["the water never reaches deeper than the World Plan asks"] = function(t)
-		local plan = riverPlan({ banks = { shore = 30 }, depths = { 10, 10, 10 } }, nil, { sides = 1.2 })
+	["the water never reaches deeper than the World Plan asks, whatever rough, depthVary and bedRough add"] = function(t)
+		local plain = riverPlan({ banks = { shore = 30 }, depths = { 10, 10, 10 } }, nil, { sides = 1.2 })
+		local varied = riverPlan({ banks = { shore = 30, rough = 4 }, depths = { 10, 10, 10 }, depthVary = 0.5, bedRough = 3 }, nil, { sides = 1.2 })
+		for _, plan in ipairs({ plain, varied }) do
+			local deepest = 0
+			for x = 100, 900, 25 do
+				for d = -48, 48, 2 do
+					deepest = math.max(deepest, WATER - ground(plan, x, d))
+				end
+			end
+			t.ok(deepest <= 10, "the deepest water is " .. deepest)
+			t.ok(deepest > 9, "and steep sides reach the depth asked: " .. deepest)
+		end
+		local lake = lakePlan({ banks = { rough = 6 }, depthVary = 0.4, bedRough = 10 })
+		lake.base = table.clone(shipped.base)
+		lake.base.mean = 110
 		local deepest = 0
-		for x = 100, 900, 25 do
-			for d = -48, 48, 4 do
-				deepest = math.max(deepest, WATER - ground(plan, x, d))
+		for x = 330, 570, 8 do
+			for z = -120, 120, 8 do
+				deepest = math.max(deepest, WATER - ground(lake, x, z))
 			end
 		end
-		t.ok(deepest <= 10, "the deepest water is " .. deepest)
-		t.ok(deepest > 9, "and steep sides reach the depth asked: " .. deepest)
+		t.ok(deepest <= WATER - -60, "the Lake's deepest water is " .. deepest .. " of " .. WATER - -60)
+	end,
+
+	["depthVary still makes pools and shallows along a River in a gentle valley"] = function(t)
+		local plan = riverPlan({ banks = { shore = 30 }, depthVary = 0.6 }, nil, { sides = 0.2 })
+		local low, high = math.huge, -math.huge
+		for x = 50, 950, 10 do
+			local h = ground(plan, x, 0)
+			low, high = math.min(low, h), math.max(high, h)
+		end
+		t.ok(high - low > 3, "the bed spans " .. (high - low) .. " studs")
+		t.ok(high < WATER, "and stays under the water: " .. high)
+	end,
+
+	["the ground has no step halfway between two passes of a River whose sides differ, away from the water"] = function(t)
+		-- Two legs 400 studs apart, gentle along the first and steep along the last, so the nearest pass
+		-- changes along z = 200, 200 studs from either.
+		local plan = riverPlan({ points = { { 0, 0 }, { 1000, 0 }, { 1000, 400 }, { 0, 400 } }, depths = { 20, 20, 20, 20 }, banks = { shore = 30, smooth = 0 } }, nil, { sides = { 0.1, 0.1, 0.9, 0.9 } })
+		t.eq(errorsOf(plan), "", "a sound plan")
+		for _, x in ipairs({ 300, 500, 700 }) do
+			local worst, at = 0, 0
+			for z = 120, 280, 2 do
+				local step = math.abs(ground(plan, x, z + 2) - ground(plan, x, z))
+				if step > worst then
+					worst, at = step, z
+				end
+			end
+			t.ok(worst < 1.5, "at " .. x .. " the ground moves " .. worst .. " in 2 studs at z " .. at)
+		end
 	end,
 
 	["sides can change along a River, deep where they are steep and shallow where they are gentle"] = function(t)

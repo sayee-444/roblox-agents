@@ -32,7 +32,7 @@ _Avoid_: ocean, sea
 
 **Banks**:
 How a River or Lake meets the land, from the ground around it down to its deepest line, falling as one curve with no break at the waterline: its Shore and its Shallows.
-_Avoid_: edges, sides
+_Avoid_: edges, walls
 
 **Shore**:
 The dry ground between the water and the ground around it.
@@ -44,14 +44,14 @@ _Avoid_: shelf, ford
 
 **Valley Side**:
 The ground of a valley that falls from its edge towards its River and keeps falling under the water. How steep it is decides how deep the River gets.
-_Avoid_: slope, wall
+_Avoid_: hillside, flank
 
 **Cut Bank**:
 The outside of a River's bend, where the bank is steep and the water deepest.
 _Avoid_: outer bank
 
 **Point Bar**:
-The inside of a River's bend, a gentle sandy beach where the water is shallow.
+The inside of a River's bend, where gentle sand runs down into shallow water.
 _Avoid_: inner bank, sandbar
 
 **Generator**:
