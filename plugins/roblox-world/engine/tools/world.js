@@ -56,6 +56,10 @@ const RENDER_WAIT_MS = Number(process.env.WORLD_RENDER_WAIT_MS || 5000);
 // After a write, a view from about 1,860 studs left the water near the Lake broken for over 60 s, and
 // one from about 965 studs did not, so a view farther than this asks the next look to rebuild the render.
 const FAR_VIEW_STUDS = 1000;
+// Studio sometimes lists no place for a few seconds while it is connected, which cost runs 20 to 40 s
+// of retries by the model. An empty listing is waited out, and a listing of other places is an answer.
+const LIST_TRIES = 20;
+const LIST_WAIT_MS = Number(process.env.WORLD_LIST_WAIT_MS || 1000);
 
 async function oneCapture(studio, id, camera, look) {
   const result = await studio.tool('screen_capture', { capture_id: id, camera_position: camera, look_at_position: look });
@@ -140,7 +144,12 @@ class Studio {
   async connect(place) {
     await this.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'world', version: '1' } });
     this.child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`);
-    const listed = JSON.parse((await this.request('tools/call', { name: 'list_roblox_studios', arguments: {} })).content[0].text);
+    let listed;
+    for (let tries = 1; tries <= LIST_TRIES; tries += 1) {
+      listed = JSON.parse((await this.request('tools/call', { name: 'list_roblox_studios', arguments: {} })).content[0].text);
+      if (listed.studios.length > 0) break;
+      if (tries < LIST_TRIES) await new Promise((resolve) => { setTimeout(resolve, LIST_WAIT_MS); });
+    }
     const match = listed.studios.filter((studio) => studio.name === place);
     if (match.length !== 1) {
       throw new Error(`Place "${place}" must be open exactly once. Open: ${listed.studios.map((s) => s.name).join(', ') || 'none'}`);

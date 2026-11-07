@@ -135,7 +135,7 @@ function withStudio(env, args, check) {
     const result = spawnSync(process.execPath, [cli, ...args, '--place', 'P', '--project', dir], {
       encoding: 'utf8',
       timeout: 15000,
-      env: { ...process.env, ...env, FAKE_STUDIO_LOG: log, WORLD_FAKE_STUDIO: fake, WORLD_RENDER_WAIT_MS: '1' },
+      env: { ...process.env, ...env, FAKE_STUDIO_LOG: log, WORLD_FAKE_STUDIO: fake, WORLD_RENDER_WAIT_MS: '1', WORLD_LIST_WAIT_MS: '1' },
     });
     const calls = fs.readFileSync(log, 'utf8').trim().split('\n').filter((line) => line !== 'execute_luau');
     check(result, calls);
@@ -203,4 +203,38 @@ test('a view from nearby leaves the render as it is', () => {
   withStudio({}, ['shot', 'near', '760', '250', '500', '1250', '110', '-320'], (_, calls) => {
     assert.ok(!calls.includes('mark render stale'));
   });
+});
+
+test('a command waits out an empty listing of places, which Studio sometimes gives while connected', () => {
+  withStudio({ FAKE_STUDIO_MISSES: '3' }, ['describe'], ({ status, stdout }, calls) => {
+    assert.strictEqual(status, 0, stdout);
+    assert.strictEqual(calls.filter((call) => call === 'list_roblox_studios').length, 4);
+  });
+});
+
+test('a command stops waiting when no place ever appears, and says so', () => {
+  withStudio({ FAKE_STUDIO_MISSES: '9999' }, ['describe'], ({ status, stderr }) => {
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /Open: none/);
+  });
+});
+
+test('another place being open is an answer, so a command stops at once and writes nothing', () => {
+  const dir = tempDir();
+  try {
+    fs.mkdirSync(path.join(dir, 'src/world'), { recursive: true });
+    for (const name of ['plan', 'state']) fs.writeFileSync(path.join(dir, `src/world/${name}.luau`), 'return {}\n');
+    const log = path.join(dir, 'calls.log');
+    const fake = path.resolve(__dirname, 'fixtures/fake-studio.js');
+    const { status, stderr } = spawnSync(process.execPath, [cli, 'describe', '--place', 'Other', '--project', dir], {
+      encoding: 'utf8',
+      timeout: 15000,
+      env: { ...process.env, FAKE_STUDIO_LOG: log, WORLD_FAKE_STUDIO: fake, WORLD_LIST_WAIT_MS: '1' },
+    });
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /Open: P/);
+    assert.deepStrictEqual(fs.readFileSync(log, 'utf8').trim().split('\n'), ['list_roblox_studios']);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

@@ -46,7 +46,7 @@ Cheap measures such as the slope spread and pits with no outflow can catch regre
 ## Open defects
 
 - **Open cave:** a cave stays carved as an open trench after the ground over it moves, and nothing reports it. See `docs/bugs/open-cave.md` and issue #22. Waiting for the developer to start it.
-- **`Open: none`:** `world.js` sometimes reports that no place is open while Studio is connected, and running it again works. It cost about 20 s and 40 s in two runs. It does not retry by itself, and the cause is unknown.
+- **Empty listing of places:** Studio lists no place for about 3 s when a command starts right after another ends, in 14 of 14 such runs on 2026-11-06, and the cause is unknown. `world.js` waits it out, for up to about 20 s, so a command with Studio closed takes that long to fail.
 - **Lake:** measured in voxels and tests on `exam-4`, and not yet judged by eye. A River's valley keeps its width up to the shore.
 - **Worlds the agent places by hand look alike:** on plugin 0.15.0, 3 of 3 put the range in the north, the River running west to east and the mesa in the east. `new --landforms` avoids this, and a request with chosen positions or a cave still goes through the template.
 - **Composed layouts:** seen as text and by tests only. Whether they look good is the developer's call, and the range favours the south over the north, 651 to 351 of 2,000 seeds.
