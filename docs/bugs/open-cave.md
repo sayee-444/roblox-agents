@@ -1,6 +1,6 @@
 # A cave left open after the ground over it moves
 
-Issue: [#22](https://github.com/sayee-444/roblox-agents/issues/22). Status: recorded on 2026-11-06, and not treated yet. The developer says when to start.
+Issue: [#22](https://github.com/sayee-444/roblox-agents/issues/22). Status: designed on 2026-11-06 in [#30](https://github.com/sayee-444/roblox-agents/issues/30), which decides what the options below only weighed. The developer says when to start.
 
 ![The cave as an open trench in the grass](../images/bug-open-cave.jpg)
 

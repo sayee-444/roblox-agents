@@ -47,6 +47,26 @@ Terrain generation runs in Studio. Whatever must run while people play, such as 
 
 Share one set of profiles across every area, including menus. Low-end phones are the baseline, and the developer tests real phones.
 
+## Caves
+
+Designed, with the delivery order, in [#30](https://github.com/sayee-444/roblox-agents/issues/30). See ADR 0007.
+
+| Term | Meaning |
+|---|---|
+| **Cave** | An underground passage declared in the World Plan |
+| **Branch** | A route that leaves another route of the same Cave |
+| **Mouth** | A place where a Cave opens to the outside |
+| **Breach** | A place where the ground no longer covers a Cave |
+| **Dormant Section** | A stretch of a Cave's route with no cover, kept in the plan and not carved, which returns if the ground returns |
+| **Sealed Cave** | A Cave with no Mouth, which is valid |
+| **World Floor** | The height above which the ground decides whether a Cave exists |
+| **Deep Rock** | Rock created only around a Cave below the World Floor |
+| **Cavern** | A chamber in the shape of half a spheroid |
+| **Sinkhole** | A dry opening in the roof of a Cave or Cavern, which does not remove it |
+| **Cenote** | A Sinkhole filled with water up to a chosen part of its depth, which acts as a natural body of water |
+| **Aquatic Cave** | A flooded Cave that leaves a River, Lake or Cenote underwater, and takes its water level |
+| **Water Vault** | The Cavern that joins an Aquatic Cave to a dry route, with air above the water |
+
 ## Engine facts
 
 Read 2026-11-05. Recheck before relying on them.
