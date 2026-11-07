@@ -45,11 +45,11 @@ function startContext({ shape, snapshot, listing, renderedChars }, firstRequest)
 }
 
 function measure(file) {
-  const lines = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean)
+  const parsed = fs.readFileSync(file, 'utf8').split('\n').filter(Boolean)
     .map((line) => { try { return JSON.parse(line); } catch { return null; } })
     .filter(Boolean);
-  const entries = lines.filter((entry) => entry.timestamp);
-  const request = lines.find((entry) => entry.message?.output_config?.effort);
+  const entries = parsed.filter((entry) => entry.timestamp);
+  const request = parsed.find((entry) => entry.message?.output_config?.effort);
   const time = (entry) => Date.parse(entry.timestamp);
   const start = time(entries[0]);
   const end = time(entries[entries.length - 1]);

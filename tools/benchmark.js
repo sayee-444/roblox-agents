@@ -4,7 +4,7 @@
 //
 //   node tools/benchmark.js cost                               Free: what the plugin adds to context
 //   node tools/benchmark.js engine --place <name>              No tokens, needs Studio: time per engine step
-//   node tools/benchmark.js agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3] [--model sonnet] [--effort <level>] [--effort <level>]
+//   node tools/benchmark.js agent <scenario|all> [--place <name>] [--label <technique>] [--runs 3] [--effort <level>]
 //        [--model sonnet] [--budget 2] [--keep <dir>]          Spends tokens: a real agent run, graded
 //   node tools/benchmark.js report                             Each measure's median, against the group before
 //
