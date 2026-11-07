@@ -1,3 +1,9 @@
+## 2026-11-07: Moved the loop and the ring to `loops`
+
+- **Why:** plugin 0.25.0 draws them from a radius and a turn, so the plan no longer lists each point. The shapes stay close to the ones the developer liked, and the ring is rounder, with 8 legs instead of 6.
+- **Chunks written:** all that the Valleys of `river` and `fork` touch.
+- **Restore:** in Git, the plan before this entry, and regenerate those Chunks.
+
 ## 2026-11-07: Tried two oxbow lakes
 
 - **Why:** the developer asked to see oxbow lakes as a quick test. Each is a short crescent River connected to nothing, with no engine change. The developer approved how they look.
