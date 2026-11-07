@@ -38,7 +38,7 @@ The developer judges the look in Studio or from captures, since passing measurem
 ## Asking and reporting
 
 - Edit files, including `.rbxl` places, without asking, and report what you did.
-- Create branches, commit, push branches, open pull requests and merge them once the checks below pass, and report what you did.
+- At the end of each issue or complete implementation, show the developer the changes and ask permission before committing, opening a pull request or merging. Propose any engine or plugin change the request did not ask for, and wait for the answer.
 - Ask first, naming the exact action, for a force push, a history rewrite, deleting a branch or repository, creating a repository, and any other action that is not an edit.
 - Look at what a file holds before overwriting it.
 - Mark what was measured apart from what was only read, and record what was not verified.
