@@ -5,6 +5,7 @@
 local Noise = require("./Noise")
 local Geo = require("./Geo")
 local Route = require("./Route")
+local Bank = require("./Bank")
 
 local Shape = {}
 local smoothstep = Geo.smoothstep
@@ -137,10 +138,16 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 			riverD = math.min(riverD, d)
 		else
 			local width = rv.width.at(s)
+			local banks = rv.def.banks
 			-- Past BANK_WIDTH the sand band moves out with the bank, or it would end under the water.
-			riverD = math.min(riverD, math.max(0, d - math.max(0, width - BANK_WIDTH)))
-			local w = 1 - smoothstep(width + 20, def.halfWidth, d)
-			local floor = def.floorY + 2 * Noise.perlin(x / 50, z / 50, def.seed)
+			-- On a shore, sand covers about half of it, so that grass comes down towards the water.
+			local sandOut = math.max(0, width - BANK_WIDTH) + (if banks then Bank.shoreAt(banks, def.seed, x, z) * 0.5 else 0)
+			riverD = math.min(riverD, math.max(0, d - sandOut))
+			local flatTo = if banks then width * (1 + WIDTH_NOISE) + math.max(20, Bank.widestShore(banks)) else width + 20
+			local w = 1 - smoothstep(flatTo, def.halfWidth, d)
+			local bump = 2 * Noise.perlin(x / 50, z / 50, def.seed)
+			-- A bump on a gentle shore would leave puddles, so it fades out towards the water.
+			local floor = def.floorY + (if banks then bump * smoothstep(width, flatTo, d) else bump)
 			h += (floor - h) * w
 		end
 	end
@@ -152,7 +159,7 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 		if d < def.halfWidth then
 			local hw = rv.width.at(s) * (1 + WIDTH_NOISE * Noise.perlin(s / 120, 0.5, def.seed + 1))
 			local c = 1 - smoothstep(hw * 0.4, hw, d)
-			local bed = rv.def.waterLevel - rv.depth.at(s)
+			local bed = rv.def.waterLevel - Bank.pools(rv.depth.at(s), rv.def.depthVary, def.seed, s, 80)
 			if rv.def.bedRough then
 				bed += rv.def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
 			end
@@ -160,8 +167,22 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 			-- under them, deepest on the River's line, so a shallow River keeps its shape.
 			local shelf = rv.def.waterLevel - BOWL_FROM
 			local depth = c * (def.floorY - math.max(bed, shelf)) + (1 - smoothstep(0, hw, d)) * math.max(0, shelf - bed)
+			local waterTo = hw * 1.5
+			local banks = rv.def.banks
+			if banks then
+				local inside = hw - d
+				local shore = Bank.shoreAt(banks, def.seed, x, z)
+				local aboveWater = def.floorY - rv.def.waterLevel
+				if inside > 0 then
+					local deepest = math.max(1, rv.def.waterLevel - bed)
+					depth = aboveWater + Bank.depth(banks, def.seed, x, z, inside, hw, deepest)
+				else
+					depth = aboveWater * (1 - smoothstep(0, shore, -inside))
+				end
+				waterTo = math.max(waterTo, hw + shore)
+			end
 			carve = math.max(carve, depth)
-			if h - depth < rv.def.waterLevel and d < hw * 1.5 then
+			if h - depth < rv.def.waterLevel and d < waterTo then
 				waterLevel = rv.def.waterLevel
 			end
 		end
@@ -183,11 +204,21 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 			if d < outer then
 				local beach = def.waterLevel + 3
 				local deep = smoothstep(0, 1, math.clamp((def.radius - d) / (def.radius * 0.4), 0, 1))
-				local bed = def.bedY
+				local bed = def.waterLevel - Bank.pools(def.waterLevel - def.bedY, def.depthVary, def.seed, x, z)
 				if def.bedRough then
 					bed += def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
 				end
 				local target = beach + (bed - beach) * deep
+				if def.banks then
+					local inside = def.radius - d
+					if inside > 0 then
+						local deepest = math.max(1, def.waterLevel - bed)
+						target = def.waterLevel - Bank.depth(def.banks, def.seed, x, z, inside, def.radius, deepest)
+					else
+						-- Rises clearly away from the water, or the waterline breaks into puddles.
+						target = def.waterLevel + 8 * math.clamp(-inside / (def.shore * 0.25), 0, 1)
+					end
+				end
 				if target < h then
 					h += (target - h) * (1 - smoothstep(def.radius, outer, d))
 				end

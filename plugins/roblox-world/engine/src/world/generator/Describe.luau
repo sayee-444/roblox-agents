@@ -5,6 +5,7 @@
 local Shape = require("./Shape")
 local Geo = require("./Geo")
 local Route = require("./Route")
+local Bank = require("./Bank")
 local Chunk = require("./Chunk")
 
 local Describe = {}
@@ -49,6 +50,50 @@ local function checkDepths(errors, label, rv)
 	if rv.bedRough ~= nil and not (isNum(rv.bedRough) and rv.bedRough >= 0 and shallowest and rv.bedRough < shallowest) then
 		table.insert(errors, label .. ": bedRough must be from 0 to below the shallowest depth")
 	end
+end
+
+local BANK_FIELDS = {
+	shore = { 1, math.huge },
+	shallows = { 0, math.huge },
+	shallowDepth = { 0, math.huge },
+	bedFlat = { 0, 0.9 },
+	steep = { 0.1, 10 },
+	rough = { 0, math.huge },
+	vary = { 0, 0.9 },
+}
+
+local function checkBanks(errors, label, def, isLake)
+	if def.depthVary ~= nil and not (isNum(def.depthVary) and def.depthVary >= 0 and def.depthVary <= 0.9) then
+		table.insert(errors, label .. ": depthVary must be from 0 to 0.9")
+	end
+	local banks = def.banks
+	if banks == nil then
+		return
+	end
+	if type(banks) ~= "table" then
+		table.insert(errors, label .. ": banks must be a table")
+		return
+	end
+	for field, value in pairs(banks) do
+		local range = BANK_FIELDS[field]
+		if not range then
+			table.insert(errors, label .. ": banks has no field " .. tostring(field))
+		elseif not (isNum(value) and value >= range[1] and value <= range[2]) then
+			table.insert(errors, label .. ": banks." .. field .. " must be from " .. range[1] .. " to " .. range[2])
+		end
+	end
+	if isLake and banks.shore ~= nil then
+		table.insert(errors, label .. ": a Lake's shore is its own field, not part of banks")
+	end
+end
+
+-- What a Valley must leave beside its River's widest point.
+local function shoreRoom(rv): number
+	local banks = rv.banks
+	if type(banks) ~= "table" or (banks.shore ~= nil and not isNum(banks.shore)) or (banks.vary ~= nil and not isNum(banks.vary)) then
+		return 20
+	end
+	return math.max(20, Bank.widestShore(banks))
 end
 
 local function checkLoops(errors, label, rv)
@@ -174,6 +219,7 @@ function Describe.validate(plan): { string }
 			table.insert(e, "river " .. tostring(rv.id) .. ": bedY must be below waterLevel")
 		end
 		checkDepths(e, "river " .. tostring(rv.id), rv)
+		checkBanks(e, "river " .. tostring(rv.id), rv, false)
 		-- Any error here already refuses the plan, so only a sound River is measured.
 		if #e == before then
 			widest[rv.id] = Route.width(rv).widest
@@ -181,6 +227,7 @@ function Describe.validate(plan): { string }
 	end
 	for _, lk in ipairs(plan.lakes or {}) do
 		local label = "lake " .. tostring(lk.id)
+		checkBanks(e, label, lk, true)
 		if ids[lk.id] then
 			table.insert(e, "duplicate id " .. tostring(lk.id))
 		end
@@ -243,8 +290,8 @@ function Describe.validate(plan): { string }
 			local rv = rivers[r.riverId]
 			if not rv then
 				table.insert(e, label .. ": unknown river " .. tostring(r.riverId))
-			elseif isNum(r.halfWidth) and widest[r.riverId] and r.halfWidth < widest[r.riverId] * 1.3 + 20 then
-				table.insert(e, label .. string.format(": halfWidth too small for its river, whose widest half width is %.1f", widest[r.riverId]))
+			elseif isNum(r.halfWidth) and widest[r.riverId] and r.halfWidth < widest[r.riverId] * 1.3 + shoreRoom(rv) then
+				table.insert(e, label .. string.format(": halfWidth too small for its river and shore, whose widest half width is %.1f", widest[r.riverId]))
 			elseif isNum(r.floorY) and r.floorY <= rv.waterLevel + 1 then
 				table.insert(e, label .. ": floorY must be above the water level")
 			end

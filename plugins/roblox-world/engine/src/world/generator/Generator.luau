@@ -5,6 +5,7 @@ return {
 	Noise = require("./Noise"),
 	Geo = require("./Geo"),
 	Route = require("./Route"),
+	Bank = require("./Bank"),
 	Shape = require("./Shape"),
 	Materials = require("./Materials"),
 	Chunk = require("./Chunk"),

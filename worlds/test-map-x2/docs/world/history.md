@@ -1,3 +1,9 @@
+## 2026-11-07: Made the world and its water larger, with parametrized banks
+
+- **Why:** the River read as a deep stream, its depth barely changed, the water fell straight from the shore, and hills stood around it.
+- **Chunks written:** all 144.
+- **Restore:** set `extent` to -2..3. Take each `points`, `center` and cave position back with (value + 256) / 2. Remove every `depthVary` and `banks`. Range `halfWidth` 170. Valleys' `floorY` 24 and `halfWidth`: valley 130, forkValley 90, oxbowValleyA 60, oxbowValleyB 60, branchValley 90. Loops' `radius`: river 110, fork 120. `meander`: river 40, fork 30, branch 30. `widths`: river 14 16 18 20 26 34, fork 6 10 12 14 20, branch 6 10 12 14 14, oxbowA 6 14 18 14 6, oxbowB 6 10 14 10 6. `depths`: river 10 14 24 36 44 50, fork 6 10 18 28 44, branch 4 6 8 10 10, oxbowA 4 10 16 10 4, oxbowB 4 8 12 8 4. River `bedRough` 3. Lake `radius` 170, `shore` 60, `warp` 20, `bedY` -50, `bedRough` 6. Then regenerate all Chunks. Chunks outside -2..3 stay until the developer orders a wipe.
+
 ## 2026-11-07: Made the deep water a bowl, with a thin wall under it
 
 - **Why:** the developer could see the bulge under the map and could not get into it, because the bed stopped at about -8 on 20 studs of ground. They also wanted sand near the surface and a real bed further down.

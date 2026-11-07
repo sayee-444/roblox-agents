@@ -1,13 +1,13 @@
 -- World Plan: declares what exists where. It wins over the seeds.
 -- Chunk (i, j) covers x in [i*512-256, i*512+256) and z in [j*512-256, j*512+256),
--- so indices -2..3 give 6 x 6 Chunks (3,072 x 3,072 studs), x and z from -1,280 to 1,792.
--- Doubled side of the engine's test map, same World Seed.
+-- so indices -5..6 give 12 x 12 Chunks (6,144 x 6,144 studs), x and z from -2,816 to 3,328.
+-- Started as a doubled side of the engine's test map, same World Seed, and doubled again for larger water.
 
 return {
 	worldSeed = 12345,
 	chunkSize = 512,
 	voxel = 4,
-	extent = { minX = -2, maxX = 3, minZ = -2, maxZ = 3 }, -- inclusive Chunk indices
+	extent = { minX = -5, maxX = 6, minZ = -5, maxZ = 6 }, -- inclusive Chunk indices
 	floorY = 0, -- ground stops here, and goes lower only under deep water or a cave
 	rockUnder = 8, -- a thin wall of rock under a deep bed, so that the bowl is open water and not a solid bulge
 
@@ -20,8 +20,8 @@ return {
 			id = "range",
 			kind = "mountain",
 			seed = 7001,
-			points = { { -1100, -800 }, { -600, -900 }, { -100, -760 }, { 450, -900 }, { 1000, -780 }, { 1500, -880 } },
-			halfWidth = 170,
+			points = { { -2456, -1856 }, { -1456, -2056 }, { -456, -1776 }, { 644, -2056 }, { 1744, -1816 }, { 2744, -2016 } },
+			halfWidth = 300,
 			height = 250,
 			ridgeScale = 150,
 			crestScale = 220,
@@ -31,7 +31,7 @@ return {
 			id = "mesa",
 			kind = "mesa",
 			seed = 7002,
-			center = { 1300, -100 },
+			center = { 2344, -456 },
 			radius = 60,
 			margin = 150,
 			levels = 5,
@@ -46,47 +46,47 @@ return {
 			kind = "valley",
 			seed = 7003,
 			riverId = "river",
-			halfWidth = 130,
-			floorY = 24,
+			halfWidth = 700,
+			floorY = 28,
 		},
 		{
 			id = "forkValley",
 			kind = "valley",
 			seed = 7005,
 			riverId = "fork",
-			halfWidth = 90,
-			floorY = 24,
+			halfWidth = 500,
+			floorY = 28,
 		},
 		{
 			id = "oxbowValleyA",
 			kind = "valley",
 			seed = 7008,
 			riverId = "oxbowA",
-			halfWidth = 60,
-			floorY = 24,
+			halfWidth = 300,
+			floorY = 28,
 		},
 		{
 			id = "oxbowValleyB",
 			kind = "valley",
 			seed = 7009,
 			riverId = "oxbowB",
-			halfWidth = 60,
-			floorY = 24,
+			halfWidth = 300,
+			floorY = 28,
 		},
 		{
 			id = "branchValley",
 			kind = "valley",
 			seed = 7007,
 			riverId = "branch",
-			halfWidth = 90,
-			floorY = 24,
+			halfWidth = 500,
+			floorY = 28,
 		},
 		{
 			-- Cave in the south-east, where the mesa stood before it moved.
 			id = "cave",
 			kind = "cave",
 			seed = 7004,
-			points = { { 1092, 60, 1250 }, { 1130, 60, 1250 }, { 1180, 60, 1262 }, { 1240, 60, 1250 } },
+			points = { { 1928, 60, 2244 }, { 2004, 60, 2244 }, { 2104, 60, 2268 }, { 2224, 60, 2244 } },
 			radius = 14,
 		},
 	},
@@ -94,64 +94,72 @@ return {
 	rivers = {
 		{
 			id = "river",
-			points = { { -1200, -150 }, { -850, -50 }, { -500, 100 }, { -150, 50 }, { 200, 250 }, { 450, 500 } },
-			loops = { { leg = 4, radius = 110, turn = 290, side = "right" } },
+			points = { { -2656, -556 }, { -1956, -356 }, { -1256, -56 }, { -556, -156 }, { 144, 244 }, { 644, 744 } },
+			loops = { { leg = 4, radius = 220, turn = 290, side = "right" } },
 			curve = 1,
-			meander = 40,
-			widths = { 14, 16, 18, 20, 26, 34 }, -- grows towards the Lake
+			meander = 80,
+			widths = { 30, 36, 44, 52, 64, 80 }, -- grows towards the Lake
 			bendWiden = 0.5,
-			depths = { 10, 14, 24, 36, 44, 50 }, -- below the water
-			bedRough = 3,
+			depths = { 12, 34, 18, 60, 30, 90 }, -- below the water
+			depthVary = 0.5,
+			banks = { shore = 50, shallows = 30, shallowDepth = 4, bedFlat = 0.2, steep = 1.6, rough = 3, vary = 0.6 },
+			bedRough = 6,
 			waterLevel = 20,
 		},
 		{
 			-- Fork: leaves the River at (-500, 100) and also ends in the Lake.
 			id = "fork",
-			points = { { -500, 100 }, { -420, 450 }, { -100, 800 }, { 250, 880 }, { 420, 760 } },
-			loops = { { leg = 2, radius = 120, turn = 360, side = "right" } },
+			points = { { -1256, -56 }, { -1096, 644 }, { -456, 1344 }, { 244, 1504 }, { 584, 1264 } },
+			loops = { { leg = 2, radius = 240, turn = 360, side = "right" } },
 			curve = 1,
-			meander = 30,
-			widths = { 6, 10, 12, 14, 20 }, -- starts thin where it leaves the River
+			meander = 60,
+			widths = { 15, 25, 30, 35, 50 }, -- starts thin where it leaves the River
 			bendWiden = 0.5,
-			depths = { 6, 10, 18, 28, 44 }, -- below the water
+			depths = { 8, 24, 12, 44, 70 }, -- below the water
+			depthVary = 0.5,
+			banks = { shore = 36, shallows = 20, shallowDepth = 3, bedFlat = 0.2, steep = 1.4, rough = 2.5, vary = 0.6 },
 			bedRough = 3,
 			waterLevel = 20,
 		},
 		{
 			-- Third branch: leaves the same point as the fork and runs off the west edge.
 			id = "branch",
-			points = { { -500, 100 }, { -700, 400 }, { -800, 700 }, { -1000, 1000 }, { -1270, 1100 } },
+			points = { { -1256, -56 }, { -1656, 544 }, { -1856, 1144 }, { -2256, 1744 }, { -2796, 1944 } },
 			curve = 1,
-			meander = 30,
-			widths = { 6, 10, 12, 14, 14 },
+			meander = 60,
+			widths = { 15, 25, 30, 35, 35 },
 			bendWiden = 0.5,
-			depths = { 4, 6, 8, 10, 10 }, -- below the water
+			depths = { 8, 18, 40, 14, 22 }, -- below the water
+			depthVary = 0.5,
+			banks = { shore = 30, shallows = 12, shallowDepth = 2, bedFlat = 0.3, steep = 2, rough = 3, vary = 0.5 },
 			bedRough = 3,
 			waterLevel = 20,
 		},
 		{
 			-- Oxbow lake north of the River: a crescent connected to nothing.
 			id = "oxbowA",
-			points = { { -733, -90 }, { -681, -156 }, { -596, -159 }, { -540, -96 }, { -552, -12 } },
+			points = { { -1722, -436 }, { -1618, -568 }, { -1448, -574 }, { -1336, -448 }, { -1360, -280 } },
 			curve = 1,
-			widths = { 6, 14, 18, 14, 6 },
-			depths = { 4, 10, 16, 10, 4 }, -- below the water
+			widths = { 14, 30, 40, 30, 14 },
+			depths = { 6, 22, 40, 22, 6 }, -- below the water
+			banks = { shore = 30, shallows = 16, shallowDepth = 3, bedFlat = 0.4, steep = 1.3, rough = 2, vary = 0.5 },
 			bedRough = 2,
 			waterLevel = 20,
 		},
 		{
 			-- Oxbow lake south of the fork, more closed.
 			id = "oxbowB",
-			points = { { -6, 883 }, { -24, 961 }, { 35, 1015 }, { 111, 992 }, { 129, 914 } },
+			points = { { -268, 1510 }, { -304, 1666 }, { -186, 1774 }, { -34, 1728 }, { 2, 1572 } },
 			curve = 1,
-			widths = { 6, 10, 14, 10, 6 },
-			depths = { 4, 8, 12, 8, 4 }, -- below the water
+			widths = { 14, 22, 30, 22, 14 },
+			depths = { 6, 18, 30, 18, 6 }, -- below the water
+			banks = { shore = 30, shallows = 16, shallowDepth = 3, bedFlat = 0.3, steep = 1.3, rough = 2, vary = 0.5 },
 			bedRough = 2,
 			waterLevel = 20,
 		},
 	},
 	lakes = {
-		{ id = "lake", seed = 7006, center = { 500, 650 }, radius = 170, shore = 60, warp = 20, elongate = 1.2, angle = 30, bedY = -50, bedRough = 6, waterLevel = 20 },
+		{ id = "lake", seed = 7006, center = { 744, 1044 }, radius = 340, shore = 240, warp = 40, elongate = 1.2, angle = 30, bedY = -90, bedRough = 10, depthVary = 0.4, banks = { shallows = 50, shallowDepth = 6, bedFlat = 0.25, steep = 1.3, rough = 6, vary = 0.6 }, waterLevel = 20 },
 	},
 	sites = {},
 	worldLimit = nil, -- not requested yet

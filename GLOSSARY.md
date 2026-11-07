@@ -30,6 +30,18 @@ _Avoid_: stream, flow
 A body of still water declared in the World Plan, where Rivers end.
 _Avoid_: ocean, sea
 
+**Banks**:
+How a River or Lake meets the land, across from the ground around it down to its deepest line: its Shore, its Shallows and the wall below them.
+_Avoid_: edges, sides
+
+**Shore**:
+The gentle dry ground between the water and the ground around it.
+_Avoid_: beach, border
+
+**Shallows**:
+The strip of shallow water just inside a Shore, before the wall falls.
+_Avoid_: shelf, ford
+
 **Generator**:
 The tool that turns the World Plan and the seeds into terrain. It is written and operated by the World agent, which does not shape terrain by eye.
 _Avoid_: agent (the agent is not the Generator)
