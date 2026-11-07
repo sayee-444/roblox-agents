@@ -17,16 +17,16 @@ Create and write terrain
   new <dir> --place <name> [--seed <n>] [--landforms <list>] [--test-map]
                                   Start a world. With --landforms (range,mesa,river,fork) it composes and
                                   writes the whole World Plan. Without, it prints a template to fill in
-  run [--remove-baseplate]        Whole cycle: load, test, describe, generate every Chunk, borders, regenerate, heights
+  run [--remove-baseplate]        Whole cycle: load, test, describe, generate every Chunk, regenerate, heights
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
   regenerate <i> <j>              Rewrite one Chunk and prove the result is identical
 
 Inspect, writing no terrain
-  check                           Debug start: load, test, describe, borders
+  check                           Debug start: load, test, describe
   load                            Paste into Studio only the modules that differ
   test                            Run the engine's tests
   describe                        What exists, which Chunks each thing touches, which are Locked
-  borders [<i> <j> ...]           Compare the voxels on both sides of the borders of these Chunks, or of every Chunk
+  borders [<i> <j> ...]           Compare the voxels on both sides of the borders of these Chunks, or of every Chunk. Slow, so only when the developer agrees
   height <x> <z>                  Surface height at one spot
   heights                         Surface height of each Landform and River, from the plan
 
@@ -454,8 +454,8 @@ async function main() {
   if (!command || command === 'help') { console.log(HELP); return 0; }
   if (command === 'new') { console.log(newWorld(args[0], flags)); return 0; }
   const cycles = {
-    run: ['load', 'test', 'describe', 'generate', 'borders', 'regenerate', 'heights'],
-    check: ['load', 'test', 'describe', 'borders'],
+    run: ['load', 'test', 'describe', 'generate', 'regenerate', 'heights'],
+    check: ['load', 'test', 'describe'],
   };
   if (!cycles[command] && !steps[command]) {
     console.error(`Unknown command "${command}". Run: node world.js help`);

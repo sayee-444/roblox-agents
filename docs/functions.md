@@ -24,7 +24,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 | A new world the engine composes | `new --landforms range,mesa,river,fork`, then `run` | Measured |
 | A new world with chosen positions | `new`, writing the World Plan from the template it prints, then `run` | Measured |
 | Set up a project with no world context | `world-project-setup` | Measured |
-| The whole cycle again | `run`: `load`, `test`, `describe`, `generate`, `borders`, `regenerate`, `heights` | Measured |
+| The whole cycle again | `run`: `load`, `test`, `describe`, `generate`, `regenerate`, `heights` | Measured |
 
 ## Edit
 
@@ -55,10 +55,10 @@ Debugging runs last, and only when a check fails or the developer reports a wron
 | Ask for | What runs | Status |
 |---|---|---|
 | Debug | `world-debug`, starting from `check`, and stopping after one `refresh` | Built |
-| Check without writing terrain | `check`: `load`, `test`, `describe`, `borders` | Built |
+| Check without writing terrain | `check`: `load`, `test`, `describe` | Built |
 | Run the engine's tests | `test` | Measured |
 | Make Studio hold the current code | `load` | Measured |
-| Compare the Chunk borders | `borders <i> <j> ...` for the Chunks a change wrote, or `borders` for all | Measured |
+| Compare the Chunk borders, only when the agent gives a reason and the developer agrees | `borders <i> <j> ...` for chosen Chunks, or `borders` for all | Measured |
 
 ## Look
 
