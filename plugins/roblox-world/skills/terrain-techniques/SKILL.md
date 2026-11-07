@@ -38,7 +38,7 @@ Noise below is `n(x, z)`, in the range 0 to 1, from the Generator's own noise. C
 
 ## Materials
 
-Choose each voxel's material from height, slope and noise. Calculate slope from height differences at neighbouring world positions, never from Chunk data, so that it agrees across borders. Typical start: grass on gentle ground, rock on steep ground, snow above a height, sand beside water, with noise breaking up the lines between them. Sand renders near-white, so keep it to narrow bands: a 90-stud bank read as a road, and Sand on a mesa looked like snow.
+Choose each voxel's material from height, slope and noise. Calculate slope from height differences at neighbouring world positions, never from Chunk data, so that it agrees across borders. Typical start: grass on gentle ground, rock on steep ground, snow above a height, sand beside water, with noise breaking up the lines between them. Sand renders near-white, so keep it to narrow bands: a 90-stud bank read as a road, and Sand on a mesa looked like snow. A bed chooses by the depth of its water: Sand, then Ground, then Ground with Rock, since Cobblestone reads as paving and Roblox has no gravel.
 
 ## Writing to Studio
 

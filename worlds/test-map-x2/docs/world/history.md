@@ -1,3 +1,9 @@
+## 2026-11-07: Beds change material with depth
+
+- **Why:** the developer wanted sand near the surface and a real bed further down.
+- **Chunks written:** -2,0 -1,0 0,0 1,0 -2,1 -1,1 0,1 1,1 2,1 -2,2 -1,2 0,2 1,2 2,2
+- **Restore:** the plan did not change. Plugin 0.26.1 wrote Sand at every depth.
+
 ## 2026-11-07: Gave the water varied depth, and removed the slab under the map
 
 - **Why:** the developer wanted water of varied, editable depth, with no large slab of ground under the map. `floorY` went from -64 to 0, so every Chunk was rewritten, and solid cells in Chunk 0,1 fell from 449,281 to 189,365.

@@ -53,3 +53,23 @@ From read and seen, not proven:
 1. Ask the developer what they expected to see, and from which position, with the camera over the water if possible.
 2. Press Play then Stop with `world.js refresh`, to rule out cause 2.
 3. Write a failing test in the pure Generator for the agreed behaviour before changing anything.
+
+## What the developer expected
+
+Said on 2026-11-07, translated: the sand does not follow the bed, the ground from before the change sits above the new depth, and it would be good to have sand from a certain height, and with more depth a real bed with some sand, earth and gravel at the bottom.
+
+## What was measured on 2026-11-07
+
+On plugin 0.26.1, in Place1:
+
+- **The old ground is not there.** A voxel read of 42 columns across the River, at x 72 and 120, found no solid above the bed where water lies, and 56 raycasts ignoring water hit the planned bed, down to -6.7.
+- **The render was not holding old ground when looked at.** The first capture of the session already rebuilt the render, so the developer's state was not captured. A later write showed new materials in a capture about 1 s after `generate`, with no rebuild. So cause 2 is unlikely and not ruled out for a far camera.
+- **Cause 1 was real.** The bed was Sand at every depth.
+
+## The change
+
+On plugin 0.27.0, `Materials.surface` takes the water level, and a bed chooses by the depth of its water: Sand under about 6 studs, then Ground coming through the Sand, and from about 14 studs Ground with patches of Rock and a little Sand. `bedSand` and `bedDeep` in the plan's `materials` move those depths. Roblox has no gravel terrain material. Cobblestone was tried first and looked like paving, so Rock stands in for it.
+
+Not changed: the shape of the bed, cause 3, and the rock under it, cause 4. A camera inside the ground still sees through the map.
+
+Not verified: whether this is what the developer meant by old ground. They judge the look on `test-map-x2`.

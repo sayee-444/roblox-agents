@@ -102,6 +102,23 @@ return {
 		t.ok(solidTop < river.waterLevel, "bed below surface")
 	end,
 
+	["a column under water takes its surface from the depth of that water"] = function(t)
+		local cols = Chunk.columns(plan, -1, 0)
+		local earth = 0
+		for j = 0, N - 1 do
+			for i = 0, N - 1 do
+				local k = j * N + i + 1
+				local wl = cols.WL[k]
+				if wl > 0 and wl - cols.H[pidx(i, j)] > 9 then
+					if cols.S[k] == Materials.id.Ground then
+						earth += 1
+					end
+				end
+			end
+		end
+		t.ok(earth > 0, "earth shows through a bed 9 studs under water")
+	end,
+
 	["the cave is air along its axis and has solid floor under the mouth"] = function(t)
 		local cave
 		for _, r in ipairs(plan.regions) do
