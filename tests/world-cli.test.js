@@ -555,7 +555,7 @@ test('status still answers from the files when no place is open', () => {
     const { status, stdout } = inStudio(dir, { FAKE_STUDIO_MISSES: '9999' }, 'status', '--project', dir);
     assert.strictEqual(status, 0);
     assert.match(stdout, /Seed 12345/);
-    assert.match(stdout, /Studio: no place open/);
+    assert.match(stdout, /Studio: no place open after [\d.]+ s/);
   });
 });
 
