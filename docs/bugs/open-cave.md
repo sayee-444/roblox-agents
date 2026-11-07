@@ -42,7 +42,7 @@ Along the whole axis, sampled about every 4 studs, 36 of 36 samples were open to
 
 ## Reproduce
 
-In the existing world, with Studio open on a disposable place:
+The place used, Place1, was not saved and is no longer a test place, so the terrain must be generated again. In the existing world, with Studio open on a disposable place:
 
 ```text
 cd ../roblox-world-generator/worlds/test-map-x2
@@ -75,6 +75,19 @@ These are the developer's ideas and first thoughts on them, and nothing here is 
 **Report it where the agent already reads.** `describe` and `heights` print on every `run`, and a line such as `cave: 36 of 36 samples without cover` costs little. Whether it fails the run is a choice: a failure stops `run`, as an invalid plan does, and a warning lets it finish and leaves the choice to the agent.
 
 **Catch it before writing.** `Describe.impact` exists and no command reaches it (`docs/next-steps.md`). A check run on the plan before `generate` would warn before any terrain is written.
+
+**Tell a mouth from a cave.** The developer's idea: a mouth and a cave are different parts, so a mouth has no roof to check, and a mouth with no cave connected to it is removed too. A mouth may be a wedge open to the sky, and a very short stretch of cave behind it is enough to keep it.
+
+First thought: derive the parts from the terrain, with no new field in the plan, so that they stay right when the ground moves. Walk the axis from each end. The open stretch up to the first covered sample is a mouth, and the covered stretch after it is the cave.
+
+| What the walk finds | Verdict |
+|---|---|
+| No covered stretch of the minimum length, as here with 36 of 36 samples open | No cave: report it, mouth included |
+| A covered stretch, with a mouth of allowed length | A cave |
+| A covered stretch, with a mouth longer than allowed | Report it, since the open part reads as a trench |
+| An open stretch between two covered ones | Not decided: a skylight, or a break |
+
+The minimum cave length and the maximum mouth length are unchosen, and need testing against what the developer judges good in Studio. Today's carving is a round tube, so a true wedge needs a change to the carving as well, and the check does not depend on it.
 
 **What to do with the cave:**
 
