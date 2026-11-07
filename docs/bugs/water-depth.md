@@ -53,3 +53,33 @@ From read and seen, not proven:
 1. Ask the developer what they expected to see, and from which position, with the camera over the water if possible.
 2. Press Play then Stop with `world.js refresh`, to rule out cause 2.
 3. Write a failing test in the pure Generator for the agreed behaviour before changing anything.
+
+## What the developer expected
+
+Said on 2026-11-07, translated: the sand does not follow the bed, the ground from before the change sits above the new depth, and it would be good to have sand from a certain height, and with more depth a real bed with some sand, earth and gravel at the bottom.
+
+## What was measured on 2026-11-07
+
+On plugin 0.26.1, in Place1:
+
+- **The old ground is not there.** A voxel read of 42 columns across the River, at x 72 and 120, found no solid above the bed where water lies, and 56 raycasts ignoring water hit ground no lower than -6.7, in line with those voxels. They were not compared with the plan one by one.
+- **The render was not holding old ground when looked at.** The first capture of the session already rebuilt the render, so the developer's state was not captured. A later write showed new materials in a capture taken seconds after `generate`, with no rebuild. So cause 2 is unlikely and not ruled out for a far camera.
+- **Cause 1 was real.** The bed was Sand at every depth.
+
+## The change
+
+On plugin 0.27.0, `Materials.surface` takes the water level, and a bed chooses by the depth of its water: Sand under about 6 studs, then Ground coming through the Sand, and from about 14 studs Ground with patches of Rock and a little Sand. `bedSand` and `bedDeep` in the plan's `materials` move those depths. Roblox has no gravel terrain material. Cobblestone was tried first and looked like paving, so Rock stands in for it.
+
+## The cause of the bulge
+
+The developer then said what they meant: the bowl under the map is there, but they cannot get into it, because a floor sits over it. Read at their camera, 146, 15, 200, on 2026-11-07: the bed was at -8, 8 studs below the map's floor at 0, and solid ground went on to -28. So the bulge seen from below was 20 studs of ground and not open water, and the depth looked the same. No old ground was left over: the bed itself was too shallow, flat, and sitting on a thick shell.
+
+Also on plugin 0.27.0:
+
+- **Bowl:** past `BOWL_FROM`, 10 studs under the water, a River's bed deepens towards its line instead of staying flat. A River no deeper than that keeps its shape.
+- **No gaps:** a column's ground now reaches below the beds beside it. With a thin shell on a steep wall, a capture showed water through holes, since each column only went below its own bed.
+- **`test-map-x2`:** `rockUnder` 8, deeper `depths` on `river` and `fork`, and the Lake's bed at -50. The bed at x 120 now reads down to about -20, with ground ending at about -36.
+
+Measured: 102 of 102 engine tests, all 33 borders agree, and captures from the developer's camera and from below show a bowl with no holes.
+
+Not verified: a character going down into it in Play, which nothing has done, and how much the solid cells changed. The developer judges the look.

@@ -1,6 +1,7 @@
 local shipped = require("../src/world/plan")
 local Shape = require("../src/world/generator/Shape")
 local Describe = require("../src/world/generator/Describe")
+local Chunk = require("../src/world/generator/Chunk")
 
 local function lakePlan(changes)
 	local plan = {
@@ -22,7 +23,72 @@ local function lakePlan(changes)
 	return plan
 end
 
+local function deepRiver(p)
+	p.floorY = 0
+	p.rockUnder = 8
+	p.lakes = {}
+	p.rivers[1].bedY = -60
+end
+
 return {
+	["a deep River's bed is a bowl, deepest in its middle"] = function(t)
+		local plan = lakePlan(deepRiver)
+		local middle = Shape.height(plan, 200.5, 1)
+		local between = Shape.height(plan, 200.5, 7)
+		local side = Shape.height(plan, 200.5, 13)
+		t.ok(middle < between - 1, "middle " .. middle .. " below " .. between)
+		t.ok(between < side - 1, between .. " below the side " .. side)
+	end,
+
+	["a shallow River keeps its flat bed"] = function(t)
+		local plan = lakePlan()
+		t.near(Shape.height(plan, 200.5, 1), Shape.height(plan, 200.5, 6), 0.5, "flat in its middle")
+	end,
+
+	["the wall of a deep Lake has no gap either"] = function(t)
+		local plan = lakePlan(function(p)
+			p.floorY = 0
+			p.rockUnder = 8
+			p.lakes[1].bedY = -60
+		end)
+		local cols = Chunk.columns(plan, 1, 0)
+		local n, w = cols.n, cols.n + 2
+		local checked = 0
+		for j = 0, n - 1 do
+			for i = 0, n - 1 do
+				local bottom = cols.BOTTOM[j * n + i + 1]
+				local p = (j + 1) * w + (i + 1) + 1
+				for _, q in ipairs({ p - 1, p + 1, p - w, p + w }) do
+					if cols.H[q] < 0 then
+						checked += 1
+						t.ok(bottom <= cols.H[q] - 8, "column " .. i .. "," .. j .. " stops at " .. bottom .. " beside a bed at " .. cols.H[q])
+					end
+				end
+			end
+		end
+		t.ok(checked > 0, "the Lake goes below the floor here")
+	end,
+
+	["the wall of a deep bed has no gap: a column's ground reaches below the beds beside it"] = function(t)
+		local plan = lakePlan(deepRiver)
+		local cols = Chunk.columns(plan, 0, 0)
+		local n, w = cols.n, cols.n + 2
+		local checked = 0
+		for j = 0, n - 1 do
+			for i = 0, n - 1 do
+				local bottom = cols.BOTTOM[j * n + i + 1]
+				local p = (j + 1) * w + (i + 1) + 1
+				for _, q in ipairs({ p - 1, p + 1, p - w, p + w }) do
+					if cols.H[q] < 0 then
+						checked += 1
+						t.ok(bottom <= cols.H[q] - 8, "column " .. i .. "," .. j .. " stops at " .. bottom .. " beside a bed at " .. cols.H[q])
+					end
+				end
+			end
+		end
+		t.ok(checked > 0, "the River goes below the floor here")
+	end,
+
 	["a lake holds water over a bed below its level"] = function(t)
 		local plan = lakePlan()
 		local h, _, _, water = Shape.height(plan, 450, 0)

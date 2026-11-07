@@ -27,12 +27,33 @@ Materials.sub = {
 	[id.Sandstone] = id.Sandstone,
 }
 
+-- Surface material of a bed, by the depth of the water over it: sand under shallow water, earth
+-- coming through it further down, and earth with patches of rock and a little sand at the bottom.
+local function bed(plan, x: number, z: number, depth: number, n: number): number
+	local M = plan.materials
+	if depth < (M.bedSand or 6) + n * 3 then
+		return id.Sand
+	end
+	local patch = Noise.perlin(x / 30, z / 30, plan.worldSeed + 81) + n * 0.15
+	if depth < (M.bedDeep or 14) + n * 3 then
+		return if patch > -0.05 then id.Ground else id.Sand
+	end
+	if patch > 0.12 then
+		return id.Rock
+	end
+	return if patch > -0.28 then id.Ground else id.Sand
+end
+
 -- Surface material of one column. `g` is the slope (rise over run), `mesaP` the mesa
--- parameter (0 outside, 1 on top) and `riverD` the distance to a River route, moved out where the River is wide, or to lake water.
-function Materials.surface(plan, x: number, z: number, h: number, g: number, mesaP: number, riverD: number): number
+-- parameter (0 outside, 1 on top) and `riverD` the distance to a River route, moved out where the River is wide, or to lake water,
+-- and `waterLevel` the level of the water over the column (0 or nil when dry).
+function Materials.surface(plan, x: number, z: number, h: number, g: number, mesaP: number, riverD: number, waterLevel: number?): number
 	local M = plan.materials
 	local n = Noise.perlin(x / 18, z / 18, plan.worldSeed + 77)
 
+	if waterLevel and waterLevel > 0 and h < waterLevel then
+		return bed(plan, x, z, waterLevel - h, n)
+	end
 	if riverD < M.bankDist and h < M.bankHeight then
 		return id.Sand
 	end

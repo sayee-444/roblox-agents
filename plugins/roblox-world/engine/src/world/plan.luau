@@ -82,6 +82,8 @@ return {
 		rockLine = 140,
 		bankDist = 26, -- sand within this distance of the route: a band, not a road
 		bankHeight = 28,
+		bedSand = 6, -- a bed is sand under water this shallow, and earth comes through it below
+		bedDeep = 14, -- from this depth down, a bed is earth with patches of rock and a little sand
 		mesaRiser = 1.1,
 	},
 }

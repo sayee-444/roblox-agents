@@ -8,7 +8,7 @@ One agent, `world`, that creates a world, edits it and recovers its context, thr
 
 Pending work lives in GitHub issues, each with its spec: `gh issue list`. The developer chooses what follows, and on 2026-11-06 left this order:
 
-1. #43: water depth does not read as an edited bed, from `docs/bugs/water-depth.md`. It waits for the developer to say what they expected.
+1. #43: water depth does not read as an edited bed, from `docs/bugs/water-depth.md`. Deep water is now an open bowl under the map on plugin 0.27.0, and it waits for the developer to judge it.
 2. #32: Lakes that are not round.
 3. #30: the cave system, one delivery at a time, each only on the developer's order. It closes #22.
 
@@ -36,7 +36,7 @@ Plugin 0.14.0 gained little because its template let every run write points the 
 
 ## Open defects
 
-- **Water depth:** the developer finds the bed does not look edited, while voxels hold the depth. Evidence in `docs/bugs/water-depth.md` and #43.
+- **Water depth:** the developer found the bed did not look edited, while voxels hold the depth. Deep water is now an open bowl with a material by depth, and the developer has not judged it, nor has a character gone into it. Evidence in `docs/bugs/water-depth.md` and #43.
 - **Open cave:** a cave stays carved as an open trench after the ground over it moves, and nothing reports it. Evidence in `docs/bugs/open-cave.md` and #22, design in #30.
 - **Empty listing of places:** Studio lists no place for about 3 s when a command starts right after another ends, in 14 of 14 such runs on 2026-11-06, and the cause is unknown. `world.js` waits it out, for up to about 20 s, so a command with Studio closed takes that long to fail.
 - **River widths:** measured in tests, borders and cost on `test-map-x2`, and the developer approved its curves on 2026-11-07. New worlds start with `bendWiden` 0.5, which each River can change, and a plan that leaves it out gets 0.

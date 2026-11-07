@@ -12,6 +12,7 @@ local smoothstep = Geo.smoothstep
 local WIDTH_NOISE = 0.15 -- how far a bank wanders from a River's width, as a fraction of it
 local BANK_WIDTH = 20 -- the half width whose bank the sand band of Materials is measured for
 local ROCK_UNDER = 16 -- studs of rock kept under any ground that goes below the plan's floor
+local BOWL_FROM = 10 -- depth below the water where a River's bed stops being flat and becomes a bowl
 local BED_SCALE = 45 -- studs for one swell of a rough bed
 
 local prepared = setmetatable({}, { __mode = "k" })
@@ -155,7 +156,10 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 			if rv.def.bedRough then
 				bed += rv.def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
 			end
-			local depth = c * (def.floorY - bed)
+			-- The banks and the water's edge come from the first BOWL_FROM studs. Anything deeper is a bowl
+			-- under them, deepest on the River's line, so a shallow River keeps its shape.
+			local shelf = rv.def.waterLevel - BOWL_FROM
+			local depth = c * (def.floorY - math.max(bed, shelf)) + (1 - smoothstep(0, hw, d)) * math.max(0, shelf - bed)
 			carve = math.max(carve, depth)
 			if h - depth < rv.def.waterLevel and d < hw * 1.5 then
 				waterLevel = rv.def.waterLevel
@@ -200,6 +204,7 @@ end
 
 -- The lowest height this column holds ground, on the voxel grid. Ground stops at the plan's floor,
 -- and goes below it only under what needs it: a deep bed or a cave, with rock under them.
+-- `h` is the lowest ground of this column and those beside it, so a steep wall has no gap.
 function Shape.bottom(plan, x: number, z: number, h: number): number
 	local under = plan.rockUnder or ROCK_UNDER
 	local low = math.min(plan.floorY, h - under)

@@ -9,6 +9,7 @@ return {
 	voxel = 4,
 	extent = { minX = -2, maxX = 3, minZ = -2, maxZ = 3 }, -- inclusive Chunk indices
 	floorY = 0, -- ground stops here, and goes lower only under deep water or a cave
+	rockUnder = 8, -- a thin wall of rock under a deep bed, so that the bowl is open water and not a solid bulge
 
 	-- Gentle hills everywhere: mean height, amplitude, feature size and domain warp.
 	base = { mean = 52, amp = 34, scale = 260, octaves = 5, warpScale = 300, warpAmp = 60 },
@@ -99,7 +100,7 @@ return {
 			meander = 40,
 			widths = { 14, 16, 18, 20, 26, 34 }, -- grows towards the Lake
 			bendWiden = 0.5,
-			depths = { 8, 10, 14, 18, 26, 30 }, -- below the water
+			depths = { 10, 14, 24, 36, 44, 50 }, -- below the water
 			bedRough = 3,
 			waterLevel = 20,
 		},
@@ -112,7 +113,7 @@ return {
 			meander = 30,
 			widths = { 6, 10, 12, 14, 20 }, -- starts thin where it leaves the River
 			bendWiden = 0.5,
-			depths = { 4, 6, 8, 10, 16 }, -- below the water
+			depths = { 6, 10, 18, 28, 44 }, -- below the water
 			bedRough = 3,
 			waterLevel = 20,
 		},
@@ -150,7 +151,7 @@ return {
 		},
 	},
 	lakes = {
-		{ id = "lake", seed = 7006, center = { 500, 650 }, radius = 170, shore = 60, warp = 20, elongate = 1.2, angle = 30, bedY = -20, bedRough = 6, waterLevel = 20 },
+		{ id = "lake", seed = 7006, center = { 500, 650 }, radius = 170, shore = 60, warp = 20, elongate = 1.2, angle = 30, bedY = -50, bedRough = 6, waterLevel = 20 },
 	},
 	sites = {},
 	worldLimit = nil, -- not requested yet

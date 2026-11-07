@@ -67,9 +67,9 @@ function Chunk.columns(plan, ci: number, cj: number)
 			local g = math.sqrt(gx * gx + gz * gz)
 			G[k] = g
 			local xc = x0 + i * V + V / 2
-			S[k] = Materials.surface(plan, xc, zc, H[p], g, MP[k], RD[k])
+			S[k] = Materials.surface(plan, xc, zc, H[p], g, MP[k], RD[k], WL[k])
 			B[k] = if MP[k] > 0.02 then id.Sandstone else id.Rock
-			BOTTOM[k] = Shape.bottom(plan, xc, zc, H[p])
+			BOTTOM[k] = Shape.bottom(plan, xc, zc, math.min(H[p], H[p - 1], H[p + 1], H[p - w], H[p + w]))
 			ymin = math.min(ymin, BOTTOM[k])
 		end
 	end
