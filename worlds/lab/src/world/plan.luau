@@ -1,7 +1,7 @@
 -- World Plan: declares what exists where. It wins over the seeds.
 -- Chunk (i, j) covers x in [i*512-256, i*512+256) and z in [j*512-256, j*512+256),
 -- so indices -5..6 give 12 x 12 Chunks (6,144 x 6,144 studs), x and z from -2,816 to 3,328.
--- Started as a doubled side of the engine's test map, same World Seed, and doubled again for larger water.
+-- Started as a doubled side of the engine's own plan, same World Seed, and doubled again for larger water.
 
 return {
 	worldSeed = 12345,

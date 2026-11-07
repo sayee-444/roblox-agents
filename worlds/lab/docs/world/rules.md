@@ -2,16 +2,23 @@
 
 ## Development Place
 
+Whichever place is open in Studio, whatever its name, since this Test World belongs to no game. `node <engine>/tools/world.js describe --place __none__` fails and prints the names of the open places. Stop and ask only if several are open, or if the one open holds terrain this session did not write.
+
 | Field | Value |
 |---|---|
-| PlaceId or window title | Place1 |
 | World Seed | 12345 |
+
+## Load
+
+To load this world, open the World Snapshot named by the newest entry in `history.md` that changes the map. Snapshots are in `.local/snapshots/` at the repository root. If that entry names none, or its file is missing, generate nothing: tell the developer, and they choose.
 
 ## Generator
 
 The engine ships with the `roblox-world` plugin. This project holds only `src/world/plan.luau` and `src/world/state.luau`.
 
-`node <engine>/tools/world.js run --place Place1 --project .` loads the engine, tests it, describes the plan, generates and verifies. Run it with a Bash timeout of 600000 ms. After a local change, run `generate <i> <j> ...` for the Chunks it touched instead. `node <engine>/tools/world.js help` lists every command.
+`node <engine>/tools/world.js run --place <open place> --project .` syncs the engine, tests it, describes the plan, generates and verifies. Run it with a Bash timeout of 600000 ms. After a local change, run `generate <i> <j> ...` for the Chunks it touched instead. `node <engine>/tools/world.js help` lists every command.
+
+On this world `run` and any `generate` holding several River Chunks can fail with `Target is not reachable`, as `docs/next-steps.md` records. One Chunk per call has not failed, so write River Chunks that way until it is fixed.
 
 ## Decisions
 

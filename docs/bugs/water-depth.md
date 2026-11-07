@@ -6,7 +6,7 @@ Reported by the developer on 2026-11-07, on plugin 0.26.1, after #40. Their word
 
 ## Where
 
-World `test-map-x2`, in `worlds/`, in Place1. The developer's camera, read from Studio:
+World `lab`, in `worlds/`, in Place1. The developer's camera, read from Studio:
 
 - **Position:** 66, -6, 197
 - **Looking along:** 0.994, 0.105, 0.041, so east and slightly up, along the River inside its loop
@@ -14,7 +14,7 @@ World `test-map-x2`, in `worlds/`, in Place1. The developer's camera, read from 
 Place1 may not have been saved. If this terrain is gone, run this from the repository root:
 
 ```text
-node plugins/roblox-world/engine/tools/world.js generate --place Place1 --project worlds/test-map-x2
+node plugins/roblox-world/engine/tools/world.js generate --place Place1 --project worlds/lab
 ```
 
 ## What was measured
@@ -78,7 +78,7 @@ Also on plugin 0.27.0:
 
 - **Bowl:** past `BOWL_FROM`, 10 studs under the water, a River's bed deepens towards its line instead of staying flat. A River no deeper than that keeps its shape.
 - **No gaps:** a column's ground now reaches below the beds beside it. With a thin shell on a steep wall, a capture showed water through holes, since each column only went below its own bed.
-- **`test-map-x2`:** `rockUnder` 8, deeper `depths` on `river` and `fork`, and the Lake's bed at -50. The bed at x 120 now reads down to about -20, with ground ending at about -36.
+- **`lab`:** `rockUnder` 8, deeper `depths` on `river` and `fork`, and the Lake's bed at -50. The bed at x 120 now reads down to about -20, with ground ending at about -36.
 
 Measured: 102 of 102 engine tests, all 33 borders agree, and captures from the developer's camera and from below show a bowl with no holes.
 
