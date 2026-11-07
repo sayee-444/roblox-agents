@@ -66,9 +66,9 @@ These move the developer's camera, so they run only on request or when the devel
 
 | Ask for | What runs | Status |
 |---|---|---|
-| A picture of named views | `capture <view> ...` | Measured |
-| A picture from a chosen position | `shot <name> <x y z> <x y z>` | Built. No recorded run was found |
-| Clear a rendering glitch | `refresh`: Play then Stop | Measured |
+| A picture of named views | `capture <view> ...`. After a write or a far view it rebuilds the render first, unless `--no-refresh`, since Play runs the place's scripts | Measured |
+| A picture from a chosen position | `shot <name> <x y z> <x y z>`, with the same rebuild | Measured |
+| Clear a rendering glitch | `refresh`: Play then Stop, and a wait of 5 s | Measured |
 
 ## Dangerous
 
