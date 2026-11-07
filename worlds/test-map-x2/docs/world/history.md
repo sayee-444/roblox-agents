@@ -1,3 +1,9 @@
+## 2026-11-07: Gave the water varied depth, and removed the slab under the map
+
+- **Why:** the developer wanted water of varied, editable depth, with no large slab of ground under the map. `floorY` went from -64 to 0, so every Chunk was rewritten, and solid cells in Chunk 0,1 fell from 449,281 to 189,365.
+- **Chunks written:** all 36.
+- **Restore:** set `floorY` back to -64, each River to `bedY = 10`, `oxbowA` and `oxbowB` to `bedY = 12` and the Lake to `bedY = 6`, remove `depths` and `bedRough`, and regenerate all Chunks.
+
 ## 2026-11-07: Moved the loop and the ring to `loops`
 
 - **Why:** plugin 0.25.0 draws them from a radius and a turn, so the plan no longer lists each point. The shapes stay close to the ones the developer liked, and the ring is rounder, with 8 legs instead of 6.

@@ -60,7 +60,7 @@ Designed, with the delivery order, in [#30](https://github.com/sayee-444/roblox-
 | **Dormant Section** | A stretch of a Cave's route with no cover, kept in the plan and not carved, which returns if the ground returns |
 | **Sealed Cave** | A Cave with no Mouth, which is valid |
 | **World Floor** | The height above which the ground decides whether a Cave exists |
-| **Deep Rock** | Rock created only around a Cave below the World Floor |
+| **Deep Rock** | Rock created only where something goes below the floor of the World Plan: under deep water, or around a Cave |
 | **Cavern** | A chamber in the shape of half a spheroid |
 | **Sinkhole** | A dry opening in the roof of a Cave or Cavern, which does not remove it |
 | **Cenote** | A Sinkhole filled with water up to a chosen part of its depth, which acts as a natural body of water |

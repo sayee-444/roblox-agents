@@ -52,6 +52,9 @@ Plugin 0.14.0 gained little because its template let every run write points the 
 
 ## Not built
 
+- A shell of ground that follows the surface: mountains stay solid down to `floorY`. See ADR 0008.
+- Cenotes: designed in #30, not built. A River or Lake has its own depth today.
+
 - Removing one Chunk: only wiping all terrain exists.
 - A command for `Describe.impact`: it exists and is tested in the Generator, and no command reaches it, so `describe` is read before a change instead.
 - Detecting hand edits: the developer says which Chunks they touched. Designed in #30.
@@ -62,7 +65,7 @@ Plugin 0.14.0 gained little because its template let every run write points the 
 
 ## Not verified
 
-Place file size, streaming, play mode and phones. What the render rebuild does to a place with scripts, since Play runs them. An agent run on plugins 0.20.0 to 0.22.0, which were measured piece by piece. A character walking a cave. The tests under Lute. Any system other than Windows. The guard's approval window in an interactive session. Whether plugin hooks run under `--setting-sources project`, which the benchmark uses.
+Nothing has walked or dug on ground with `floorY` at 0, or seen the underside of a map from below. Place file size, streaming, play mode and phones. What the render rebuild does to a place with scripts, since Play runs them. An agent run on plugins 0.20.0 to 0.22.0, which were measured piece by piece. A character walking a cave. The tests under Lute. Any system other than Windows. The guard's approval window in an interactive session. Whether plugin hooks run under `--setting-sources project`, which the benchmark uses.
 
 ## Ideas held for later
 

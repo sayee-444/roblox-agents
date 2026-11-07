@@ -17,7 +17,7 @@ The map is the output of one pure function: terrain at a world position comes fr
 | Locked Chunk | A hand-edited Chunk the Generator skips |
 | World Seed | Supplies natural detail across the map |
 | Landform Region | A declared shape, such as a mountain range or a mesa, with its own Region Seed and a bounded blend margin |
-| River | Water declared in the World Plan, following a straight or curved route through its points, with `halfWidth` or `widths` per point, `bendWiden` to open its bends and `loops` for bends close to a circle. A fork is a River that leaves a point, and a point can take any number of them |
+| River | Water declared in the World Plan, following a straight or curved route through its points, with `halfWidth` or `widths` per point, `bendWiden` to open its bends, `loops` for bends close to a circle, and `bedY` or `depths` per point with `bedRough` for its bed. A fork is a River that leaves a point, and a point can take any number of them |
 | Lake | Still water declared in the World Plan, where Rivers end at the same water level |
 
 ## Layout
