@@ -8,6 +8,20 @@ Specialized [Claude Code](https://code.claude.com/docs) agents and skills for Ro
 
 The map is always the output of a program: the agent changes a declared World Plan and runs the engine, instead of shaping terrain by hand. Terrain is generated in Studio and saved in the place, so players get static terrain.
 
+## Example
+
+A test world made by the agent: 36 Chunks with hills, a range, a mesa, a River with a fork, and a Lake where they end. These are raw captures from Studio on 2026-11-06, with no hand edits, so they show the current state of the look and not a finished one.
+
+![The whole map from above, through Studio's fog](docs/images/world-overview.jpg)
+
+Each change is a change to the World Plan. Moving the mesa closer to the range took one line of the plan, and the engine wrote only the 8 Chunks it touched, in 3.7 seconds.
+
+![The mesa in front of the range](docs/images/world-mesa-and-range.jpg)
+
+![A forked River ending in a Lake](docs/images/world-lake-and-rivers.jpg)
+
+Known defects are in [`docs/next-steps.md`](docs/next-steps.md), such as [a cave left open](docs/bugs/open-cave.md) when the ground over it moves.
+
 ## Requirements
 
 - Claude Code.
