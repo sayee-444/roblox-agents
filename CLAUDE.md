@@ -10,8 +10,8 @@ The agent writes and runs a Generator, and the map is always its output. It neve
 
 | Need | Read |
 |---|---|
-| What the agent can do, and the words for it | `docs/functions.md` |
-| Where the work stands and what comes next | `docs/next-steps.md` |
+| What the agent can do, what it cannot yet, what is unverified, and the words for it | `docs/functions.md` |
+| Pending work | GitHub issues: `gh issue list`. The developer chooses what comes next |
 | Measuring a change | `docs/benchmark.md` |
 | How generation works, and why | `plugins/roblox-world/skills/world-generation/SKILL.md` |
 | Naming anything in the world domain, or what an order such as "load a map" means | `GLOSSARY.md` |
@@ -70,4 +70,4 @@ The developer judges the look in Studio or from captures, since passing measurem
 
 ## Reserved for the developer
 
-These need the developer's explicit order every time: publishing to Roblox by any route, overwriting a Locked Chunk, changing the World Seed, and deleting all terrain in a place, which `world.js wipe` warns about first. Saving a place also falls to them, because no tool lets an agent save. A confirmed `wipe` is denied in a headless session, so run it from an interactive one.
+These need the developer's explicit order every time: publishing to Roblox by any route, overwriting a Locked Chunk, changing the World Seed, and deleting all terrain in a place, which `world.js wipe` warns about first. Saving a place also falls to them: when a change needs a save, tell them, and give the file's whole path. A confirmed `wipe` is denied in a headless session, so run it from an interactive one.

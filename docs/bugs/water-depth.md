@@ -44,7 +44,7 @@ From read and seen, not proven:
 ## Possible causes, not tested
 
 1. **Same material at every depth.** The bed is Sand from the bank to the deepest point, so a deep bed may look like the ground that was already there. `Materials.surface` chooses by distance to the River, and never by depth.
-2. **Stale render.** No Play and Stop ran after the last `generate` and `regenerate`, and `docs/next-steps.md` records rendering that lags behind voxels. The dark pieces may be old mesh.
+2. **Stale render.** No Play and Stop ran after the last `generate` and `regenerate`, and the `roblox-terrain-facts` skill records rendering that lags behind voxels. The dark pieces may be old mesh.
 3. **Shape of the bed.** The bed is flat in its middle and rises to the bank through a smoothstep from 0.4 of the width, so a deep River may look like a sharp trench and not a natural bed.
 4. **The view from below.** If the developer expected ground below the camera, the thin rock from ADR 0008 is what they are seeing, and `rockUnder` would be the setting to change.
 

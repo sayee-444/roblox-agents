@@ -75,10 +75,23 @@ Each agent run starts in a new temporary folder, on `sonnet`, with a budget limi
 
 The agent's memory still loads, because `memory: user` is part of what it is. Each result records the memory's size and the Claude Code version, so a change in either can be told apart from a change in the plugin.
 
+## Baselines
+
+What the next run is compared against. `agent create-fork`, 3 runs each, medians, on 2026-11-06:
+
+| Plugin | Seconds | Requests | Tokens sent | Passed |
+|---|---|---|---|---|
+| 0.13.0 | 70 | 9 | 187,043 | 1 of 3 |
+| 0.14.0: `new` prints a template, `run` prints heights | 68 | 8 | 167,159 | 3 of 3 |
+| 0.15.0: points shown as arrays, plan and `run` sent together | 38 | 3 | 54,620 | 2 of 3 |
+| 0.18.0: `new --landforms` composes the plan from the seed, on a plainer prompt | 27 | 3 | 51,596 | 3 of 3 |
+
+`edit` on 0.18.0, 3 runs: 47 s, 6 requests, 117,551 tokens, 3 of 3 passed. `recover` was run once, on 0.17.0, and passed. No agent run has been measured since 0.18.0.
+
 ## Reading a result
 
 - **Compare with three runs.** One run of an agent says little, so use `--runs 3` when comparing two versions.
 - **The look is not measured.** A passing run says the agent did its job, and only the developer can say the terrain looks natural.
 - **Use a disposable place.** `engine`, `create` and `edit` overwrite the terrain of `--place`.
-- **Earlier numbers do not carry over.** The measurements up to plugin 0.11.0, in `docs/archive/next-steps-2026-11-06.md`, used other prompts, included other plugins' context and counted less of the context.
+- **Earlier numbers do not carry over.** The measurements up to plugin 0.11.0, now only in Git's history, used other prompts, included other plugins' context and counted less of the context.
 - **A sudden failure after an update may be the tool.** `measure-run.js` reads a transcript format documented as internal, so refresh `tests/fixtures/run.jsonl` if Claude Code changes it.

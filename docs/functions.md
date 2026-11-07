@@ -1,6 +1,6 @@
 # Function map
 
-Everything the `world` agent can do today, grouped by the job it serves, so that the developer and the agent use the same words. What does not exist yet is in `docs/next-steps.md`. `tests/docs.test.js` fails when a skill or an engine command is missing from this file.
+Everything the `world` agent can do today, grouped by the job it serves, so that the developer and the agent use the same words. What does not exist yet, and what has not been verified, is at the end of this file. `tests/docs.test.js` fails when a skill or an engine command is missing from this file.
 
 ## The pieces
 
@@ -102,3 +102,21 @@ Also from the engine, `help` lists every command.
 ## Proving a function ran
 
 The transcript of a session is the record. A skill that loaded and an engine command that ran both appear in it, and `measure-run.js` lists them under `Skills loaded` and `Engine commands`. A scenario in `benchmarks/scenarios.json` can then require or forbid them, so a function that stops being used fails the benchmark.
+
+## Not built
+
+- A shell of ground that follows the surface: mountains stay solid down to `floorY`. See ADR 0008.
+- Cenotes: designed in #30. A River or Lake has its own depth today.
+- Removing one Chunk: only wiping all terrain exists.
+- A command for `Describe.impact`: it exists and is tested in the Generator, and no command reaches it, so `describe` is read before a change instead.
+- Detecting hand edits: the developer says which Chunks they touched. Designed in #30.
+- Routes that follow the relief: a River curves through points placed by hand and holds one water level.
+- Sites and the World Limit: the World Plan has fields for them, and no code generates them.
+- Composing a Lake: `new --landforms` does not place one, so a Lake is written into the World Plan.
+- Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather and Graphics Profiles: designed only, in `docs/designs/world-systems.md`, which also holds their terms.
+
+## Not verified
+
+Nothing has gone into deep water in Play or walked a Shore. Nothing has walked or dug on ground with `floorY` at 0, or seen the underside of a map from below. Streaming, play mode and phones. What the render rebuild does to a place with scripts, since Play runs them. An agent run on any plugin after 0.18.0, whose changes may have slowed it (#34, #53). A character walking a cave. The tests under Lute. Any system other than Windows. The guard's approval window in an interactive session. Opening a World Snapshot from a command.
+
+Measured on 2026-11-07: `lab` at 144 Chunks saves to a place file of 4.66 MB. On Haiku, a headless agent resumed with `--resume` keeps its context and answered in 2.5 s, and plugin hooks run under `--setting-sources project`, since a headless agent's `world.js wipe --confirm` was denied there.
