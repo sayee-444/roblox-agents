@@ -133,25 +133,34 @@ function blockAt(text, entry) {
   return { start, end };
 }
 
-// Takes `id` out of the plan, with any Valley that exists only for it. Returns the new text and what
-// was taken, each with its list and exact text. Throws when the plan has no such thing.
+// The words the glossary capitalises.
+const KIND_NAMES = { river: 'River', lake: 'Lake' };
+
+// Takes `id` out of the plan. A River and its valley go together, since only a valley carves a River into
+// the ground, so naming either takes both. Returns the new text and what was taken, `id` first, each with
+// its list and exact text. Throws when the plan has no such thing.
 function remove(text, id) {
   const code = withoutComments(text);
-  const taken = [];
-  for (const name of SECTIONS) {
+  const blocks = SECTIONS.flatMap((name) => {
     const range = sectionRange(code, name);
-    for (const entry of range ? entries(code, range) : []) {
-      const blockId = textField(entry.source, 'id');
-      if (blockId === id || (name === 'regions' && textField(entry.source, 'riverId') === id)) {
-        const { start, end } = blockAt(text, entry);
-        taken.push({ section: name, id: blockId, kind: textField(entry.source, 'kind') || name.replace(/s$/, ''), start, end, text: text.slice(start, end) });
-      }
-    }
-  }
-  if (!taken.some((block) => block.id === id)) {
-    const held = facts(text);
-    throw new Error(`The World Plan has no "${id}". It holds: ${SECTIONS.flatMap((name) => held[name].map((thing) => thing.id)).join(' ')}`);
-  }
+    return (range ? entries(code, range) : []).map((entry) => ({
+      section: name,
+      entry,
+      id: textField(entry.source, 'id'),
+      riverId: textField(entry.source, 'riverId'),
+      kind: textField(entry.source, 'kind') || name.replace(/s$/, ''),
+    }));
+  });
+  const named = blocks.find((block) => block.id === id);
+  if (!named) throw new Error(`The World Plan has no "${id}". It holds: ${blocks.map((block) => block.id).join(' ')}`);
+  const river = named.riverId || id;
+  const taken = blocks
+    .filter((block) => block.id === id || block.id === river || block.riverId === river)
+    .map((block) => {
+      const { start, end } = blockAt(text, block.entry);
+      return { section: block.section, id: block.id, kind: KIND_NAMES[block.kind] || block.kind, start, end, text: text.slice(start, end) };
+    })
+    .sort((a, b) => (b.id === id) - (a.id === id));
   let out = text;
   for (const block of [...taken].sort((a, b) => b.start - a.start)) out = out.slice(0, block.start) + out.slice(block.end);
   for (const name of SECTIONS) out = out.replace(new RegExp(`^([ \\t]*${name}[ \\t]*=[ \\t]*)\\{\\s*\\}`, 'm'), '$1{}');
@@ -159,10 +168,17 @@ function remove(text, id) {
 }
 
 // A history entry for what was taken out of the plan, holding it exactly, so restoring it needs no Git.
-function removalEntry(date, why, taken, chunks) {
+function removalEntry({ date, why, taken, written, unwritten, locked }) {
   const names = taken.map((block) => `${block.kind} \`${block.id}\``).join(' and ');
   const blocks = taken.map((block) => `Into \`${block.section}\`:\n\n\`\`\`luau\n${block.text.trimEnd()}\n\`\`\``).join('\n\n');
-  return `## ${date}: Removed ${names}\n\n- **Why:** ${why}\n- **Chunks written:** ${chunks.join(' ') || 'none'}\n- **Restore:** paste each block below into its list in the World Plan, and generate those Chunks again.\n\n${blocks}\n`;
+  const lines = [
+    `- **Why:** ${why}`,
+    `- **Chunks written:** ${written.join(' ') || 'none'}`,
+    ...(unwritten.length ? [`- **Chunks not written:** ${unwritten.join(' ')}, since Studio stopped answering`] : []),
+    ...(locked.length ? [`- **Locked Chunks it reached, not written:** ${locked.join(' ')}`] : []),
+    '- **Restore:** paste each block below into its list in the World Plan, and generate those Chunks again.',
+  ];
+  return `## ${date}: Removed ${names}\n\n${lines.join('\n')}\n\n${blocks}\n`;
 }
 
 const round2 = (value) => Math.round(value * 100) / 100;
