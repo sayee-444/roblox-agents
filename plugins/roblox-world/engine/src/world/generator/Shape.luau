@@ -9,6 +9,9 @@ local Route = require("./Route")
 local Shape = {}
 local smoothstep = Geo.smoothstep
 
+local WIDTH_NOISE = 0.15 -- how far a bank wanders from a River's width, as a fraction of it
+local BANK_WIDTH = 20 -- the half width whose bank the sand band of Materials is measured for
+
 local prepared = setmetatable({}, { __mode = "k" })
 
 local function prepare(plan)
@@ -19,7 +22,7 @@ local function prepare(plan)
 	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {} }
 	for _, rv in ipairs(plan.rivers) do
 		local route = Route.points(rv)
-		P.rivers[rv.id] = { def = rv, route = route, poly = Geo.polyline2(route) }
+		P.rivers[rv.id] = { def = rv, route = route, poly = Geo.polyline2(route), width = Route.width(rv) }
 	end
 	for _, r in ipairs(plan.regions) do
 		if r.kind == "mountain" then
@@ -63,7 +66,7 @@ local function prepare(plan)
 end
 
 -- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
--- distance to the nearest River route or lake water, and the water level over this column (0 = dry).
+-- distance to the nearest River's sand band centre line or lake water, and the water level over this column (0 = dry).
 function Shape.height(plan, x: number, z: number): (number, number, number, number)
 	local P = prepare(plan)
 	local b = plan.base
@@ -127,9 +130,13 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 		local def, rv = v.def, v.river
 		local d, s = Geo.dist2(rv.poly, x, z)
 		v.d, v.s = d, s
-		riverD = math.min(riverD, d)
-		if d < def.halfWidth then
-			local w = 1 - smoothstep(rv.def.halfWidth + 20, def.halfWidth, d)
+		if d >= def.halfWidth then
+			riverD = math.min(riverD, d)
+		else
+			local width = rv.width.at(s)
+			-- Past BANK_WIDTH the sand band moves out with the bank, or it would end under the water.
+			riverD = math.min(riverD, math.max(0, d - math.max(0, width - BANK_WIDTH)))
+			local w = 1 - smoothstep(width + 20, def.halfWidth, d)
 			local floor = def.floorY + 2 * Noise.perlin(x / 50, z / 50, def.seed)
 			h += (floor - h) * w
 		end
@@ -140,7 +147,7 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 		local def, rv = v.def, v.river
 		local d, s = v.d, v.s
 		if d < def.halfWidth then
-			local hw = rv.def.halfWidth * (1 + 0.3 * Noise.perlin(s / 120, 0.5, def.seed + 1))
+			local hw = rv.width.at(s) * (1 + WIDTH_NOISE * Noise.perlin(s / 120, 0.5, def.seed + 1))
 			local c = 1 - smoothstep(hw * 0.4, hw, d)
 			local depth = c * (def.floorY - rv.def.bedY)
 			carve = math.max(carve, depth)
@@ -237,7 +244,7 @@ function Shape.bounds(plan, id: string)
 	end
 	local rv = P.rivers[id]
 	if rv then
-		return ofPoints(rv.route, rv.def.halfWidth * 1.5, 2)
+		return ofPoints(rv.route, rv.width.widest * (1 + WIDTH_NOISE) * 1.5, 2)
 	end
 	return nil
 end

@@ -77,6 +77,38 @@ test('Landforms keep apart: the River clear of the range, the mesa clear of both
   }
 });
 
+// The curve the engine's Route draws through a River's points: centripetal Catmull-Rom.
+const mix = (a, b, u) => [a[0] + (b[0] - a[0]) * u, a[1] + (b[1] - a[1]) * u];
+const knot = (t, a, b) => t + Math.sqrt(Math.hypot(b[0] - a[0], b[1] - a[1]));
+const spline = (p0, p1, p2, p3, u) => {
+  const t1 = knot(0, p0, p1);
+  const t2 = knot(t1, p1, p2);
+  const t3 = knot(t2, p2, p3);
+  const t = t1 + (t2 - t1) * u;
+  const b1 = mix(mix(p0, p1, t / t1), mix(p1, p2, (t - t1) / (t2 - t1)), t / t2);
+  const b2 = mix(mix(p1, p2, (t - t1) / (t2 - t1)), mix(p2, p3, (t - t2) / (t3 - t2)), (t - t1) / (t3 - t1));
+  return mix(b1, b2, (t - t1) / (t2 - t1));
+};
+const curved = (nodes) => nodes.slice(1).flatMap((b, leg) => {
+  const a = nodes[leg];
+  const before = nodes[leg - 1] || [2 * a[0] - b[0], 2 * a[1] - b[1]];
+  const after = nodes[leg + 2] || [2 * b[0] - a[0], 2 * b[1] - a[1]];
+  return Array.from({ length: 16 }, (_, n) => spline(before, a, b, after, n / 16));
+});
+
+test('Landforms keep apart measured on the curved route, at its largest meander', () => {
+  for (const seed of SEEDS) {
+    const { range, mesa, river, fork } = compose(seed, ALL);
+    for (const [name, line, meander] of [['River', river, 40], ['fork', fork, 30]]) {
+      const route = curved(line.points);
+      const toRange = Math.min(...route.map((p) => toLine(p, range.points)));
+      assert.ok(toRange - meander >= range.halfWidth, `seed ${seed}: ${name} reaches the range, ${toRange}`);
+      const toMesa = Math.min(...route.map((p) => Math.hypot(p[0] - mesa.center[0], p[1] - mesa.center[1])));
+      assert.ok(toMesa - meander >= (mesa.radius + mesa.margin + mesa.warp) * mesa.elongate, `seed ${seed}: ${name} reaches the mesa, ${toMesa}`);
+    }
+  }
+});
+
 test('compositions vary: no map side or quarter takes most of the seeds', () => {
   const count = (keyOf) => {
     const tally = {};
@@ -152,7 +184,7 @@ test('a composed world has Rivers that curve', () => {
   try {
     spawnSync(process.execPath, [cli, 'new', dir, '--place', 'P', '--seed', '42', '--landforms', 'river,fork'], { encoding: 'utf8' });
     const plan = fs.readFileSync(path.join(dir, 'src/world/plan.luau'), 'utf8');
-    assert.strictEqual((plan.match(/curve = 1, meander = \d+/g) || []).length, 2);
+    assert.deepStrictEqual(plan.match(/curve = 1, meander = \d+/g), ['curve = 1, meander = 40', 'curve = 1, meander = 30']);
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
