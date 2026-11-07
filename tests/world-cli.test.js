@@ -583,7 +583,7 @@ test('status says when a folder has no world yet', () => {
 
 const IMPACT = JSON.stringify({ rewrite: ['-1,0', '0,0'], lockedReached: ['1,1'] });
 
-test('remove takes a River and its Valley out of the plan, writes only their Chunks and records them exactly', () => {
+test('remove takes a River and its valley out of the plan, writes only their Chunks and records them exactly', () => {
   withPlan({ history: '## 2026-01-01: Older\n' }, (dir, read) => {
     const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT }, 'remove', 'river', '--place', 'P', '--project', dir, '--why', 'the developer wanted one River.');
     assert.strictEqual(status, 0, stdout);
@@ -591,11 +591,11 @@ test('remove takes a River and its Valley out of the plan, writes only their Chu
     assert.ok(!plan.includes('id = "river"'));
     assert.ok(!plan.includes('id = "valley"'));
     for (const kept of ['id = "fork"', 'id = "range"', 'id = "lake"']) assert.ok(plan.includes(kept), kept);
-    assert.ok(calls.includes('impact { regionIds = { "valley", "river" } }'), calls.join(' | '));
+    assert.ok(calls.includes('impact { removedIds = { "river", "valley" } }'), calls.join(' | '));
     assert.ok(calls.includes('generate { { -1, 0 }, { 0, 0 } }'), calls.join(' | '));
     assert.ok(calls.indexOf('describe') < calls.indexOf('generate { { -1, 0 }, { 0, 0 } }'), 'the new plan is validated before any write');
     const history = read('docs/world/history.md');
-    assert.match(history.split('\n')[0], /^## \d{4}-\d{2}-\d{2}: Removed valley `valley` and river `river`$/);
+    assert.match(history.split('\n')[0], /^## \d{4}-\d{2}-\d{2}: Removed River `river` and valley `valley`$/);
     assert.match(history, /\*\*Why:\*\* the developer wanted one River\./);
     assert.match(history, /\*\*Chunks written:\*\* -1,0 0,0/);
     assert.ok(history.includes('\t\t\tpoints = { { -2656, -556 }, { -1956, -356 } },'), 'the block as it stood in the plan');
@@ -614,12 +614,14 @@ test('remove takes out a thing on one line and leaves its list empty and tidy', 
   });
 });
 
-test('remove of a Valley leaves its River', () => {
+test('remove of a valley takes its River too, since only a valley carves a River into the ground', () => {
   withPlan({}, (dir, read) => {
     inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT }, 'remove', 'valley', '--place', 'P', '--project', dir);
     const plan = read('src/world/plan.luau');
     assert.ok(!plan.includes('id = "valley"'));
-    assert.ok(plan.includes('id = "river"'));
+    assert.ok(!plan.includes('id = "river"'));
+    assert.ok(plan.includes('id = "fork"'), 'another River stays');
+    assert.match(read('docs/world/history.md').split('\n')[0], /Removed valley `valley` and River `river`$/);
   });
 });
 
@@ -660,6 +662,74 @@ test('remove needs a project and a name, since it edits a plan', () => {
   withPlan({}, (dir) => {
     assert.strictEqual(inStudio(dir, {}, 'remove', 'river', '--place', 'P').status, 2);
     assert.strictEqual(inStudio(dir, {}, 'remove', '--place', 'P', '--project', dir).status, 2);
+  });
+});
+
+test('scale below 1 shrinks the plan about its centre, and says the old terrain stays', () => {
+  withPlan({}, (dir, read) => {
+    const { status, stdout } = world('scale', '0.5', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const plan = read('src/world/plan.luau');
+    // Worked out by hand: the centre of -5..6 is x 256, and a position p becomes (p - 256) / 2 + 256.
+    for (const expected of [
+      'extent = { minX = -2, maxX = 3, minZ = -2, maxZ = 3 }',
+      'base = { mean = 26, amp = 17, scale = 130, octaves = 4, warpScale = 150, warpAmp = 30 }',
+      'points = { { -1100, -800 }, { -600, -900 } }',
+      'center = { 1300, -100 }',
+      'halfWidth = 150',
+      'height = 125',
+      'floorY = 16',
+    ]) assert.ok(plan.includes(expected), expected);
+    assert.match(stdout, /6 x 6 Chunks/);
+    assert.match(stdout, /outside the new extent keep their terrain/);
+  });
+});
+
+test('scale puts its decision first in the rules, with its reason, since they run newest first', () => {
+  const rules = '# World rules\n\n## Decisions\n\nNewest first: the date, the decision and why it was made.\n\n- 2026-01-01: an older decision.\n';
+  withPlan({ rules }, (dir, read) => {
+    world('scale', '2', '--project', dir, '--why', 'the map felt small.');
+    const text = read('docs/world/rules.md');
+    assert.match(text, /Newest first: the date, the decision and why it was made\.\n\n- \d{4}-\d{2}-\d{2}: scaled by 2, extent -5\.\.6 to -11\.\.12\. Why: the map felt small\.\n- 2026-01-01: an older decision\.\n$/);
+  });
+});
+
+test('status counts only the Chunks inside the extent, and says how many lie outside it', () => {
+  const state = 'return {\n\tgeneratorVersion = 1,\n\tchunks = {\n\t\t["0,0"] = { generated = true, locked = false },\n\t\t["9,9"] = { generated = true, locked = false },\n\t\t["-6,0"] = { generated = true, locked = false },\n\t},\n}\n';
+  withPlan({ state }, (dir) => {
+    const { stdout } = inStudio(dir, {}, 'status', '--project', dir);
+    assert.match(stdout, /1 of 144 Chunks generated, and 2 outside the extent\. Locked: none/);
+  });
+});
+
+test('remove records the Locked Chunks it reached, since they still hold what it took out', () => {
+  withPlan({}, (dir, read) => {
+    inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT }, 'remove', 'river', '--place', 'P', '--project', dir);
+    assert.match(read('docs/world/history.md'), /\*\*Locked Chunks it reached, not written:\*\* 1,1/);
+  });
+});
+
+test('remove puts the plan back and records nothing when Studio fails before any write', () => {
+  withPlan({}, (dir, read) => {
+    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_UNREACHABLE: '.describe(' }, 'remove', 'river', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.strictEqual(read('src/world/plan.luau'), SMALL_PLAN);
+    assert.ok(!fs.existsSync(path.join(dir, 'docs/world/history.md')));
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.match(stderr, /Nothing was removed/);
+  });
+});
+
+test('remove keeps the block in the history when the write fails, and names the command that finishes it', () => {
+  withPlan({}, (dir, read) => {
+    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_UNREACHABLE: '.generate(' }, 'remove', 'river', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.ok(!read('src/world/plan.luau').includes('id = "river"'));
+    const history = read('docs/world/history.md');
+    assert.ok(history.includes('\t\t\triverId = "river",'), 'the block is safe');
+    assert.match(history, /\*\*Chunks written:\*\* none/);
+    assert.match(history, /\*\*Chunks not written:\*\* -1,0 0,0/);
+    assert.match(stdout, /generate -1 0 0 0 --place P --project/);
   });
 });
 

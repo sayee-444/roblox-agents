@@ -49,7 +49,7 @@ The Generator validates the World Plan and answers these questions, so planning 
 3. Write only those Chunks with `generate <i> <j> ...`.
 4. Ask the developer how it looks in Studio.
 
-To change a shape, change the World Plan or a Region Seed. A Region Seed change alters that Landform Region and its blend margin.
+To take a Landform, River or Lake off the map, run `remove <id>`, which covers these steps. To resize a world, run `scale <factor> --project <dir>`, then `run`. To change a shape, change the World Plan or a Region Seed. A Region Seed change alters that Landform Region and its blend margin.
 
 ## Design decisions
 

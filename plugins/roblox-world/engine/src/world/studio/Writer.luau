@@ -140,8 +140,7 @@ end
 function Writer.borderReport(terrain: Terrain, plan, Gen, axis: string, ci: number, cj: number)
 	local lookup = Writer.materialLookup(Gen.Materials)
 	local nci, ncj = if axis == "x" then ci + 1 else ci, if axis == "z" then cj + 1 else cj
-	local breathe = Writer.breather()
-	local a, b = Gen.Chunk.columns(plan, ci, cj, breathe), Gen.Chunk.columns(plan, nci, ncj, breathe)
+	local a, b = Gen.Chunk.columns(plan, ci, cj), Gen.Chunk.columns(plan, nci, ncj)
 	local n = a.n
 	-- Two Chunks can start at different heights, when one holds deep water and the other does not.
 	local ymin = math.min(a.ymin, b.ymin)
@@ -184,7 +183,6 @@ function Writer.borderReport(terrain: Terrain, plan, Gen, axis: string, ci: numb
 	local matMismatch, occMismatch, liqMismatch, maxOccErr, checked = 0, 0, 0, 0, 0
 	local nx, nz = #data.SolidMaterial, #data.SolidMaterial[1][1]
 	for ix = 1, nx do
-		breathe()
 		for iy = 1, ny do
 			for iz = 1, nz do
 				local eo = expected("SolidOccupancy", ix, iy, iz)

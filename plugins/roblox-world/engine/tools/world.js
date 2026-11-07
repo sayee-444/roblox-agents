@@ -27,7 +27,7 @@ Create and write terrain
                                   keeping its seeds. Writes no terrain, so run comes next
   run [--remove-baseplate]        Whole cycle: sync, test, describe, generate every Chunk, verify, heights
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
-  remove <id> [--why <reason>]    Take a Landform, River or Lake out of the plan, with a River's Valley, write only
+  remove <id> [--why <reason>]    Take a Landform, River or Lake out of the plan, a River with its valley, write only
                                   the generated Chunks it touched and record the exact block in the history
   verify <i> <j>                  Rewrite one Chunk and prove the result is identical
 
@@ -193,7 +193,7 @@ class Studio {
     } catch (error) {
       if (!error.message.includes('Target is not reachable')) throw error;
       // The code keeps running after this error, so sending it again would run the work twice.
-      throw new Error(`Studio did not answer and the code may still be running in it. Wait a minute, then run the command again. ${error.message.slice(0, 200)}`);
+      throw new Error(`Studio did not answer and the code may still be running in it, so running the command now could do the work twice. Wait about 1 s for each Chunk it writes, then run it again. ${error.message.slice(0, 200)}`);
     }
     return (result.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
   }
@@ -300,28 +300,48 @@ const steps = {
     return text;
   },
 
-  // Takes a Landform, River or Lake out of the plan, writes the Chunks it touched and records it, so
-  // that no model copies its block twice. A plan invalid without it is put back before any write.
+  // Takes a Landform, River or Lake out of the plan, writes the Chunks it touched and records it, so that
+  // no model copies its block twice. Until the new plan is known to be valid, any failure puts the old one
+  // back. After that the history holds the block, so a failed write leaves only the write to repeat.
   async remove(studio, ctx, args) {
     const planFile = path.join(ctx.project, `${PLAN}.luau`);
     const before = readModule(planFile);
     const { text, taken } = plans.remove(before, args[0]);
     const ids = taken.map((block) => JSON.stringify(block.id)).join(', ');
-    const { rewrite, lockedReached } = JSON.parse(await studio.luau(`return ${OPS}.impact({ regionIds = { ${ids} } })`));
+    const { rewrite, lockedReached } = JSON.parse(await studio.luau(`return ${OPS}.impact({ removedIds = { ${ids} } })`));
     fs.writeFileSync(planFile, text);
-    await steps.sync(studio, ctx);
-    const described = await studio.luau(`return ${OPS}.describe()`);
+    let described;
+    try {
+      await steps.sync(studio, ctx);
+      described = await studio.luau(`return ${OPS}.describe()`);
+    } catch (error) {
+      fs.writeFileSync(planFile, before);
+      throw new Error(`Nothing was removed, and the plan is as it was. ${error.message}`);
+    }
     if (described.startsWith('INVALID PLAN')) {
       fs.writeFileSync(planFile, before);
       await steps.sync(studio, ctx);
       ctx.failed = true;
       return `Nothing was removed, since the plan would be invalid:\n${described}`;
     }
-    const why = typeof ctx.flags.why === 'string' ? ctx.flags.why : 'the developer asked for it.';
-    addHistory(ctx.project, plans.removalEntry(new Date().toISOString().slice(0, 10), why, taken, rewrite));
-    const written = rewrite.length ? await steps.generate(studio, ctx, rewrite.flatMap((key) => key.split(','))) : 'No generated Chunk to write';
-    const locked = lockedReached.length ? `\nLocked Chunks it reached, not written, so tell the developer: ${lockedReached.join(' ')}` : '';
-    return `Removed ${taken.map((block) => block.id).join(' and ')}, recorded in docs/world/history.md. Chunks: ${rewrite.join(' ') || 'none'}\n${written}${locked}`;
+    const names = taken.map((block) => block.id).join(' and ');
+    const lockedNote = lockedReached.length ? `\nLocked Chunks it reached, not written, so tell the developer: ${lockedReached.join(' ')}` : '';
+    const record = (written, unwritten) => addHistory(ctx.project, plans.removalEntry({
+      date: new Date().toISOString().slice(0, 10), why: whyOf(ctx.flags), taken, written, unwritten, locked: lockedReached,
+    }));
+    let result = 'No generated Chunk to write';
+    if (rewrite.length) {
+      const pairs = rewrite.flatMap((key) => key.split(','));
+      try {
+        result = await steps.generate(studio, ctx, pairs);
+      } catch (error) {
+        record([], rewrite);
+        ctx.failed = true;
+        return `Removed ${names} from the plan and recorded it, but its Chunks were not all written. ${error.message}\nTo finish, run: generate ${pairs.join(' ')} --place ${ctx.flags.place} --project ${ctx.project}${lockedNote}`;
+      }
+    }
+    record(rewrite, []);
+    return `Removed ${names}, recorded in docs/world/history.md. Chunks: ${rewrite.join(' ') || 'none'}\n${result}${lockedNote}`;
   },
 
   async borders(studio, ctx, args) {
@@ -456,6 +476,17 @@ function composedPlan(seed, layout) {
 const extentText = (e) => (e.minX === e.minZ && e.maxX === e.maxZ ? `${e.minX}..${e.maxX}` : `${e.minX}..${e.maxX} x ${e.minZ}..${e.maxZ}`);
 
 // Puts an entry at the top of a world's history, creating the file when it is missing.
+const whyOf = (flags) => (typeof flags.why === 'string' ? flags.why : 'the developer asked for it.');
+
+// Decisions run newest first, under the line that says so.
+function addDecision(project, decision) {
+  const file = path.join(project, 'docs/world/rules.md');
+  if (!fs.existsSync(file)) return;
+  const text = readModule(file);
+  const first = /^(Newest first:.*)\n*/m;
+  fs.writeFileSync(file, first.test(text) ? text.replace(first, (_, line) => `${line}\n\n${decision}\n`) : `${text.trimEnd()}\n\n${decision}\n`);
+}
+
 function addHistory(project, entry) {
   const file = path.join(project, 'docs/world/history.md');
   const before = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
@@ -497,10 +528,15 @@ function worldLines(project) {
     const held = plans.facts(plan);
     const { generated, locked } = plans.stateFacts(readIfThere(path.join(project, `${STATE}.luau`)));
     const e = held.extent;
+    const inExtent = generated.filter((key) => {
+      const [i, j] = key.split(',').map(Number);
+      return i >= e.minX && i <= e.maxX && j >= e.minZ && j <= e.maxZ;
+    }).length;
+    const outside = generated.length - inExtent;
     const names = (things) => things.map((thing) => thing.id).join(', ') || 'none';
     lines.push(
       `Seed ${held.seed}, extent ${extentText(e)}, ${e.maxX - e.minX + 1} x ${e.maxZ - e.minZ + 1}, ${held.chunks} Chunks`,
-      `${generated.length} of ${held.chunks} Chunks generated. Locked: ${locked.join(' ') || 'none'}`,
+      `${inExtent} of ${held.chunks} Chunks generated${outside ? `, and ${outside} outside the extent` : ''}. Locked: ${locked.join(' ') || 'none'}`,
       `Regions: ${held.regions.map((region) => `${region.id} (${region.kind})`).join(', ') || 'none'}`,
       `Rivers: ${names(held.rivers)}`,
       `Lakes: ${names(held.lakes)}`,
@@ -541,9 +577,8 @@ function scaleWorld(args, flags) {
   fs.writeFileSync(planFile, scaled.text);
   const date = new Date().toISOString().slice(0, 10);
   const change = `extent ${extentText(scaled.before)} to ${extentText(scaled.extent)}`;
-  const rules = path.join(project, 'docs/world/rules.md');
-  if (fs.existsSync(rules)) fs.appendFileSync(rules, `\n- ${date}: scaled by ${factor}, ${change}.\n`);
-  addHistory(project, `## ${date}: Scaled the world by ${factor}\n\n- **Why:** ${typeof flags.why === 'string' ? flags.why : 'the developer asked for it.'}\n- **Chunks written:** none yet, until \`run\` writes every Chunk.\n- **Restore:** the World Plan before this entry, in Git, and generate every Chunk again.\n`);
+  addDecision(project, `- ${date}: scaled by ${factor}, ${change}. Why: ${whyOf(flags)}`);
+  addHistory(project, `## ${date}: Scaled the world by ${factor}\n\n- **Why:** ${whyOf(flags)}\n- **Chunks written:** none yet, until \`run\` writes every Chunk.\n- **Restore:** the World Plan before this entry, in Git, and generate every Chunk again.\n`);
   const side = (min, max) => max - min + 1;
   const e = scaled.extent;
   const notes = [`Scaled by ${factor}: ${change}, ${side(e.minX, e.maxX)} x ${side(e.minZ, e.maxZ)} Chunks.`];
