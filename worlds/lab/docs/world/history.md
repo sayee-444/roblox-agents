@@ -1,3 +1,25 @@
+## 2026-11-07: Valley sides now decide how deep the water gets
+
+- **Why:** the engine changed so a valley's `sides` set the depth of its water, and the River's `depths` and the Lake's `bedY` are only the deepest it may reach. `banks` no longer accepts `shallows`, `shallowDepth`, `bedFlat` or `steep`, so those were removed, and each valley got `sides`: `river` steep (0.7, then 1.2) in its last stretch before the Lake, and `fork`, `branch`, `oxbowA`, `oxbowB` gentle (0.1 to 0.12).
+- **Chunks written:** all 144 (extent -5..6)
+- **Result (asked / reached):** river depth 12 to 90 / 1.1 to 77.5; fork 8 to 70 / 1.0 to 4.9; branch 8 to 40 / 1.0 to 4.9; oxbowA 6 to 40 / 1.0 to 2.5; oxbowB 6 to 30 / 1.0 to 1.8; lake 110 / 63.6.
+- **Restore:** replace these lines in the World Plan with the old ones below, then generate every Chunk again. Delete the `sides` lines of the five valleys.
+
+```luau
+-- river banks
+banks = { shore = 50, shallows = 30, shallowDepth = 4, bedFlat = 0.2, steep = 1.6, rough = 3, vary = 0.6, smooth = 48 },
+-- fork banks
+banks = { shore = 36, shallows = 20, shallowDepth = 3, bedFlat = 0.2, steep = 1.4, rough = 2.5, vary = 0.6, smooth = 40 },
+-- branch banks
+banks = { shore = 30, shallows = 12, shallowDepth = 2, bedFlat = 0.3, steep = 2, rough = 3, vary = 0.5, smooth = 40 },
+-- oxbowA banks
+banks = { shore = 30, shallows = 16, shallowDepth = 3, bedFlat = 0.4, steep = 1.3, rough = 2, vary = 0.5 },
+-- oxbowB banks
+banks = { shore = 30, shallows = 16, shallowDepth = 3, bedFlat = 0.3, steep = 1.3, rough = 2, vary = 0.5 },
+-- lake banks
+banks = { shallows = 50, shallowDepth = 6, bedFlat = 0.25, steep = 1.3, rough = 6, vary = 0.6 }
+```
+
 ## 2026-11-07: Kept this map as the result of #43
 
 - **Why:** the developer wants the next Implementations compared against this state. PR #46, for issue #43, is the last Implementation that changed this World Plan, and doubling the map in #49 was undone in #50.
