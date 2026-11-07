@@ -248,3 +248,14 @@ test('borders passes on the Chunks it is given, and with none it checks them all
     assert.ok(calls.includes('borders nil'), calls.join(' | '));
   });
 });
+
+test('the template starts a River curved', () => {
+  const dir = tempDir();
+  try {
+    const { stdout } = world('new', dir, '--place', 'P');
+    assert.match(stdout, /curve = 1/);
+    assert.match(stdout, /meander = \d+/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});

@@ -4,6 +4,7 @@
 
 local Noise = require("./Noise")
 local Geo = require("./Geo")
+local Route = require("./Route")
 
 local Shape = {}
 local smoothstep = Geo.smoothstep
@@ -17,7 +18,8 @@ local function prepare(plan)
 	end
 	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {} }
 	for _, rv in ipairs(plan.rivers) do
-		P.rivers[rv.id] = { def = rv, poly = Geo.polyline2(rv.points) }
+		local route = Route.points(rv)
+		P.rivers[rv.id] = { def = rv, route = route, poly = Geo.polyline2(route) }
 	end
 	for _, r in ipairs(plan.regions) do
 		if r.kind == "mountain" then
@@ -219,7 +221,7 @@ function Shape.bounds(plan, id: string)
 	end
 	for _, v in ipairs(P.valleys) do
 		if v.def.id == id then
-			return ofPoints(v.river.def.points, v.def.halfWidth, 2)
+			return ofPoints(v.river.route, v.def.halfWidth, 2)
 		end
 	end
 	for _, c in ipairs(P.caves) do
@@ -235,7 +237,7 @@ function Shape.bounds(plan, id: string)
 	end
 	local rv = P.rivers[id]
 	if rv then
-		return ofPoints(rv.def.points, rv.def.halfWidth * 1.5, 2)
+		return ofPoints(rv.route, rv.def.halfWidth * 1.5, 2)
 	end
 	return nil
 end

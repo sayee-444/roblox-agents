@@ -3,6 +3,7 @@
 
 local Geo = {}
 
+local BLOCK = 8
 local cache2 = setmetatable({}, { __mode = "k" })
 local cache3 = setmetatable({}, { __mode = "k" })
 
@@ -20,7 +21,19 @@ function Geo.polyline2(points: { { number } })
 		segs[i] = { a[1], a[2], ex, ez, len2, len, total }
 		total += len
 	end
-	c = { segs = segs, length = total }
+	-- Runs of segments with their bounds, so that a long route costs little more than a short one.
+	local blocks = {}
+	for first = 1, #segs, BLOCK do
+		local last = math.min(first + BLOCK - 1, #segs)
+		local x0, x1, z0, z1 = math.huge, -math.huge, math.huge, -math.huge
+		for i = first, last do
+			local a, b = points[i], points[i + 1]
+			x0, x1 = math.min(x0, a[1], b[1]), math.max(x1, a[1], b[1])
+			z0, z1 = math.min(z0, a[2], b[2]), math.max(z1, a[2], b[2])
+		end
+		table.insert(blocks, { x0, x1, z0, z1, first, last })
+	end
+	c = { segs = segs, blocks = blocks, length = total }
 	cache2[points] = c
 	return c
 end
@@ -28,19 +41,27 @@ end
 -- Returns distance and arc length of the nearest point on the polyline.
 function Geo.dist2(poly: any, px: number, pz: number): (number, number)
 	local best, bestS = math.huge, 0
-	for _, s in ipairs(poly.segs) do
-		local wx, wz = px - s[1], pz - s[2]
-		local t = (wx * s[3] + wz * s[4]) / s[5]
-		if t < 0 then
-			t = 0
-		elseif t > 1 then
-			t = 1
-		end
-		local qx, qz = wx - t * s[3], wz - t * s[4]
-		local d2 = qx * qx + qz * qz
-		if d2 < best then
-			best = d2
-			bestS = s[7] + t * s[6]
+	local segs = poly.segs
+	for _, block in ipairs(poly.blocks) do
+		local gapX = math.max(block[1] - px, 0, px - block[2])
+		local gapZ = math.max(block[3] - pz, 0, pz - block[4])
+		if gapX * gapX + gapZ * gapZ < best then
+			for i = block[5], block[6] do
+				local s = segs[i]
+				local wx, wz = px - s[1], pz - s[2]
+				local t = (wx * s[3] + wz * s[4]) / s[5]
+				if t < 0 then
+					t = 0
+				elseif t > 1 then
+					t = 1
+				end
+				local qx, qz = wx - t * s[3], wz - t * s[4]
+				local d2 = qx * qx + qz * qz
+				if d2 < best then
+					best = d2
+					bestS = s[7] + t * s[6]
+				end
+			end
 		end
 	end
 	return math.sqrt(best), bestS

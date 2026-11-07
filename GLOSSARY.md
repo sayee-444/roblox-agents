@@ -23,7 +23,7 @@ The number that decides the exact shape inside one Landform Region, so that it c
 _Avoid_: local seed, sub-seed
 
 **River**:
-A watercourse of still water whose route is declared by points in the World Plan.
+A watercourse of still water whose route passes through points declared in the World Plan, in straight legs or a curve.
 _Avoid_: stream, flow
 
 **Lake**:

@@ -146,3 +146,14 @@ test('new refuses a Landform it cannot compose, and names those it can', () => {
     assert.ok(!fs.existsSync(path.join(dir, 'docs/world/rules.md')), 'nothing was started');
   });
 });
+
+test('a composed world has Rivers that curve', () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'layout-curve-'));
+  try {
+    spawnSync(process.execPath, [cli, 'new', dir, '--place', 'P', '--seed', '42', '--landforms', 'river,fork'], { encoding: 'utf8' });
+    const plan = fs.readFileSync(path.join(dir, 'src/world/plan.luau'), 'utf8');
+    assert.strictEqual((plan.match(/curve = 1, meander = \d+/g) || []).length, 2);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
