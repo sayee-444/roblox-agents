@@ -85,6 +85,7 @@ function composeRiver(rng) {
     points: wander(rng, onEdge(entry, rng.between(-600, 600)), onEdge(exit, rng.between(-600, 600)), rng.between(5, 6), 170),
     meander: 40, // the size the developer approved
     halfWidth: rng.between(18, 24),
+    bendWiden: 0.5,
     bedY: 10,
     waterLevel: 20,
   };
@@ -97,6 +98,7 @@ function composeFork(rng, river) {
     points: wander(rng, start, onEdge(side, rng.between(-650, 650)), rng.between(3, 5), 110),
     meander: 30, // the size the developer approved
     halfWidth: rng.between(12, 16),
+    bendWiden: 0.5,
     bedY: 10,
     waterLevel: 20,
   };
@@ -161,11 +163,11 @@ function renderLuau(layout, regionSeed) {
   if (mesa) regions.push(`{ id = "mesa", kind = "mesa", seed = ${regionSeed()}, center = { ${mesa.center[0]}, ${mesa.center[1]} }, radius = ${mesa.radius}, margin = ${mesa.margin}, levels = ${mesa.levels}, height = ${mesa.height}, warp = ${mesa.warp}, elongate = ${mesa.elongate}, angle = ${mesa.angle}, gully = ${mesa.gully} }`);
   if (river) {
     regions.push(`{ id = "valley", kind = "valley", seed = ${regionSeed()}, riverId = "river", halfWidth = 130, floorY = 24 }`);
-    rivers.push(`{ id = "river", points = ${points(river.points)}, curve = 1, meander = ${river.meander}, halfWidth = ${river.halfWidth}, bedY = ${river.bedY}, waterLevel = ${river.waterLevel} }`);
+    rivers.push(`{ id = "river", points = ${points(river.points)}, curve = 1, meander = ${river.meander}, bendWiden = ${river.bendWiden}, halfWidth = ${river.halfWidth}, bedY = ${river.bedY}, waterLevel = ${river.waterLevel} }`);
   }
   if (fork) {
     regions.push(`{ id = "forkValley", kind = "valley", seed = ${regionSeed()}, riverId = "fork", halfWidth = 90, floorY = 24 }`);
-    rivers.push(`{ id = "fork", points = ${points(fork.points)}, curve = 1, meander = ${fork.meander}, halfWidth = ${fork.halfWidth}, bedY = ${fork.bedY}, waterLevel = ${fork.waterLevel} }`);
+    rivers.push(`{ id = "fork", points = ${points(fork.points)}, curve = 1, meander = ${fork.meander}, bendWiden = ${fork.bendWiden}, halfWidth = ${fork.halfWidth}, bedY = ${fork.bedY}, waterLevel = ${fork.waterLevel} }`);
   }
   const block = (name, items) => `\t${name} = {\n${items.map((item) => `\t\t${item},`).join('\n')}\n\t},`;
   return `${block('regions', regions)}\n\n${block('rivers', rivers)}`;

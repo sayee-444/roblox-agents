@@ -49,7 +49,7 @@ cd worlds/test-map-x2
 node <engine>/tools/world.js run --place <name> --project .
 ```
 
-Then read the cave's axis with an upward ray, as above. Commit `34b70b6` holds the plan.
+Then read the cave's axis with an upward ray, as above.
 
 From nothing, in any world:
 

@@ -185,6 +185,7 @@ test('a composed world has Rivers that curve', () => {
     spawnSync(process.execPath, [cli, 'new', dir, '--place', 'P', '--seed', '42', '--landforms', 'river,fork'], { encoding: 'utf8' });
     const plan = fs.readFileSync(path.join(dir, 'src/world/plan.luau'), 'utf8');
     assert.deepStrictEqual(plan.match(/curve = 1, meander = \d+/g), ['curve = 1, meander = 40', 'curve = 1, meander = 30']);
+    assert.strictEqual((plan.match(/bendWiden = 0\.5/g) || []).length, 2, 'both Rivers open their bends');
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
