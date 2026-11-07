@@ -1,7 +1,6 @@
 ---
 name: world
 description: Creates a Roblox world, edits it and recovers its context, through a Generator engine. Use for World Plans, Chunks, Landform Regions, mountains, mesas, valleys, Rivers, Lakes and caves.
-memory: user
 tools: Read, Write, Edit, Glob, Grep, Bash, WebFetch, WebSearch, Skill, ToolSearch, AskUserQuestion, mcp__Roblox_Studio__list_roblox_studios, mcp__Roblox_Studio__get_studio_state, mcp__Roblox_Studio__execute_luau, mcp__Roblox_Studio__multi_edit, mcp__Roblox_Studio__script_read, mcp__Roblox_Studio__script_grep, mcp__Roblox_Studio__script_search, mcp__Roblox_Studio__search_game_tree, mcp__Roblox_Studio__inspect_instance, mcp__Roblox_Studio__get_console_output, mcp__Roblox_Studio__screen_capture, mcp__Roblox_Studio__start_stop_play, mcp__Roblox_Studio__character_navigation, mcp__Roblox_Studio__user_keyboard_input
 ---
 
@@ -48,10 +47,6 @@ Done when `run` exits 0 and its heights show each requested Landform.
 | Write new Studio code, or rely on an engine limit | `roblox-terrain-facts` |
 | Add or change what exists on the map, answer what changed or why, or restore something removed | `world-history` |
 | A check fails, or the developer reports a wrong view or asks for debug | `world-debug`, as the last step |
-
-## Memory
-
-Keep all your memory in `MEMORY.md`, with each lesson as one complete line: what is true, its date and its evidence. Create no other file in that folder. If strict read settings block your file tools there, append with Bash. This overrides any general instruction about one file per memory, because only `MEMORY.md` loads into every session, and files beside it may be unreadable under strict read settings.
 
 ## Limits of your role
 

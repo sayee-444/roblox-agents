@@ -46,13 +46,13 @@ The developer judges the look in Studio or from captures, since passing measurem
 
 ## Working on an agent
 
-- Run it from this checkout: `claude --plugin-dir plugins/roblox-world --agent roblox-world:world`.
+- Run it from this checkout: `claude --plugin-dir plugins/roblox-world --agent roblox-world:world --model sonnet`.
 - One agent writes to Studio at a time. Long Luau runs call `task.wait()` between batches.
 - Prefer a skill. Add an agent only when the work needs its own tools, memory or context.
 
 ## Changing a Test World
 
-- From a development session, send map orders to the `world` agent, so each one also tests it. Start it in the world's folder: `claude -p --session-id <uuid> --plugin-dir ../../plugins/roblox-world --agent roblox-world:world --setting-sources project --strict-mcp-config --permission-mode bypassPermissions`. Relay any question it stops on, and send the answer with `--resume <uuid>` in place of `--session-id`. A new focus starts a new session.
+- From a development session, send map orders to the `world` agent, so each one also tests it. Start it in the world's folder: `claude -p --session-id <uuid> --plugin-dir ../../plugins/roblox-world --agent roblox-world:world --model sonnet --setting-sources project --strict-mcp-config --permission-mode bypassPermissions`. Relay any question it stops on, and send the answer with `--resume <uuid>` in place of `--session-id`. A new focus starts a new session.
 - Write to whichever place is open, whatever its name. Stop and ask only if several are open, or it holds terrain this session did not write.
 - Commit each map change on its own, in the branch of its Implementation. The pull request says which map changed and why, so the map can be compared against what changed in the agent.
 - End an Implementation that changes the look with `capture overview`, and commit that one image. It moves the developer's camera once, and an Implementation that changes nothing visible skips it.

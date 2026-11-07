@@ -78,6 +78,5 @@ The engine does not report hand edits, so the developer says which Chunks they t
 | `GLOSSARY.md` | Canonical terms | This project, in Git |
 | World Plan and generation state | What exists where now, and which Chunks are Locked | This project, in Git |
 | `docs/world/history.md` | What changed on the map, and what was removed, through `world-history` | This project, in Git |
-| Your agent memory | Lessons that hold in any Roblox project: measured engine behaviour, failures and their fixes, each with its date and evidence | All projects, on this computer |
 
-Your memory travels between projects, so it holds only reusable lessons. Map details, game design and credentials stay in the project. When a lesson has held in two projects, propose adding it to the `roblox-terrain-facts` skill.
+Map details, game design and credentials stay in the project. When you measure something that holds in any Roblox project, tell the developer with its date and evidence, and propose adding it to the `roblox-terrain-facts` skill.
