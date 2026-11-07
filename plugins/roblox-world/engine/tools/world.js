@@ -9,6 +9,7 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const layouts = require('./layout.js');
+const { waitForJob } = require('./job.js');
 
 const HELP = `Runs the Generator in Studio. Every command except help takes --place <name>, and all that
 touch a world take --project <dir>. Exits 1 when a check fails.
@@ -48,6 +49,7 @@ const ENGINE = path.resolve(__dirname, '..');
 const PLAN = 'src/world/plan';
 const STATE = 'src/world/state';
 const OPS = 'shared.World.require("src/world/studio/Ops")';
+const PROGRESS_EVERY_MS = 60000;
 const BLANK_CAPTURE_CHARS = 15000; // Blank captures measured about 7,400 base64 characters, real ones over 79,000.
 // After a write, broken water stayed for 60 s until Play then Stop cleared it. A capture 0.4 s after Stop
 // came out half blank and one at 5 s was right, so that is the wait. A capture's size cannot prove the
@@ -176,6 +178,24 @@ class Studio {
     return (result.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
   }
 
+  // Runs Luau as a background job and polls it, because a heavy Chunk blocks Studio long enough
+  // for a direct call to fail, and a whole large map takes longer than one call may. The body must
+  // return a string. A retry of the start with the same id does not start a second job.
+  async job(body) {
+    const id = String(Date.now());
+    const answer = await this.luau(`return ${OPS}.startJob(${JSON.stringify(id)}, function() ${body} end)`);
+    if (answer.trim() !== 'started') throw new Error(`Studio is still running an earlier job, so wait for it: ${answer.trim()}`);
+    let reported = Date.now();
+    return waitForJob(() => this.luau(`return ${OPS}.jobStatus()`), {
+      id,
+      onProgress: (done, total) => {
+        if (Date.now() - reported < PROGRESS_EVERY_MS) return;
+        reported = Date.now();
+        console.error(`  ${done} of ${total}`);
+      },
+    });
+  }
+
   close() {
     this.child.stdin.end();
     if (this.child.pid) spawn('taskkill', ['/PID', String(this.child.pid), '/T', '/F'], { stdio: 'ignore' });
@@ -267,7 +287,7 @@ const steps = {
   async generate(studio, ctx, args) {
     const remove = ctx.flags['remove-baseplate'] === true;
     const list = chunkList(args);
-    const text = await studio.luau(`local O = ${OPS}; local g = O.generate(${list}); return g .. "\\n" .. O.placeSpawn(${remove})`);
+    const text = await studio.job(`local O = ${OPS}; local g = O.generate(${list}); return g .. "\\n" .. O.placeSpawn(${remove})`);
     if (ctx.project !== ENGINE) {
       const source = await studio.luau(`return ${OPS}.stateSource()`);
       fs.writeFileSync(path.join(ctx.project, `${STATE}.luau`), `${source.trim()}\n`);
@@ -283,7 +303,7 @@ const steps = {
 
   async regenerate(studio, ctx, args) {
     const [i, j] = args.length === 2 ? args.map(Number) : [0, 0];
-    const text = await studio.luau(`return ${OPS}.regenerate(${i}, ${j})`);
+    const text = await studio.job(`return ${OPS}.regenerate(${i}, ${j})`);
     if (!text.includes('identical=true') || !text.includes('checksum=true')) ctx.failed = true;
     return text;
   },

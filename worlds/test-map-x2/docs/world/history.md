@@ -1,3 +1,9 @@
+## 2026-11-07: Doubled the whole map, heights included
+
+- **Why:** the developer felt the world was small, and wanted the River and the mountains larger.
+- **Chunks written:** all 576.
+- **Restore:** in Git, the plan before this entry, then generate. By hand: set `extent` to -5..6, take each `points` and `center` position back with (value + 256) / 2, halve every other length and height of the plan (cave `y` included), keep `rockUnder` 8 and the ratios `bedFlat`, `steep`, `vary`, `elongate`, `snowMaxSlope` and `mesaRiser`, set `octaves` back to 5, and remove `bedDeep`.
+
 ## 2026-11-07: Made the world and its water larger, with parametrized banks
 
 - **Why:** the River read as a deep stream, its depth barely changed, the water fell straight from the shore, and hills stood around it.
