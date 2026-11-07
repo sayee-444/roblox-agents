@@ -4,6 +4,9 @@
 const EDGE = 740;
 const LANDFORMS = ['range', 'mesa', 'river', 'fork'];
 const MAX_ATTEMPTS = 2000;
+// The meander the developer approved, on test-map-x2. Landforms stay clear of it.
+const RIVER_MEANDER = 40;
+const FORK_MEANDER = 30;
 
 // A small seeded random number generator (mulberry32), since Math.random takes no seed.
 function randomFrom(seed) {
@@ -123,8 +126,11 @@ function isClear({ range, mesa, river, fork }) {
   if (fork && (span(fork.points) < 500 || fork.points.slice(0, -1).some((p) => inland(p) < 120))) return false;
   const reach = mesa ? (mesa.radius + mesa.margin + mesa.warp) * mesa.elongate : 0;
   const rivers = [river, fork].filter(Boolean);
-  if (range && rivers.some((line) => distanceBetween(line.points, range.points) < range.halfWidth + 30)) return false;
-  if (mesa && rivers.some((line) => distanceToLine(mesa.center, line.points) < reach + 30)) return false;
+  // Distances are measured on straight legs. A curve strayed up to 21 studs from them on 500 seeds,
+  // so 30 covers it, and each River's meander comes on top.
+  const clearance = (line) => 30 + (line === fork ? FORK_MEANDER : RIVER_MEANDER);
+  if (range && rivers.some((line) => distanceBetween(line.points, range.points) < range.halfWidth + clearance(line))) return false;
+  if (mesa && rivers.some((line) => distanceToLine(mesa.center, line.points) < reach + clearance(line))) return false;
   if (mesa && range && distanceToLine(mesa.center, range.points) < reach + range.halfWidth * 0.6) return false;
   if (fork && distanceBetween(fork.points.slice(2), river.points) < 150) return false;
   return true;
@@ -157,11 +163,11 @@ function renderLuau(layout, regionSeed) {
   if (mesa) regions.push(`{ id = "mesa", kind = "mesa", seed = ${regionSeed()}, center = { ${mesa.center[0]}, ${mesa.center[1]} }, radius = ${mesa.radius}, margin = ${mesa.margin}, levels = ${mesa.levels}, height = ${mesa.height}, warp = ${mesa.warp}, elongate = ${mesa.elongate}, angle = ${mesa.angle}, gully = ${mesa.gully} }`);
   if (river) {
     regions.push(`{ id = "valley", kind = "valley", seed = ${regionSeed()}, riverId = "river", halfWidth = 130, floorY = 24 }`);
-    rivers.push(`{ id = "river", points = ${points(river.points)}, curve = 1, meander = 12, halfWidth = ${river.halfWidth}, bedY = ${river.bedY}, waterLevel = ${river.waterLevel} }`);
+    rivers.push(`{ id = "river", points = ${points(river.points)}, curve = 1, meander = ${RIVER_MEANDER}, halfWidth = ${river.halfWidth}, bedY = ${river.bedY}, waterLevel = ${river.waterLevel} }`);
   }
   if (fork) {
     regions.push(`{ id = "forkValley", kind = "valley", seed = ${regionSeed()}, riverId = "fork", halfWidth = 90, floorY = 24 }`);
-    rivers.push(`{ id = "fork", points = ${points(fork.points)}, curve = 1, meander = 8, halfWidth = ${fork.halfWidth}, bedY = ${fork.bedY}, waterLevel = ${fork.waterLevel} }`);
+    rivers.push(`{ id = "fork", points = ${points(fork.points)}, curve = 1, meander = ${FORK_MEANDER}, halfWidth = ${fork.halfWidth}, bedY = ${fork.bedY}, waterLevel = ${fork.waterLevel} }`);
   }
   const block = (name, items) => `\t${name} = {\n${items.map((item) => `\t\t${item},`).join('\n')}\n\t},`;
   return `${block('regions', regions)}\n\n${block('rivers', rivers)}`;

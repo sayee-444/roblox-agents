@@ -45,7 +45,7 @@ return {
 			kind = "valley",
 			seed = {{regionSeed}},
 			riverId = "river",
-			halfWidth = 130, -- at least 1.3 times the River's halfWidth plus 20
+			halfWidth = 130, -- at least 1.3 times the River's widest half width plus 20
 			floorY = 24, -- above the water level
 		},
 		-- For a forked River, a valley for the branch:
@@ -60,13 +60,14 @@ return {
 			id = "river",
 			points = { { <x>, <z> }, { <x>, <z> }, { <x>, <z> }, { <x>, <z> } }, -- edge to edge, 4 to 6 points
 			curve = 1, -- 0 follows straight legs between the points, 1 a smooth curve through them
-			meander = 12, -- largest swing away from that line, in studs. It fades to nothing at each point
-			halfWidth = 20,
+			meander = 40, -- largest swing away from that line, in studs. It fades to nothing at each point
+			halfWidth = 20, -- or widths = { 14, 20, 32, 40 }, one per point, changing gradually between them
+			-- bendWiden = 0.5, -- widens by this fraction at a 90 degree bend, and in proportion at gentler ones
 			bedY = 10,
 			waterLevel = 20, -- multiple of the voxel size, so the surface meets a voxel boundary
 		},
 		-- A fork is a second River whose first point is one of this River's route points:
-		-- { id = "fork", points = { { <that x>, <that z> }, { <x>, <z> }, { <x>, <z> } }, curve = 1, meander = 8, halfWidth = 14, bedY = 10, waterLevel = 20 },
+		-- { id = "fork", points = { { <that x>, <that z> }, { <x>, <z> }, { <x>, <z> } }, curve = 1, meander = 30, halfWidth = 14, bedY = 10, waterLevel = 20 },
 	},
 	lakes = {},
 	-- For a lake, with any River ending in it holding the same waterLevel:

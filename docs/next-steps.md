@@ -8,9 +8,8 @@ One agent, `world`, that creates a world, edits it and recovers its context, thr
 
 Pending work lives in GitHub issues, each with its spec: `gh issue list`. The developer chooses what follows, and on 2026-11-06 left this order:
 
-1. #31: River widths and widening at bends.
-2. #32: Lakes that are not round.
-3. #30: the cave system, one delivery at a time, each only on the developer's order. It closes #22.
+1. #32: Lakes that are not round.
+2. #30: the cave system, one delivery at a time, each only on the developer's order. It closes #22.
 
 Not yet placed in that order: #33, the detail layer, which the developer chose earlier the same day, and #34, measuring the agent on the current plugin and proving an install.
 

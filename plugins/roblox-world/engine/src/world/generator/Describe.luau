@@ -58,13 +58,31 @@ function Describe.validate(plan): { string }
 
 	local ids = {}
 	local rivers = {}
+	local widest = {}
 	for _, rv in ipairs(plan.rivers or {}) do
 		if ids[rv.id] then
 			table.insert(e, "duplicate id " .. tostring(rv.id))
 		end
 		ids[rv.id] = true
 		rivers[rv.id] = rv
+		local before = #e
 		checkPoints(e, "river " .. tostring(rv.id), rv.points, 2)
+		if rv.widths ~= nil then
+			if type(rv.widths) ~= "table" or type(rv.points) ~= "table" or #rv.widths ~= #rv.points then
+				table.insert(e, "river " .. tostring(rv.id) .. ": widths needs one width per point")
+			else
+				for i = 1, #rv.widths do
+					if not (isNum(rv.widths[i]) and rv.widths[i] > 0) then
+						table.insert(e, "river " .. tostring(rv.id) .. ": width " .. i .. " must be above 0")
+					end
+				end
+			end
+		elseif not (isNum(rv.halfWidth) and rv.halfWidth > 0) then
+			table.insert(e, "river " .. tostring(rv.id) .. ": needs halfWidth above 0, or widths")
+		end
+		if rv.bendWiden ~= nil and not (isNum(rv.bendWiden) and rv.bendWiden >= 0) then
+			table.insert(e, "river " .. tostring(rv.id) .. ": bendWiden cannot be negative")
+		end
 		if rv.curve ~= nil and not (isNum(rv.curve) and rv.curve >= 0 and rv.curve <= 1) then
 			table.insert(e, "river " .. tostring(rv.id) .. ": curve must be from 0 to 1")
 		end
@@ -86,6 +104,10 @@ function Describe.validate(plan): { string }
 		end
 		if isNum(rv.bedY) and isNum(plan.floorY) and rv.bedY - plan.floorY < 64 then
 			table.insert(e, "river " .. tostring(rv.id) .. ": less than 64 studs of ground under the bed")
+		end
+		-- Only a River whose line and widths are sound can be measured.
+		if #e == before then
+			widest[rv.id] = Route.width(rv).widest
 		end
 	end
 	for _, lk in ipairs(plan.lakes or {}) do
@@ -152,8 +174,8 @@ function Describe.validate(plan): { string }
 			local rv = rivers[r.riverId]
 			if not rv then
 				table.insert(e, label .. ": unknown river " .. tostring(r.riverId))
-			elseif isNum(r.halfWidth) and r.halfWidth < rv.halfWidth * 1.3 + 20 then
-				table.insert(e, label .. ": halfWidth too small for its river")
+			elseif isNum(r.halfWidth) and widest[r.riverId] and r.halfWidth < widest[r.riverId] * 1.3 + 20 then
+				table.insert(e, label .. string.format(": halfWidth too small for its river, whose widest half width is %.1f", widest[r.riverId]))
 			elseif isNum(r.floorY) and r.floorY <= rv.waterLevel + 1 then
 				table.insert(e, label .. ": floorY must be above the water level")
 			end
@@ -328,7 +350,9 @@ function Describe.heights(plan): string
 	for _, rv in ipairs(plan.rivers) do
 		local a, b = rv.points[1], rv.points[#rv.points]
 		local route = Geo.polyline2(Route.points(rv)).length
-		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d, route %d studs, curve %s, meander %d", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2], route, tostring(rv.curve or 0), rv.meander or 0))
+		local width = Route.width(rv)
+		local span = if width.narrowest == width.widest then string.format("%d", width.widest) else string.format("%d to %d", width.narrowest, width.widest)
+		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d, route %d studs, curve %s, meander %d, width %s", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2], route, tostring(rv.curve or 0), rv.meander or 0, span))
 	end
 	for _, lk in ipairs(plan.lakes or {}) do
 		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel))
