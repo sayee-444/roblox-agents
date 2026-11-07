@@ -238,3 +238,13 @@ test('another place being open is an answer, so a command stops at once and writ
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('borders passes on the Chunks it is given, and with none it checks them all', () => {
+  withStudio({}, ['borders', '1', '2', '3', '-4'], ({ status, stdout }, calls) => {
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(calls.includes('borders { { 1, 2 }, { 3, -4 } }'), calls.join(' | '));
+  });
+  withStudio({}, ['borders'], (_, calls) => {
+    assert.ok(calls.includes('borders nil'), calls.join(' | '));
+  });
+});

@@ -26,7 +26,7 @@ Inspect, writing no terrain
   load                            Paste into Studio only the modules that differ
   test                            Run the engine's tests
   describe                        What exists, which Chunks each thing touches, which are Locked
-  borders                         Compare the voxels on both sides of every Chunk border
+  borders [<i> <j> ...]           Compare the voxels on both sides of the borders of these Chunks, or of every Chunk
   height <x> <z>                  Surface height at one spot
   heights                         Surface height of each Landform and River, from the plan
 
@@ -214,6 +214,13 @@ function modules(project) {
   return map;
 }
 
+// Chunks given as i j i j, as Luau: a list of { i, j }, or nil when none are given.
+function chunkList(args) {
+  const pairs = [];
+  for (let n = 0; n + 1 < args.length; n += 2) pairs.push(`{ ${Number(args[n])}, ${Number(args[n + 1])} }`);
+  return pairs.length ? `{ ${pairs.join(', ')} }` : 'nil';
+}
+
 const longString = (text) => `[=====[\n${text}]=====]`;
 
 async function add(studio, mod, source) {
@@ -259,9 +266,7 @@ const steps = {
 
   async generate(studio, ctx, args) {
     const remove = ctx.flags['remove-baseplate'] === true;
-    const pairs = [];
-    for (let n = 0; n + 1 < args.length; n += 2) pairs.push(`{ ${Number(args[n])}, ${Number(args[n + 1])} }`);
-    const list = pairs.length ? `{ ${pairs.join(', ')} }` : 'nil';
+    const list = chunkList(args);
     const text = await studio.luau(`local O = ${OPS}; local g = O.generate(${list}); return g .. "\\n" .. O.placeSpawn(${remove})`);
     if (ctx.project !== ENGINE) {
       const source = await studio.luau(`return ${OPS}.stateSource()`);
@@ -270,8 +275,8 @@ const steps = {
     return text;
   },
 
-  async borders(studio, ctx) {
-    const text = await studio.luau(`return ${OPS}.borders()`);
+  async borders(studio, ctx, args) {
+    const text = await studio.luau(`return ${OPS}.borders(${chunkList(args)})`);
     if (!text.includes('disagreeing: none')) ctx.failed = true;
     return text;
   },

@@ -22,6 +22,17 @@ local function has(list, v)
 	return false
 end
 
+-- The test map's 3 by 3 Chunks, all generated.
+local function allGenerated()
+	local chunks = {}
+	for i = -1, 1 do
+		for j = -1, 1 do
+			chunks[i .. "," .. j] = { generated = true, locked = false }
+		end
+	end
+	return { generatorVersion = 1, chunks = chunks }
+end
+
 return {
 	["the shipped plan validates"] = function(t)
 		local errors = Describe.validate(plan)
@@ -71,6 +82,25 @@ return {
 		t.ok(#impact.rewrite < 9, "not everything")
 		local all = Describe.impact(plan, s, { all = true })
 		t.eq(#all.rewrite, 8, "all unlocked chunks")
+	end,
+
+	["with no list, the borders are every pair of generated neighbours"] = function(t)
+		t.eq(#Describe.bordersOf(plan, allGenerated(), nil), 12)
+	end,
+
+	["a Chunk in the middle has four borders, and one in a corner two"] = function(t)
+		t.eq(#Describe.bordersOf(plan, allGenerated(), { { 0, 0 } }), 4)
+		t.eq(#Describe.bordersOf(plan, allGenerated(), { { -1, -1 } }), 2)
+	end,
+
+	["two neighbouring Chunks count their shared border once"] = function(t)
+		t.eq(#Describe.bordersOf(plan, allGenerated(), { { 0, 0 }, { 1, 0 } }), 6)
+	end,
+
+	["a border with a Chunk not yet generated is left out"] = function(t)
+		local s = allGenerated()
+		s.chunks["1,0"] = nil
+		t.eq(#Describe.bordersOf(plan, s, { { 0, 0 } }), 3)
 	end,
 
 	["free extent is counted"] = function(t)

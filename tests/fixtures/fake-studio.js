@@ -15,6 +15,8 @@ const VIEWS = [
 let misses = Number(process.env.FAKE_STUDIO_MISSES || 0);
 
 function luau(code) {
+  const borders = code.match(/\.borders\((.*)\)/);
+  if (borders) { log(`borders ${borders[1]}`); return 'disagreeing: none'; }
   if (code.includes('.markRenderStale()')) log('mark render stale');
   if (code.includes('shared.World ~= nil')) return 'true';
   if (code.includes('.differs(')) return '';
