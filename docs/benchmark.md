@@ -115,12 +115,31 @@ On 0.34.2, 3 runs each, all passed: `recover` 6 s and 33,336 tokens, now that `s
 
 From 0.34.0 the `create` and `create-fork` prompts call the place disposable, where they used to call it empty. Each run leaves terrain for the next, which no agent saw until `status` showed it, and then it rightly stopped to ask. The 6 runs on the old prompt are on record under the label `prompt-said-empty`.
 
+At the end of #53, on 0.37.1, 3 runs each, all passed: `start` 1 s and 16,348 tokens, `recover` 5 s and 33,558, `create` 21 s and 34,079, `create-fork` 21 s and 34,248, `edit` 13 s and 51,273. `engine` 10.8 s, and `run` on the whole of `lab` 122 s. `cost`: 462 tokens always on, 11,400 on invoke.
+
 All of these ran on `sonnet`, whose default `effort` is `medium` and which reasoned for almost nothing: 74 tokens in the median `edit`. So they say little about a session on another model or a higher `effort`.
+
+## What a model, an `effort` and the memory cost
+
+Medians of 3 runs on plugin 0.37.0, all passed. `--effort` stands for the session's level, and each result records the level its requests really used, read from the transcript.
+
+| Session | `edit` seconds | `edit` output | `create-fork` seconds | `create-fork` output |
+|---|---|---|---|---|
+| `sonnet`, `medium`, its default | 13 | 561 | 20 | 631 |
+| `sonnet`, `low` | 13 | 523 | 20 | 596 |
+| `opus`, `low` | 15 | 756 | 28 | 1,264 |
+| `opus`, `xhigh` | 21 | 1,402 | 48 | 3,158 |
+
+Tokens sent stay within 1% across them. These two jobs leave the model little to work out, since the engine composes the world and `remove` does the edit, so a plan the model composes, or a debugging session, may gain from a higher level and has not been measured. So the commands that start the agent name `--model sonnet`, by the developer's decision on 2026-11-07.
+
+- **`effort` in the agent's frontmatter has no effect on a session started with `--agent`.** With `effort: low`, `sonnet` stayed on `medium` and an `opus` session at `xhigh` stayed on `xhigh`, one run each. So the file holds none.
+- **`model: sonnet` in the frontmatter loses to `--model opus`** on the command line, one run. Without that flag it has not been measured.
+- **Without `memory: user`, tokens sent fall 24%** and nothing else moves: `start` 16,213 to 12,317, `recover` 33,336 to 25,495, `create-fork` 34,242 to 26,169, `edit` 51,240 to 39,137, with the same seconds, requests and output. So the agent has no memory since 0.38.0, by the developer's decision on 2026-11-07. It gives up lessons between projects, which no scenario grades, and its `MEMORY.md` had stayed empty.
 
 ## Reading a result
 
 - **Compare with three runs.** One run of an agent says little, so use `--runs 3` when comparing two versions.
 - **The look is not measured.** A passing run says the agent did its job, and only the developer can say the terrain looks natural.
-- **Use a disposable place.** `engine`, `create` and `edit` overwrite the terrain of `--place`.
+- **Use a disposable place.** `engine`, `create` and `edit` each write their own world over the terrain of `--place`, and only inside their own Chunks. It ends as pieces of several worlds with straight seams between them, which serves neither to look at nor to build on.
 - **Earlier numbers do not carry over.** The measurements up to plugin 0.11.0, now only in Git's history, used other prompts, included other plugins' context and counted less of the context.
 - **A sudden failure after an update may be the tool.** `measure-run.js` reads a transcript format documented as internal, so refresh `tests/fixtures/run.jsonl` if Claude Code changes it.

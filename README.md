@@ -43,7 +43,7 @@ claude plugin install roblox-world@roblox-agents
 Then start it from your project folder:
 
 ```text
-claude --agent roblox-world:world
+claude --agent roblox-world:world --model sonnet
 ```
 
 On its first task in a project, the agent asks about your map and writes `docs/world/rules.md`. A new world needs only a World Plan, because the plugin includes the Generator engine. Installing from the marketplace has not been tested yet: every measured run loaded the plugin from a checkout.
@@ -80,7 +80,6 @@ Each skill is a set of instructions the agent reads only when its task needs the
 | Place | Holds | Travels with |
 |---|---|---|
 | This plugin | The Generator engine, the method and verified engine facts | Every installation |
-| `~/.claude/agent-memory/roblox-world-world/` | Lessons learned in any Roblox project | This computer. Copy the folder to move it |
 | The project's Git repository | The World Plan, its rules, its decisions and its map history | The project |
 
 ## Guard
