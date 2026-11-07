@@ -67,16 +67,6 @@ Designed, with the delivery order, in [#30](https://github.com/sayee-444/roblox-
 | **Aquatic Cave** | A flooded Cave that leaves a River, Lake or Cenote underwater, and takes its water level |
 | **Water Vault** | The Cavern that joins an Aquatic Cave to a dry route, with air above the water |
 
-## Water and its banks
-
-Designed with the developer on 2026-11-07 in [#62](https://github.com/sayee-444/roblox-agents/issues/62), with the rule in ADR 0010. The rule: the ground that comes down to the water keeps falling under it at the slope it came down with, and curves into the bed with no break at the waterline. The slope decides how deep water gets, and a depth in the World Plan is the most it can reach. When built, these terms move into `GLOSSARY.md`, and its **Banks** entry loses the wall.
-
-| Term | Meaning |
-|---|---|
-| **Valley Side** | The ground of a valley that falls from its edge towards its River and keeps falling under the water. How steep it is decides how deep the River can be |
-| **Cut Bank** | The outside of a River's bend, where the bank is steep and the water deepest |
-| **Point Bar** | The inside of a River's bend, a gentle beach where the water is shallow |
-
 ## Engine facts
 
 Read 2026-11-05. Recheck before relying on them.

@@ -87,6 +87,7 @@ return {
 			riverId = "river",
 			halfWidth = 700,
 			floorY = 28,
+			sides = { 0.2, 0.6 },
 		},
 		{
 			id = "cave",
@@ -108,7 +109,7 @@ return {
 			bendWiden = 0.5,
 			depths = { 12, 34 },
 			depthVary = 0.5,
-			banks = { shore = 50, shallows = 30, shallowDepth = 4, bedFlat = 0.2, steep = 1.6, rough = 3, vary = 0.6, smooth = 48 },
+			banks = { shore = 50, rough = 3, vary = 0.6, smooth = 48 },
 			bedRough = 6,
 			waterLevel = 20,
 		},
@@ -121,7 +122,7 @@ return {
 		},
 	},
 	lakes = {
-		{ id = "lake", seed = 7006, center = { 744, 1044 }, radius = 340, shore = 240, warp = 40, elongate = 1.2, angle = 30, bedY = -90, bedRough = 10, depthVary = 0.4, banks = { shallows = 50, shallowDepth = 6, bedFlat = 0.25, steep = 1.3, rough = 6, vary = 0.6 }, waterLevel = 20 },
+		{ id = "lake", seed = 7006, center = { 744, 1044 }, radius = 340, shore = 240, warp = 40, elongate = 1.2, angle = 30, bedY = -90, bedRough = 10, depthVary = 0.4, banks = { rough = 6, vary = 0.6 }, waterLevel = 20 },
 	},
 	sites = {},
 	worldLimit = nil, -- not requested yet
@@ -175,7 +176,7 @@ test('scale 2 gives the plan that doubling by hand gave, with no Studio', () => 
       'meander = 160',
       'widths = { 60, 72 }',
       'depths = { 24, 68 }',
-      'banks = { shore = 100, shallows = 60, shallowDepth = 8, bedFlat = 0.2, steep = 1.6, rough = 6, vary = 0.6, smooth = 96 }',
+      'banks = { shore = 100, rough = 6, vary = 0.6, smooth = 96 }',
       'bedRough = 12',
       'waterLevel = 40',
       'center = { 1232, 1832 }, radius = 680, shore = 480, warp = 80, elongate = 1.2, angle = 30, bedY = -180, bedRough = 20',
@@ -189,7 +190,7 @@ test('scale keeps seeds, ratios and slopes, since those do not grow with the map
   withPlan({}, (dir, read) => {
     world('scale', '2', '--project', dir);
     const plan = read('src/world/plan.luau');
-    for (const kept of ['worldSeed = 12345', 'chunkSize = 512', 'voxel = 4', 'seed = 7001', 'levels = 5', 'elongate = 1.3', 'angle = 90', 'curve = 1', 'bendWiden = 0.5', 'depthVary = 0.5', 'snowMaxSlope = 1.4', 'steep = 0.85', 'mesaRiser = 1.1', 'rockUnder = 8']) {
+    for (const kept of ['worldSeed = 12345', 'chunkSize = 512', 'voxel = 4', 'seed = 7001', 'levels = 5', 'elongate = 1.3', 'angle = 90', 'curve = 1', 'bendWiden = 0.5', 'depthVary = 0.5', 'snowMaxSlope = 1.4', 'steep = 0.85', 'mesaRiser = 1.1', 'rockUnder = 8', 'sides = { 0.2, 0.6 }']) {
       assert.ok(plan.includes(kept), kept);
     }
   });

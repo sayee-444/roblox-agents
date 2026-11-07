@@ -169,6 +169,24 @@ local function tightness(points, arcs)
 	return out
 end
 
+-- How sharply the line curves around each place, every BEND_STEP studs, in radians per stud. Positive
+-- where it turns towards its left, the side Geo.dist2 calls 1, and negative where it turns right.
+local function curvature(points, arcs)
+	local length = arcs[#arcs]
+	local out = {}
+	for k = 0, math.ceil(length / BEND_STEP) do
+		local s = math.min(k * BEND_STEP, length)
+		local s0, s1 = math.max(s - BEND_REACH, 0), math.min(s + BEND_REACH, length)
+		local here = pointAt(points, arcs, s)
+		local from = pointAt(points, arcs, s0)
+		local to = pointAt(points, arcs, s1)
+		local ax, az = here[1] - from[1], here[2] - from[2]
+		local bx, bz = to[1] - here[1], to[2] - here[2]
+		out[k + 1] = math.atan2(ax * bz - az * bx, ax * bx + az * bz) / (s1 - s0)
+	end
+	return out
+end
+
 -- Values declared per point, as a function of the distance along the line: each holds at its point
 -- and eases into the next.
 local function eased(values, arcs, nodeAt)
@@ -203,6 +221,31 @@ function Route.depth(rv)
 		at = eased(rv.depths, arcsOf(points), nodeAt),
 		shallowest = math.min(table.unpack(rv.depths)),
 		deepest = math.max(table.unpack(rv.depths)),
+	}
+end
+
+-- Values declared one per point of a River, as a function of the distance along its line, each
+-- holding at its point and easing into the next, as `widths` do.
+function Route.along(rv, values)
+	local points, nodeAt = trace(rv)
+	return eased(values, arcsOf(points), nodeAt)
+end
+
+-- How sharply a River's line curves along it, in radians per stud: positive where it turns towards the
+-- side Geo.dist2 calls 1, which is then the inside of the bend. `at(s)` takes the distance along the line.
+function Route.bend(rv)
+	local points = trace(rv)
+	local arcs = arcsOf(points)
+	local length = arcs[#arcs]
+	local bends = curvature(points, arcs)
+	return {
+		at = function(s)
+			s = math.clamp(s, 0, length)
+			local place = s / BEND_STEP
+			local k = math.min(math.floor(place), #bends - 2)
+			local gap = math.min(k + 1, length / BEND_STEP) - k
+			return bends[k + 1] + (bends[k + 2] - bends[k + 1]) * (place - k) / gap
+		end,
 	}
 end
 

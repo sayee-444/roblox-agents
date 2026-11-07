@@ -38,11 +38,12 @@ function Geo.polyline2(points: { { number } })
 	return c
 end
 
--- Returns distance and arc length of the nearest point on the polyline.
+-- Returns distance and arc length of the nearest point on the polyline, then the side of the line the
+-- point lies on: 1 on the left, looking along the line with z towards the left of x, and -1 on the right.
 -- With `limit`, a line no nearer than that gives math.huge, and blocks past it cost no segment.
-function Geo.dist2(poly: any, px: number, pz: number, limit: number?): (number, number)
+function Geo.dist2(poly: any, px: number, pz: number, limit: number?): (number, number, number)
 	local start = if limit then limit * limit else math.huge
-	local best, bestS = start, 0
+	local best, bestS, cross = start, 0, 0
 	local segs = poly.segs
 	for _, block in ipairs(poly.blocks) do
 		local gapX = math.max(block[1] - px, 0, px - block[2])
@@ -62,23 +63,25 @@ function Geo.dist2(poly: any, px: number, pz: number, limit: number?): (number, 
 				if d2 < best then
 					best = d2
 					bestS = s[7] + t * s[6]
+					cross = s[3] * qz - s[4] * qx
 				end
 			end
 		end
 	end
 	if best == start then
-		return math.huge, 0
+		return math.huge, 0, 1
 	end
-	return math.sqrt(best), bestS
+	return math.sqrt(best), bestS, if cross >= 0 then 1 else -1
 end
 
--- Every stretch of the polyline passing within `reach` of the point, as a flat list of distance and
--- position along the line: d1, s1, d2, s2... A line that comes back near itself gives one for each pass.
+-- Every stretch of the polyline passing within `reach` of the point, as a flat list of distance,
+-- position along the line and side, as Geo.dist2 gives them: d1, s1, side1, d2, s2, side2... A line
+-- that comes back near itself gives one for each pass.
 function Geo.stretches2(poly: any, px: number, pz: number, reach: number): { number }
 	local found = {}
 	local segs = poly.segs
 	local reach2 = reach * reach
-	local before, beforeS, falling, lastIndex = math.huge, 0, false, -1
+	local before, beforeS, beforeSide, falling, lastIndex = math.huge, 0, 1, false, -1
 	for _, block in ipairs(poly.blocks) do
 		local gapX = math.max(block[1] - px, 0, px - block[2])
 		local gapZ = math.max(block[3] - pz, 0, pz - block[4])
@@ -96,14 +99,17 @@ function Geo.stretches2(poly: any, px: number, pz: number, reach: number): { num
 				if d2 > before and falling and before < reach2 then
 					table.insert(found, math.sqrt(before))
 					table.insert(found, beforeS)
+					table.insert(found, beforeSide)
 				end
 				falling = d2 <= before
 				before, beforeS, lastIndex = d2, here, i
+				beforeSide = if s[3] * qz - s[4] * qx >= 0 then 1 else -1
 			end
 		else
 			if falling and before < reach2 then
 				table.insert(found, math.sqrt(before))
 				table.insert(found, beforeS)
+				table.insert(found, beforeSide)
 			end
 			before, falling = math.huge, false
 		end
@@ -111,6 +117,7 @@ function Geo.stretches2(poly: any, px: number, pz: number, reach: number): { num
 	if falling and before < reach2 then
 		table.insert(found, math.sqrt(before))
 		table.insert(found, beforeS)
+		table.insert(found, beforeSide)
 	end
 	return found
 end

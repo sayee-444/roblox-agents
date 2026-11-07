@@ -47,6 +47,9 @@ return {
 			riverId = "river",
 			halfWidth = 130, -- at least 1.3 times the River's widest half width plus 20
 			floorY = 24, -- above the water level
+			-- How steep its sides come down to a River with banks, rise over run, which decides how deep the water gets.
+			-- 0.1 is a plain with shallow water, 0.3 medium, 0.8 a mountain valley. Or one per point of the River, eased like widths
+			sides = 0.3,
 		},
 		-- For a forked River, a valley for the branch:
 		-- { id = "forkValley", kind = "valley", seed = {{regionSeed}}, riverId = "fork", halfWidth = 90, floorY = 24 },
@@ -66,16 +69,13 @@ return {
 			-- For a bend close to a circle, on the leg between points 2 and 3. A turn of 180 is a semicircle, 290 leaves a neck, 360 closes with an island:
 			-- loops = { { leg = 2, radius = 110, turn = 290, side = "right" } },
 			bedY = 10, -- or depths = { 8, 14, 30, 12 }, below the water, one per point, changing gradually between them
-$1			depthVary = 0.5, -- pools and shallows along the line, placed by the valley's seed, as a fraction of the depth. 0 to 0.9
-			-- How the water meets the land. Leave banks out for the older, sharper shape.
+			depthVary = 0.5, -- pools and shallows along the line, placed by the valley's seed, as a fraction of the depth. 0 to 0.9
+			-- How the water meets the land: the ground keeps the slope of its valley's sides under the water, so the
+			-- depth above is the deepest it may get. Leave banks out for the older, sharper shape.
 			banks = {
-				shore = 24, -- studs of gentle ground between the water and the flat of the valley
-				shallows = 16, -- studs of shallow water on the way in, before the wall falls
-				shallowDepth = 3, -- how deep those shallows get
-				bedFlat = 0.25, -- how much of the half width is the flat bottom. 0 is a narrow V, 0.9 a wide trench
-				steep = 1.4, -- 1 falls evenly, higher falls sooner after the shallows
-				rough = 2.5, -- studs of small slopes in the wall, which leave the bottom and the edge alone
-				vary = 0.5, -- how much all of these change along each side, placed by the seed. 0 to 0.9
+				shore = 24, -- studs of Shore, the ground beside the water, about half of it sand
+				rough = 2.5, -- studs of small slopes under the water, which leave the waterline and the deepest line alone
+				vary = 0.5, -- how much the slope and the shore change along each side, placed by the seed. 0 to 0.9
 				smooth = 24, -- crests thinner than about twice this, between stretches of water, are filled. 0 turns it off
 			},
 			waterLevel = 20, -- multiple of the voxel size, so the surface meets a voxel boundary
@@ -85,7 +85,8 @@ $1			depthVary = 0.5, -- pools and shallows along the line, placed by the valley
 	},
 	lakes = {},
 	-- For a lake, with any River ending in it holding the same waterLevel:
-	-- lakes = { { id = "lake", seed = {{regionSeed}}, center = { <x>, <z> }, radius = 170, shore = 120, warp = 20, elongate = 1.2, angle = <degrees>, bedY = -20, depthVary = 0.4, banks = { shallows = 40, shallowDepth = 4, bedFlat = 0.25, steep = 1.3, rough = 4, vary = 0.5 }, waterLevel = 20 } },
+	-- lakes = { { id = "lake", seed = {{regionSeed}}, center = { <x>, <z> }, radius = 170, shore = 120, warp = 20, elongate = 1.2, angle = <degrees>, bedY = -20, depthVary = 0.4, banks = { rough = 4, vary = 0.5 }, waterLevel = 20 } },
+	-- With banks, its bed follows the slope of the ground around it, and bedY is the deepest it may get.
 	sites = {},
 	worldLimit = nil, -- not requested yet
 

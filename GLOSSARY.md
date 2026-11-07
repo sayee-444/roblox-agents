@@ -31,16 +31,28 @@ A body of still water declared in the World Plan, where Rivers end.
 _Avoid_: ocean, sea
 
 **Banks**:
-How a River or Lake meets the land, across from the ground around it down to its deepest line: its Shore, its Shallows and the wall below them.
+How a River or Lake meets the land, from the ground around it down to its deepest line, falling as one curve with no break at the waterline: its Shore and its Shallows.
 _Avoid_: edges, sides
 
 **Shore**:
-The gentle dry ground between the water and the ground around it.
+The dry ground between the water and the ground around it.
 _Avoid_: beach, border
 
 **Shallows**:
-The strip of shallow water just inside a Shore, before the wall falls.
+The strip of shallow water just inside a Shore, wide where the ground comes down gently.
 _Avoid_: shelf, ford
+
+**Valley Side**:
+The ground of a valley that falls from its edge towards its River and keeps falling under the water. How steep it is decides how deep the River gets.
+_Avoid_: slope, wall
+
+**Cut Bank**:
+The outside of a River's bend, where the bank is steep and the water deepest.
+_Avoid_: outer bank
+
+**Point Bar**:
+The inside of a River's bend, a gentle sandy beach where the water is shallow.
+_Avoid_: inner bank, sandbar
 
 **Generator**:
 The tool that turns the World Plan and the seeds into terrain. It is written and operated by the World agent, which does not shape terrain by eye.
