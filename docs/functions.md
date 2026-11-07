@@ -31,7 +31,8 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 
 | Ask for | What runs | Status |
 |---|---|---|
-| Add, change or remove a Landform, River or Lake | `world-generation`, `world-history`, then `generate <i> <j>` | Built. In 2 of 2 runs the agent rewrote everything with `run` instead |
+| Remove a Landform, River or Lake | `remove <id>`: takes it out of the plan, a River with its valley, writes only the generated Chunks it touched and records the exact block | Measured: `verify` identical on its 4 Chunks and 2 others, and `edit` passed 3 of 3 |
+| Add or change a Landform, River or Lake | `world-generation`, `world-history`, then `generate <i> <j>` | Built. In 2 of 2 runs the agent rewrote everything with `run` instead |
 | Restore something removed | `world-history` | Measured |
 | Write a single Chunk | `generate <i> <j>` | Measured |
 | Prove a Chunk rewrites identically | `verify <i> <j>` | Measured |
@@ -110,7 +111,7 @@ The transcript of a session is the record. A skill that loaded and an engine com
 - A shell of ground that follows the surface: mountains stay solid down to `floorY`. See ADR 0008.
 - Cenotes: designed in #30. A River or Lake has its own depth today.
 - Removing one Chunk: only wiping all terrain exists.
-- A command for `Describe.impact`: it exists and is tested in the Generator, and no command reaches it, so `describe` is read before a change instead.
+- A command for what a change other than a removal would rewrite: `remove` is the only command that reaches `Describe.impact`, so `describe` is read before any other change.
 - Detecting hand edits: the developer says which Chunks they touched. Designed in #30.
 - Routes that follow the relief: a River curves through points placed by hand and holds one water level.
 - Sites and the World Limit: the World Plan has fields for them, and no code generates them.

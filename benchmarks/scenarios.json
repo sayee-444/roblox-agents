@@ -58,8 +58,7 @@
     "setup": "generated-world",
     "prompt": "Remove the River and its valley from this world, and regenerate what is needed in {place}. Do not commit.",
     "expect": {
-      "skills": ["world-history"],
-      "commands": ["generate"],
+      "commands": ["remove"],
       "absentCommands": ["run", "capture", "shot", "wipe"],
       "files": { "docs/world/history.md": "Removed" },
       "absentFiles": { "src/world/plan.luau": "id = \"river\"" },

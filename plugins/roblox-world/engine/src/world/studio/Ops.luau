@@ -62,6 +62,12 @@ function Ops.describe()
 	return Gen.Describe.format(Gen.Describe.report(plan, state))
 end
 
+-- What a change would rewrite and which Locked Chunks it reaches, as JSON. Writes nothing.
+function Ops.impact(change)
+	local impact = Gen.Describe.impact(plan, state, change)
+	return game:GetService("HttpService"):JSONEncode(impact)
+end
+
 -- Writes the given Chunks, as a list of { i, j }, or every Chunk of the extent when none is
 -- given. Skips Locked Chunks, records the rest as generated and reports seconds per Chunk.
 function Ops.generate(list)

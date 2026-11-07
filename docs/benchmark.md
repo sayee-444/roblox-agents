@@ -63,9 +63,9 @@ They live in `benchmarks/scenarios.json`. `start` measures the context alone, an
 | `recover` | Say what exists and what changed last, from the project's files | Its answer misses the facts, or it writes or generates |
 | `create` | Build a new world from an empty folder | `new` or `run` did not run, or it captured |
 | `create-fork` | Build a new world with a forked River, on a new seed and a layout of its own | Same as `create`, or the plan keeps the template's seed, range, mesa or Region Seeds. Whether the River forks is read by hand in the kept plan. Its prompt stopped asking for a placement unlike the template on plugin 0.17.0, so earlier runs had a harder prompt |
-| `edit` | Remove a River and write only the Chunks it touched | `generate` did not run, `run` did, `world-history` did not load, or the River stayed in the plan |
+| `edit` | Remove a River and write only the Chunks it touched | `remove` did not run, `run` did, the history holds no entry, or the River stayed in the plan. Up to 0.33.0 it required `generate` and `world-history` in place of `remove` |
 
-A failure names what was missing. Each scenario also sets a limit on tool calls, errors and captures. Scenarios grade what the agent produced, with one deliberate exception: `edit` requires `generate`, since writing few Chunks is the point of that job.
+A failure names what was missing. Each scenario also sets a limit on tool calls, errors and captures. Scenarios grade what the agent produced, with one deliberate exception: `edit` requires `remove`, since writing few Chunks with no model writing the plan is the point of that job.
 
 Add a scenario when a real run fails in a new way, up to about five for now.
 
@@ -94,6 +94,7 @@ What the next run is compared against. `agent create-fork`, 3 runs each, medians
 |---|---|---|---|---|---|
 | 0.18.0 | 47 | 6 | 117,551 | 2,074 | 3 of 3 |
 | 0.33.0 | 36 | 8 | 171,089 | 2,392 | 0 of 3 |
+| 0.35.1: `remove` does it from a name | 13 | 3 | 51,255 | 600 | 3 of 3 |
 
 On 0.33.0 one `edit` passed its limit of 12 tool calls, and two lost a call to `python`, which this computer does not have. Each run wrote the River's block twice by hand, once to take it out of the plan and once into the history.
 

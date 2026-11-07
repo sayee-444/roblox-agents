@@ -15,7 +15,7 @@ test('help lists every command, without Studio', () => {
   const listed = stdout.split('\n').map((line) => line.match(/^ {2}([a-z]+)/)).filter(Boolean).map((match) => match[1]);
   assert.deepStrictEqual(listed.sort(), [
     'borders', 'capture', 'check', 'describe', 'generate', 'height', 'heights', 'help', 'new',
-    'refresh', 'run', 'scale', 'shot', 'status', 'sync', 'test', 'verify', 'wipe',
+    'refresh', 'remove', 'run', 'scale', 'shot', 'status', 'sync', 'test', 'verify', 'wipe',
   ]);
 });
 
@@ -581,6 +581,90 @@ test('status says when a folder has no world yet', () => {
   }
 });
 
+const IMPACT = JSON.stringify({ rewrite: ['-1,0', '0,0'], lockedReached: ['1,1'] });
+
+test('remove takes a River and its valley out of the plan, writes only their Chunks and records them exactly', () => {
+  withPlan({ history: '## 2026-01-01: Older\n' }, (dir, read) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT }, 'remove', 'river', '--place', 'P', '--project', dir, '--why', 'the developer wanted one River.');
+    assert.strictEqual(status, 0, stdout);
+    const plan = read('src/world/plan.luau');
+    assert.ok(!plan.includes('id = "river"'));
+    assert.ok(!plan.includes('id = "valley"'));
+    for (const kept of ['id = "fork"', 'id = "range"', 'id = "lake"']) assert.ok(plan.includes(kept), kept);
+    assert.ok(calls.includes('impact { removedIds = { "river", "valley" } }'), calls.join(' | '));
+    assert.ok(calls.includes('generate { { -1, 0 }, { 0, 0 } }'), calls.join(' | '));
+    assert.ok(calls.indexOf('describe') < calls.indexOf('generate { { -1, 0 }, { 0, 0 } }'), 'the new plan is validated before any write');
+    const history = read('docs/world/history.md');
+    assert.match(history.split('\n')[0], /^## \d{4}-\d{2}-\d{2}: Removed River `river` and valley `valley`$/);
+    assert.match(history, /\*\*Why:\*\* the developer wanted one River\./);
+    assert.match(history, /\*\*Chunks written:\*\* -1,0 0,0/);
+    assert.ok(history.includes('\t\t\tpoints = { { -2656, -556 }, { -1956, -356 } },'), 'the block as it stood in the plan');
+    assert.ok(history.includes('\t\t\triverId = "river",'));
+    assert.ok(history.includes('## 2026-01-01: Older'), 'older entries stay');
+    assert.match(stdout, /Locked.*1,1/);
+  });
+});
+
+test('remove takes out a thing on one line and leaves its list empty and tidy', () => {
+  withPlan({}, (dir, read) => {
+    const { status } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT }, 'remove', 'lake', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0);
+    assert.ok(read('src/world/plan.luau').includes('lakes = {},'));
+    assert.ok(read('docs/world/history.md').includes('id = "lake", seed = 7006'));
+  });
+});
+
+test('remove of a valley takes its River too, since only a valley carves a River into the ground', () => {
+  withPlan({}, (dir, read) => {
+    inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT }, 'remove', 'valley', '--place', 'P', '--project', dir);
+    const plan = read('src/world/plan.luau');
+    assert.ok(!plan.includes('id = "valley"'));
+    assert.ok(!plan.includes('id = "river"'));
+    assert.ok(plan.includes('id = "fork"'), 'another River stays');
+    assert.match(read('docs/world/history.md').split('\n')[0], /Removed valley `valley` and River `river`$/);
+  });
+});
+
+test('remove writes no Chunk when none it touched was generated, since an empty list would write every Chunk', () => {
+  withPlan({}, (dir, read) => {
+    const { status, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: JSON.stringify({ rewrite: [], lockedReached: [] }) }, 'remove', 'cave', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0);
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.ok(!read('src/world/plan.luau').includes('id = "cave"'));
+    assert.match(read('docs/world/history.md'), /\*\*Chunks written:\*\* none/);
+  });
+});
+
+test('remove restores the plan and writes nothing when the plan would be invalid without it', () => {
+  withPlan({}, (dir, read) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_INVALID: 'true' }, 'remove', 'river', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.strictEqual(read('src/world/plan.luau'), SMALL_PLAN);
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.ok(!fs.existsSync(path.join(dir, 'docs/world/history.md')));
+    assert.match(stdout, /Nothing was removed/);
+    assert.match(stdout, /unknown river/);
+  });
+});
+
+test('remove of something the plan lacks names what it holds, before reaching Studio', () => {
+  withPlan({}, (dir, read) => {
+    const { status, stderr, calls } = inStudio(dir, {}, 'remove', 'volcano', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /no "volcano"/);
+    assert.match(stderr, /range mesa valley cave river fork lake/);
+    assert.deepStrictEqual(calls, []);
+    assert.strictEqual(read('src/world/plan.luau'), SMALL_PLAN);
+  });
+});
+
+test('remove needs a project and a name, since it edits a plan', () => {
+  withPlan({}, (dir) => {
+    assert.strictEqual(inStudio(dir, {}, 'remove', 'river', '--place', 'P').status, 2);
+    assert.strictEqual(inStudio(dir, {}, 'remove', '--place', 'P', '--project', dir).status, 2);
+  });
+});
+
 test('scale below 1 shrinks the plan about its centre, and says the old terrain stays', () => {
   withPlan({}, (dir, read) => {
     const { status, stdout } = world('scale', '0.5', '--project', dir);
@@ -615,5 +699,36 @@ test('status counts only the Chunks inside the extent, and says how many lie out
   withPlan({ state }, (dir) => {
     const { stdout } = inStudio(dir, {}, 'status', '--project', dir);
     assert.match(stdout, /1 of 144 Chunks generated, and 2 outside the extent\. Locked: none/);
+  });
+});
+
+test('remove records the Locked Chunks it reached, since they still hold what it took out', () => {
+  withPlan({}, (dir, read) => {
+    inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT }, 'remove', 'river', '--place', 'P', '--project', dir);
+    assert.match(read('docs/world/history.md'), /\*\*Locked Chunks it reached, not written:\*\* 1,1/);
+  });
+});
+
+test('remove puts the plan back and records nothing when Studio fails before any write', () => {
+  withPlan({}, (dir, read) => {
+    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_UNREACHABLE: '.describe(' }, 'remove', 'river', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.strictEqual(read('src/world/plan.luau'), SMALL_PLAN);
+    assert.ok(!fs.existsSync(path.join(dir, 'docs/world/history.md')));
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.match(stderr, /Nothing was removed/);
+  });
+});
+
+test('remove keeps the block in the history when the write fails, and names the command that finishes it', () => {
+  withPlan({}, (dir, read) => {
+    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_UNREACHABLE: '.generate(' }, 'remove', 'river', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.ok(!read('src/world/plan.luau').includes('id = "river"'));
+    const history = read('docs/world/history.md');
+    assert.ok(history.includes('\t\t\triverId = "river",'), 'the block is safe');
+    assert.match(history, /\*\*Chunks written:\*\* none/);
+    assert.match(history, /\*\*Chunks not written:\*\* -1,0 0,0/);
+    assert.match(stdout, /generate -1 0 0 0 --place P --project/);
   });
 });

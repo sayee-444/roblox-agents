@@ -5,6 +5,9 @@
 //   FAKE_STUDIO_PLACES=<a,b>     the places open, P when not set
 //   FAKE_STUDIO_SILENT=true      nothing is ever answered
 //   FAKE_STUDIO_CELLS=<n>        the terrain cells a place holds
+//   FAKE_STUDIO_IMPACT=<json>    what a change to a Landform would rewrite
+//   FAKE_STUDIO_INVALID=true     the plan fails validation
+//   FAKE_STUDIO_UNREACHABLE=<s>  Luau holding this text fails as Studio fails when it is too busy to answer
 const fs = require('fs');
 const readline = require('readline');
 
@@ -22,6 +25,12 @@ function luau(code) {
   if (borders) { log(`borders ${borders[1]}`); return 'disagreeing: none'; }
   if (code.includes('.markRenderStale()')) log('mark render stale');
   if (code.includes('shared.World.add(')) log('paste');
+  const impact = code.match(/\.impact\((.*)\)/);
+  if (impact) { log(`impact ${impact[1]}`); return process.env.FAKE_STUDIO_IMPACT; }
+  const generate = code.match(/\.generate\((.*?)\);/);
+  if (generate) { log(`generate ${generate[1]}`); return 'generated'; }
+  if (code.includes('.stateSource()')) return 'return {\n\tchunks = {},\n}';
+  if (code.includes('.describe()')) { log('describe'); return process.env.FAKE_STUDIO_INVALID === 'true' ? 'INVALID PLAN\nregion x: unknown river' : 'extent: 9 chunks'; }
   if (code.includes('CountCells')) return process.env.FAKE_STUDIO_CELLS || '0';
   if (code.includes('shared.World ~= nil')) return 'true';
   if (code.includes('.differs(')) return '';
@@ -35,6 +44,10 @@ function call(name, args) {
   if (name === 'list_roblox_studios') {
     if (misses > 0) { misses -= 1; return text(JSON.stringify({ studios: [] })); }
     return text(JSON.stringify({ studios: (process.env.FAKE_STUDIO_PLACES || 'P').split(',').map((name) => ({ id: name, name })) }));
+  }
+  if (name === 'execute_luau' && process.env.FAKE_STUDIO_UNREACHABLE && args.code.includes(process.env.FAKE_STUDIO_UNREACHABLE)) {
+    luau(args.code);
+    return { isError: true, content: [{ type: 'text', text: 'Network action ExecuteLuau.runCode sent to DMN_ID_EDIT failed - Target is not reachable' }] };
   }
   if (name === 'execute_luau') return text(luau(args.code));
   if (name === 'screen_capture') return { content: [{ type: 'image', data: 'A'.repeat(20000) }] };
