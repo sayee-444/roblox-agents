@@ -662,3 +662,13 @@ test('remove needs a project and a name, since it edits a plan', () => {
     assert.strictEqual(inStudio(dir, {}, 'remove', '--place', 'P', '--project', dir).status, 2);
   });
 });
+
+test('a Luau call Studio does not answer is not sent again, since its code may still be running', () => {
+  withPlan({}, (dir) => {
+    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_UNREACHABLE: '.generate(' }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.strictEqual(calls.filter((call) => call.startsWith('generate')).length, 1, calls.join(' | '));
+    assert.match(stderr, /may still be running/);
+    assert.match(stderr, /Target is not reachable/);
+  });
+});

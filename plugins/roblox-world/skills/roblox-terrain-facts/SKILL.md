@@ -12,6 +12,7 @@ Studio Edit mode, 2026-11-06, on one test map of 9 Chunks. Generating and writin
 | Fact | Evidence |
 |---|---|
 | A 512 x 512 Chunk of 52 to 85 layers takes 0.35 to 0.42 s to generate and write, most of it calculating heights | 9 Chunks timed |
+| Repeated blocks of 2 to 3 s with no yield make `execute_luau` fail with `Target is not reachable`, and the code keeps running after the error, so yield every 0.25 s of work, as `Writer.breather` does, and send a failed call again only once its work has ended | `run` on `lab`, 144 Chunks in one call, failed on plugin 0.33.0 and passed 3 of 3 with the yields, on 2026-11-07 |
 | `WriteVoxelChannels(Region3, 4, channels)` takes arrays indexed `[x][y][z]`, and `ReadVoxelChannels` returns the same layout plus `Size` | 9,224,192 voxels read back with 0 mismatches |
 | A region not aligned to 4 studs returns the wrong array shape, so align before reading | Seen in the same test |
 | Occupancy reads back in 8-bit steps, a maximum error of 0.0039, so compare with that tolerance | Same read-back |

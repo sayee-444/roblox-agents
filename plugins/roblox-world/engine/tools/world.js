@@ -191,10 +191,9 @@ class Studio {
     try {
       result = await this.tool('execute_luau', { datamodel_type: 'Edit', code });
     } catch (error) {
-      // Studio sometimes reports this right after a call, before the code ever runs.
       if (!error.message.includes('Target is not reachable')) throw error;
-      await new Promise((resolve) => { setTimeout(resolve, 1000); });
-      result = await this.tool('execute_luau', { datamodel_type: 'Edit', code });
+      // The code keeps running after this error, so sending it again would run the work twice.
+      throw new Error(`Studio did not answer and the code may still be running in it. Wait a minute, then run the command again. ${error.message.slice(0, 200)}`);
     }
     return (result.content || []).filter((c) => c.type === 'text').map((c) => c.text).join('\n');
   }
