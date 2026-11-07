@@ -580,3 +580,40 @@ test('status says when a folder has no world yet', () => {
     fs.rmSync(dir, { recursive: true, force: true });
   }
 });
+
+test('scale below 1 shrinks the plan about its centre, and says the old terrain stays', () => {
+  withPlan({}, (dir, read) => {
+    const { status, stdout } = world('scale', '0.5', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const plan = read('src/world/plan.luau');
+    // Worked out by hand: the centre of -5..6 is x 256, and a position p becomes (p - 256) / 2 + 256.
+    for (const expected of [
+      'extent = { minX = -2, maxX = 3, minZ = -2, maxZ = 3 }',
+      'base = { mean = 26, amp = 17, scale = 130, octaves = 4, warpScale = 150, warpAmp = 30 }',
+      'points = { { -1100, -800 }, { -600, -900 } }',
+      'center = { 1300, -100 }',
+      'halfWidth = 150',
+      'height = 125',
+      'floorY = 16',
+    ]) assert.ok(plan.includes(expected), expected);
+    assert.match(stdout, /6 x 6 Chunks/);
+    assert.match(stdout, /outside the new extent keep their terrain/);
+  });
+});
+
+test('scale puts its decision first in the rules, with its reason, since they run newest first', () => {
+  const rules = '# World rules\n\n## Decisions\n\nNewest first: the date, the decision and why it was made.\n\n- 2026-01-01: an older decision.\n';
+  withPlan({ rules }, (dir, read) => {
+    world('scale', '2', '--project', dir, '--why', 'the map felt small.');
+    const text = read('docs/world/rules.md');
+    assert.match(text, /Newest first: the date, the decision and why it was made\.\n\n- \d{4}-\d{2}-\d{2}: scaled by 2, extent -5\.\.6 to -11\.\.12\. Why: the map felt small\.\n- 2026-01-01: an older decision\.\n$/);
+  });
+});
+
+test('status counts only the Chunks inside the extent, and says how many lie outside it', () => {
+  const state = 'return {\n\tgeneratorVersion = 1,\n\tchunks = {\n\t\t["0,0"] = { generated = true, locked = false },\n\t\t["9,9"] = { generated = true, locked = false },\n\t\t["-6,0"] = { generated = true, locked = false },\n\t},\n}\n';
+  withPlan({ state }, (dir) => {
+    const { stdout } = inStudio(dir, {}, 'status', '--project', dir);
+    assert.match(stdout, /1 of 144 Chunks generated, and 2 outside the extent\. Locked: none/);
+  });
+});

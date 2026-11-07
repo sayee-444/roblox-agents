@@ -97,7 +97,7 @@ What the next run is compared against. `agent create-fork`, 3 runs each, medians
 
 On 0.33.0 one `edit` passed its limit of 12 tool calls, and two lost a call to `python`, which this computer does not have. Each run wrote the River's block twice by hand, once to take it out of the plan and once into the history.
 
-The other scenarios on 0.33.0, 3 runs each, all passed: `start` 1 s and 16,087 tokens, `recover` 6 s and 51,096 tokens, `create` 21 s and 33,555 tokens. `engine` on the test map: 10.2 s, of which `test` 4.9 s and `generate` 4.3 s. `cost`: 462 tokens always on, 10,860 on invoke.
+The other scenarios on 0.33.0, 3 runs each, all passed: `start` 1 s and 16,087 tokens, `recover` 6 s and 51,096 tokens, `create` 21 s and 33,555 tokens. `engine` on the test map: 10.4 s, of which `test` 4.9 s and `generate` 4.3 s. `cost`: 462 tokens always on, 10,860 on invoke.
 
 On 0.34.2, 3 runs each, all passed: `recover` 6 s and 33,336 tokens, now that `status` answers it in one call, and `create` 23 s and 33,851 tokens.
 
