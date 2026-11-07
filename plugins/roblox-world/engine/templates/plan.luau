@@ -63,6 +63,8 @@ return {
 			meander = 40, -- largest swing away from that line, in studs. It fades to nothing at each point
 			halfWidth = 20, -- or widths = { 14, 20, 32, 40 }, half widths, one per point, changing gradually between them
 			bendWiden = 0.5, -- widens by this fraction at a 90 degree bend, and in proportion at gentler ones. 0 turns it off
+			-- For a bend close to a circle, on the leg between points 2 and 3. A turn of 180 is a semicircle, 290 leaves a neck, 360 closes with an island:
+			-- loops = { { leg = 2, radius = 110, turn = 290, side = "right" } },
 			bedY = 10,
 			waterLevel = 20, -- multiple of the voxel size, so the surface meets a voxel boundary
 		},

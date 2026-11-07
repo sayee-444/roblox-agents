@@ -30,6 +30,53 @@ local function checkPoints(errors, label, points, dims)
 	end
 end
 
+local function checkLoops(errors, label, rv)
+	local loops = rv.loops
+	if loops == nil then
+		return
+	end
+	if type(loops) ~= "table" then
+		table.insert(errors, label .. ": loops must be a list")
+		return
+	end
+	if #loops > 0 and not (isNum(rv.curve) and rv.curve > 0) then
+		table.insert(errors, label .. ": a loop needs a curve above 0, or it has corners")
+	end
+	local legs = if type(rv.points) == "table" then #rv.points - 1 else 0
+	local taken = {}
+	for i, loop in ipairs(loops) do
+		local name = label .. ": loop " .. i
+		if type(loop) ~= "table" then
+			table.insert(errors, name .. " must be a table")
+			return
+		end
+		if not (isNum(loop.leg) and loop.leg % 1 == 0 and loop.leg >= 1 and loop.leg <= legs) then
+			table.insert(errors, name .. " needs a leg from 1 to " .. legs)
+		elseif taken[loop.leg] then
+			table.insert(errors, name .. " shares leg " .. loop.leg .. " with another loop")
+		else
+			taken[loop.leg] = true
+		end
+		if not (isNum(loop.radius) and loop.radius > 0) then
+			table.insert(errors, name .. " needs a radius above 0")
+		end
+		if not (isNum(loop.turn) and loop.turn > 0 and loop.turn <= 360) then
+			table.insert(errors, name .. " needs a turn above 0 and up to 360")
+		end
+		if loop.side ~= "left" and loop.side ~= "right" then
+			table.insert(errors, name .. ' needs a side, "left" or "right"')
+		end
+		-- The River leaves the leg at a neck, and that neck has to fit on the leg.
+		if taken[loop.leg] and isNum(loop.radius) and isNum(loop.turn) then
+			local a, b = rv.points[loop.leg], rv.points[loop.leg + 1]
+			local length = math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2)
+			if 2 * loop.radius * math.sin(math.rad((360 - loop.turn) / 2)) >= length then
+				table.insert(errors, name .. " has a neck wider than its leg")
+			end
+		end
+	end
+end
+
 -- Returns a list of error strings; empty means the plan is valid.
 function Describe.validate(plan): { string }
 	local e = {}
@@ -83,6 +130,7 @@ function Describe.validate(plan): { string }
 		if rv.bendWiden ~= nil and not (isNum(rv.bendWiden) and rv.bendWiden >= 0) then
 			table.insert(e, "river " .. tostring(rv.id) .. ": bendWiden cannot be negative")
 		end
+		checkLoops(e, "river " .. tostring(rv.id), rv)
 		if rv.curve ~= nil and not (isNum(rv.curve) and rv.curve >= 0 and rv.curve <= 1) then
 			table.insert(e, "river " .. tostring(rv.id) .. ": curve must be from 0 to 1")
 		end
@@ -353,7 +401,7 @@ function Describe.heights(plan): string
 		local width = Route.width(rv)
 		local narrowest, widest = math.round(width.narrowest), math.round(width.widest)
 		local span = if narrowest == widest then tostring(widest) else narrowest .. " to " .. widest
-		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d, route %d studs, curve %s, meander %d, width %s", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2], route, tostring(rv.curve or 0), rv.meander or 0, span))
+		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d, route %d studs, curve %s, meander %d, width %s%s", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2], route, tostring(rv.curve or 0), rv.meander or 0, span, if rv.loops and #rv.loops > 0 then ", loops " .. #rv.loops else ""))
 	end
 	for _, lk in ipairs(plan.lakes or {}) do
 		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel))

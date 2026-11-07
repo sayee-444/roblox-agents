@@ -294,6 +294,104 @@ return {
 		t.ok(#Describe.validate(straightPlan({ widths = { 20, 85, 20 } })) > 0, "85 needs more than 130")
 	end,
 
+	["a half loop is a semicircle to the side chosen, worked out by hand"] = function(t)
+		local leg = { { 0, 0 }, { 400, 0 } }
+		local right = Route.points({ id = "r", points = leg, curve = 1, loops = { { leg = 1, radius = 100, turn = 180, side = "right" } } })
+		t.near(distance(right, 100, 0), 0, 0.001, "it leaves the leg 100 before the middle")
+		t.near(distance(right, 200, 100), 0, 0.001, "the far side, to the right of the flow, which is south here")
+		t.near(distance(right, 300, 0), 0, 0.001, "it comes back 100 after the middle")
+		local left = Route.points({ id = "r", points = leg, curve = 1, loops = { { leg = 1, radius = 100, turn = 180, side = "left" } } })
+		t.near(distance(left, 200, -100), 0, 0.001, "the far side to the left")
+	end,
+
+	["a near-closed loop leaves a neck, worked out by hand"] = function(t)
+		-- 290 degrees leave 70 open, so the neck is 2 * 110 * sin 35 = 126.2 wide, around the middle at 200.
+		local points = Route.points({ id = "r", points = { { 0, 0 }, { 400, 0 } }, curve = 1, loops = { { leg = 1, radius = 110, turn = 290, side = "right" } } })
+		t.near(distance(points, 136.9, 0), 0, 0.1, "the upstream side of the neck")
+		t.near(distance(points, 263.1, 0), 0, 0.1, "the downstream side of the neck")
+		t.near(distance(points, 200, 200.1), 0, 0.1, "the far side: 110 * cos 35 + 110")
+	end,
+
+	["a whole loop closes on itself and leaves a dry island"] = function(t)
+		local ring = straightPlan({ widths = { 20, 20, 20 }, curve = 1, loops = { { leg = 1, radius = 100, turn = 360, side = "right" } } })
+		t.eq(#Describe.validate(ring), 0, "the plan is valid")
+		local points = Route.points(ring.rivers[1])
+		t.near(distance(points, 250, 200), 0, 0.001, "the far side")
+		local visits = 0
+		for _, p in ipairs(points) do
+			if p[1] == 250 and p[2] == 0 then
+				visits += 1
+			end
+		end
+		t.eq(visits, 2, "it passes the middle of the leg twice")
+		local _, _, _, waterFar = Shape.height(ring, 250, 200)
+		local _, _, _, waterIsland = Shape.height(ring, 250, 100)
+		t.ok(waterFar > 0, "water around the ring")
+		t.eq(waterIsland, 0, "a dry island in the middle")
+	end,
+
+	["a loop keeps the declared points and their widths"] = function(t)
+		local rv = { id = "r", points = { { 0, 0 }, { 500, 0 }, { 1000, 0 } }, curve = 1, meander = 30, widths = { 10, 20, 30 }, loops = { { leg = 1, radius = 100, turn = 290, side = "left" } } }
+		local points = Route.points(rv)
+		local width = Route.width(rv)
+		local s = 0
+		local held = false
+		for i = 2, #points do
+			s += math.sqrt((points[i][1] - points[i - 1][1]) ^ 2 + (points[i][2] - points[i - 1][2]) ^ 2)
+			if points[i][1] == 500 and points[i][2] == 0 then
+				t.near(width.at(s), 20, 0.001, "the second declared point")
+				held = true
+			end
+		end
+		t.ok(held, "the route holds the second declared point")
+		t.near(width.at(0), 10, 0.001, "the first")
+		t.near(width.at(s), 30, 0.001, "the last")
+	end,
+
+	["points stay free: a route with no loops is what it was, and a leg can hold a loop beside hand-placed points"] = function(t)
+		t.eq(farthest(Route.points({ id = "r", points = BEND, curve = 1 }), Route.points({ id = "r", points = BEND, curve = 1, loops = {} })), 0)
+		local mixed = Route.points({ id = "r", points = BEND, curve = 1, loops = { { leg = 3, radius = 60, turn = 180, side = "left" } } })
+		for _, node in ipairs(BEND) do
+			t.ok(holdsNode(mixed, node), "node " .. node[1] .. "," .. node[2])
+		end
+	end,
+
+	["a plan is refused for a loop it cannot draw"] = function(t)
+		local good = { leg = 1, radius = 100, turn = 290, side = "right" }
+		local function with(field, value)
+			local loop = clone(good)
+			loop[field] = value
+			return loop
+		end
+		for label, loops in pairs({
+			["loops that are no list"] = 5,
+			["a loop that is no table"] = { 5 },
+			["a leg before the first"] = { with("leg", 0) },
+			["a leg past the last"] = { with("leg", 3) },
+			["a leg that is no whole number"] = { with("leg", 1.5) },
+			["a radius of zero"] = { with("radius", 0) },
+			["a turn of zero"] = { with("turn", 0) },
+			["a turn over a full circle"] = { with("turn", 400) },
+			["a side that is neither"] = { with("side", "up") },
+			["two loops on one leg"] = { good, good },
+			["a neck wider than its leg"] = { { leg = 1, radius = 300, turn = 180, side = "right" } },
+		}) do
+			local bad = straightPlan({ widths = { 20, 20, 20 }, curve = 1 })
+			t.eq(#Describe.validate(bad), 0, "the plan starts valid")
+			bad.rivers[1].loops = loops
+			t.ok(#Describe.validate(bad) > 0, "refused: " .. label)
+		end
+		local straight = straightPlan({ widths = { 20, 20, 20 } })
+		straight.rivers[1].loops = { good }
+		t.ok(#Describe.validate(straight) > 0, "refused: a loop on a River with no curve")
+	end,
+
+	["heights report a River's loops"] = function(t)
+		local looped = straightPlan({ widths = { 20, 20, 20 }, curve = 1, loops = { { leg = 1, radius = 100, turn = 290, side = "right" } } })
+		t.ok(Describe.heights(looped):find("loops 1", 1, true) ~= nil, "counted")
+		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20 } })):find("loops", 1, true) == nil, "left out when there are none")
+	end,
+
 	["heights report the range of a River's width"] = function(t)
 		t.ok(Describe.heights(straightPlan({ widths = { 14, 20, 32 } })):find("width 14 to 32", 1, true) ~= nil, "a range")
 		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20 } })):find("width 20$") ~= nil, "one width")

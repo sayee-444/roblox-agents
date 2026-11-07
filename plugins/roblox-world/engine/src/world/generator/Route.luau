@@ -12,6 +12,7 @@ local MEANDER_SCALE = 90 -- studs along the line for one swing of the meander
 local BEND_STEP = 8 -- studs between the places where a bend's tightness is measured
 local BEND_REACH = 60 -- studs looked at on each side of a place, to measure the turn there
 local TIGHTEST = math.pi / 2 -- a turn this sharp within that reach gets all of bendWiden
+local LOOP_STEP = 50 -- largest degrees of a loop between two of its nodes, which keeps it round
 
 local function mix(a, b, u)
 	return { a[1] + (b[1] - a[1]) * u, a[2] + (b[2] - a[2]) * u }
@@ -44,17 +45,69 @@ local function seedOf(id)
 	return seed
 end
 
--- The points of a River's line, and the index among them of each node.
+-- The nodes of a loop on the leg from a to b, around the leg's middle. Below 360 degrees the River
+-- leaves the leg at a neck and goes around the far side. At 360 it runs on along the leg and turns
+-- a whole circle, so it crosses itself at the middle.
+local function loopNodes(a, b, loop)
+	local ex, ez = b[1] - a[1], b[2] - a[2]
+	local length = math.sqrt(ex * ex + ez * ez)
+	local dx, dz = ex / length, ez / length
+	local side = if loop.side == "right" then 1 else -1
+	local nx, nz = -dz * side, dx * side
+	local midX, midZ = (a[1] + b[1]) / 2, (a[2] + b[2]) / 2
+	local gap = (360 - loop.turn) / 2
+	local reach = if loop.turn == 360 then loop.radius else loop.radius * math.cos(math.rad(gap))
+	local cx, cz = midX + nx * reach, midZ + nz * reach
+	local count = math.ceil(loop.turn / LOOP_STEP)
+	local out = {}
+	for k = 0, count do
+		local swept = loop.turn * k / count
+		local angle = math.rad(if loop.turn == 360 then swept else -gap - swept)
+		local across, ahead = -math.cos(angle) * loop.radius, math.sin(angle) * loop.radius
+		-- Exact on the far side and at the neck, whatever rounding the angles picked up.
+		out[k + 1] = { cx + nx * across + dx * ahead, cz + nz * across + dz * ahead }
+	end
+	if loop.turn == 360 then
+		out[1] = { midX, midZ }
+		out[#out] = { midX, midZ }
+	end
+	return out
+end
+
+-- Every node of a River, its loops included, and the index among them of each point it declares.
+local function expand(rv)
+	if not rv.loops or #rv.loops == 0 then
+		return rv.points
+	end
+	local onLeg = {}
+	for _, loop in ipairs(rv.loops) do
+		onLeg[loop.leg] = loop
+	end
+	local nodes, declared = {}, {}
+	for i, p in ipairs(rv.points) do
+		table.insert(nodes, p)
+		declared[i] = #nodes
+		if onLeg[i] then
+			for _, node in ipairs(loopNodes(p, rv.points[i + 1], onLeg[i])) do
+				table.insert(nodes, node)
+			end
+		end
+	end
+	return nodes, declared
+end
+
+-- The points of a River's line, and the index among them of each point it declares.
 local function trace(rv)
 	local curve, meander = rv.curve or 0, rv.meander or 0
-	local nodes = rv.points
+	local nodes, declared = expand(rv)
 	local nodeAt = {}
 	if curve == 0 and meander == 0 then
-		for i = 1, #nodes do
-			nodeAt[i] = i
+		for i = 1, #rv.points do
+			nodeAt[i] = if declared then declared[i] else i
 		end
 		return nodes, nodeAt
 	end
+	local atNode = {}
 	local seed = seedOf(rv.id)
 	local out = {}
 	local along = 0
@@ -66,7 +119,7 @@ local function trace(rv)
 		local length = math.sqrt(ex * ex + ez * ez)
 		local steps = math.max(2, math.ceil(length / STEP))
 		table.insert(out, { a[1], a[2] })
-		nodeAt[leg] = #out
+		atNode[leg] = #out
 		for step = 1, steps - 1 do
 			local u = step / steps
 			local p = mix(mix(a, b, u), spline(before, a, b, after, u), curve)
@@ -78,7 +131,10 @@ local function trace(rv)
 	end
 	local last = nodes[#nodes]
 	table.insert(out, { last[1], last[2] })
-	nodeAt[#nodes] = #out
+	atNode[#nodes] = #out
+	for i = 1, #rv.points do
+		nodeAt[i] = atNode[if declared then declared[i] else i]
+	end
 	return out, nodeAt
 end
 

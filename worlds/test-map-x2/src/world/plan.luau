@@ -93,10 +93,11 @@ return {
 	rivers = {
 		{
 			id = "river",
-			points = { { -1200, -150 }, { -850, -50 }, { -500, 100 }, { -150, 50 }, { -30, 119 }, { -115, 174 }, { -126, 257 }, { -74, 324 }, { 9, 334 }, { 76, 283 }, { 80, 181 }, { 200, 250 }, { 450, 500 } },
+			points = { { -1200, -150 }, { -850, -50 }, { -500, 100 }, { -150, 50 }, { 200, 250 }, { 450, 500 } },
+			loops = { { leg = 4, radius = 110, turn = 290, side = "right" } },
 			curve = 1,
 			meander = 40,
-			widths = { 14, 16, 18, 20, 22, 22, 22, 22, 22, 22, 22, 26, 34 }, -- grows towards the Lake
+			widths = { 14, 16, 18, 20, 26, 34 }, -- grows towards the Lake
 			bendWiden = 0.5,
 			bedY = 10,
 			waterLevel = 20,
@@ -104,10 +105,11 @@ return {
 		{
 			-- Fork: leaves the River at (-500, 100) and also ends in the Lake.
 			id = "fork",
-			points = { { -500, 100 }, { -420, 450 }, { -260, 625 }, { -234, 742 }, { -323, 823 }, { -437, 787 }, { -463, 670 }, { -374, 589 }, { -260, 625 }, { -100, 800 }, { 250, 880 }, { 420, 760 } },
+			points = { { -500, 100 }, { -420, 450 }, { -100, 800 }, { 250, 880 }, { 420, 760 } },
+			loops = { { leg = 2, radius = 120, turn = 360, side = "right" } },
 			curve = 1,
 			meander = 30,
-			widths = { 6, 10, 12, 12, 12, 12, 12, 12, 12, 12, 14, 20 }, -- starts thin where it leaves the River
+			widths = { 6, 10, 12, 14, 20 }, -- starts thin where it leaves the River
 			bendWiden = 0.5,
 			bedY = 10,
 			waterLevel = 20,
