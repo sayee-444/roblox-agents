@@ -169,32 +169,53 @@ local function tightness(points, arcs)
 	return out
 end
 
--- A River's half width along its line. `at(s)` takes the distance along the line that Geo.dist2
--- reports. `narrowest` and `widest` count the widening at bends and not the Shape's noise.
-function Route.width(rv)
-	local points, nodeAt = trace(rv)
+-- Values declared per point, as a function of the distance along the line: each holds at its point
+-- and eases into the next.
+local function eased(values, arcs, nodeAt)
+	return function(s)
+		local leg = 1
+		while leg < #values - 1 and arcs[nodeAt[leg + 1]] < s do
+			leg += 1
+		end
+		local from, to = arcs[nodeAt[leg]], arcs[nodeAt[leg + 1]]
+		local u = math.clamp((s - from) / (to - from), 0, 1)
+		return values[leg] + (values[leg + 1] - values[leg]) * u * u * (3 - 2 * u)
+	end
+end
+
+local function arcsOf(points)
 	local arcs = { 0 }
 	for i = 2, #points do
 		local a, b = points[i - 1], points[i]
 		arcs[i] = arcs[i - 1] + math.sqrt((b[1] - a[1]) ^ 2 + (b[2] - a[2]) ^ 2)
 	end
+	return arcs
+end
+
+-- How far a River's bed lies below its water along its line, from `depths` or else `bedY`.
+function Route.depth(rv)
+	if not rv.depths then
+		local depth = rv.waterLevel - rv.bedY
+		return { at = function() return depth end, shallowest = depth, deepest = depth }
+	end
+	local points, nodeAt = trace(rv)
+	return {
+		at = eased(rv.depths, arcsOf(points), nodeAt),
+		shallowest = math.min(table.unpack(rv.depths)),
+		deepest = math.max(table.unpack(rv.depths)),
+	}
+end
+
+-- A River's half width along its line. `at(s)` takes the distance along the line that Geo.dist2
+-- reports. `narrowest` and `widest` count the widening at bends and not the Shape's noise.
+function Route.width(rv)
+	local points, nodeAt = trace(rv)
+	local arcs = arcsOf(points)
 	local length = arcs[#arcs]
-	local widths = rv.widths
 	local bendWiden = rv.bendWiden or 0
 	local bends = if bendWiden > 0 then tightness(points, arcs) else nil
 
-	local function declared(s)
-		if not widths then
-			return rv.halfWidth
-		end
-		local leg = 1
-		while leg < #widths - 1 and arcs[nodeAt[leg + 1]] < s do
-			leg += 1
-		end
-		local from, to = arcs[nodeAt[leg]], arcs[nodeAt[leg + 1]]
-		local u = math.clamp((s - from) / (to - from), 0, 1)
-		return widths[leg] + (widths[leg + 1] - widths[leg]) * u * u * (3 - 2 * u)
-	end
+	local declared = if rv.widths then eased(rv.widths, arcs, nodeAt) else function() return rv.halfWidth end
 
 	local function at(s)
 		s = math.clamp(s, 0, length)

@@ -11,6 +11,8 @@ local smoothstep = Geo.smoothstep
 
 local WIDTH_NOISE = 0.15 -- how far a bank wanders from a River's width, as a fraction of it
 local BANK_WIDTH = 20 -- the half width whose bank the sand band of Materials is measured for
+local ROCK_UNDER = 16 -- studs of rock kept under any ground that goes below the plan's floor
+local BED_SCALE = 45 -- studs for one swell of a rough bed
 
 local prepared = setmetatable({}, { __mode = "k" })
 
@@ -22,7 +24,7 @@ local function prepare(plan)
 	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {} }
 	for _, rv in ipairs(plan.rivers) do
 		local route = Route.points(rv)
-		P.rivers[rv.id] = { def = rv, route = route, poly = Geo.polyline2(route), width = Route.width(rv) }
+		P.rivers[rv.id] = { def = rv, route = route, poly = Geo.polyline2(route), width = Route.width(rv), depth = Route.depth(rv) }
 	end
 	for _, r in ipairs(plan.regions) do
 		if r.kind == "mountain" then
@@ -149,7 +151,11 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 		if d < def.halfWidth then
 			local hw = rv.width.at(s) * (1 + WIDTH_NOISE * Noise.perlin(s / 120, 0.5, def.seed + 1))
 			local c = 1 - smoothstep(hw * 0.4, hw, d)
-			local depth = c * (def.floorY - rv.def.bedY)
+			local bed = rv.def.waterLevel - rv.depth.at(s)
+			if rv.def.bedRough then
+				bed += rv.def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
+			end
+			local depth = c * (def.floorY - bed)
 			carve = math.max(carve, depth)
 			if h - depth < rv.def.waterLevel and d < hw * 1.5 then
 				waterLevel = rv.def.waterLevel
@@ -173,7 +179,11 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 			if d < outer then
 				local beach = def.waterLevel + 3
 				local deep = smoothstep(0, 1, math.clamp((def.radius - d) / (def.radius * 0.4), 0, 1))
-				local target = beach + (def.bedY - beach) * deep
+				local bed = def.bedY
+				if def.bedRough then
+					bed += def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
+				end
+				local target = beach + (bed - beach) * deep
 				if target < h then
 					h += (target - h) * (1 - smoothstep(def.radius, outer, d))
 				end
@@ -186,6 +196,20 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 	end
 
 	return h, mesaP, riverD, waterLevel
+end
+
+-- The lowest height this column holds ground, on the voxel grid. Ground stops at the plan's floor,
+-- and goes below it only under what needs it: a deep bed or a cave, with rock under them.
+function Shape.bottom(plan, x: number, z: number, h: number): number
+	local under = plan.rockUnder or ROCK_UNDER
+	local low = math.min(plan.floorY, h - under)
+	for _, c in ipairs(prepare(plan).caves) do
+		local b = c.box
+		if x > b[1] and x < b[2] and z > b[5] and z < b[6] then
+			low = math.min(low, b[3] - under)
+		end
+	end
+	return math.floor(low / 4) * 4
 end
 
 -- Signed distance to the nearest cave tunnel surface, positive in rock (solid), negative

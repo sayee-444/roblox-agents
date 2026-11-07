@@ -87,6 +87,7 @@ function composeRiver(rng) {
     halfWidth: rng.between(18, 24),
     bendWiden: 0.5,
     bedY: 10,
+    bedRough: 3,
     waterLevel: 20,
   };
 }
@@ -100,6 +101,7 @@ function composeFork(rng, river) {
     halfWidth: rng.between(12, 16),
     bendWiden: 0.5,
     bedY: 10,
+    bedRough: 3,
     waterLevel: 20,
   };
 }
@@ -163,11 +165,11 @@ function renderLuau(layout, regionSeed) {
   if (mesa) regions.push(`{ id = "mesa", kind = "mesa", seed = ${regionSeed()}, center = { ${mesa.center[0]}, ${mesa.center[1]} }, radius = ${mesa.radius}, margin = ${mesa.margin}, levels = ${mesa.levels}, height = ${mesa.height}, warp = ${mesa.warp}, elongate = ${mesa.elongate}, angle = ${mesa.angle}, gully = ${mesa.gully} }`);
   if (river) {
     regions.push(`{ id = "valley", kind = "valley", seed = ${regionSeed()}, riverId = "river", halfWidth = 130, floorY = 24 }`);
-    rivers.push(`{ id = "river", points = ${points(river.points)}, curve = 1, meander = ${river.meander}, bendWiden = ${river.bendWiden}, halfWidth = ${river.halfWidth}, bedY = ${river.bedY}, waterLevel = ${river.waterLevel} }`);
+    rivers.push(`{ id = "river", points = ${points(river.points)}, curve = 1, meander = ${river.meander}, bendWiden = ${river.bendWiden}, halfWidth = ${river.halfWidth}, bedY = ${river.bedY}, bedRough = ${river.bedRough}, waterLevel = ${river.waterLevel} }`);
   }
   if (fork) {
     regions.push(`{ id = "forkValley", kind = "valley", seed = ${regionSeed()}, riverId = "fork", halfWidth = 90, floorY = 24 }`);
-    rivers.push(`{ id = "fork", points = ${points(fork.points)}, curve = 1, meander = ${fork.meander}, bendWiden = ${fork.bendWiden}, halfWidth = ${fork.halfWidth}, bedY = ${fork.bedY}, waterLevel = ${fork.waterLevel} }`);
+    rivers.push(`{ id = "fork", points = ${points(fork.points)}, curve = 1, meander = ${fork.meander}, bendWiden = ${fork.bendWiden}, halfWidth = ${fork.halfWidth}, bedY = ${fork.bedY}, bedRough = ${fork.bedRough}, waterLevel = ${fork.waterLevel} }`);
   }
   const block = (name, items) => `\t${name} = {\n${items.map((item) => `\t\t${item},`).join('\n')}\n\t},`;
   return `${block('regions', regions)}\n\n${block('rivers', rivers)}`;

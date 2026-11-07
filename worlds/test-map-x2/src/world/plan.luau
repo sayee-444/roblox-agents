@@ -8,7 +8,7 @@ return {
 	chunkSize = 512,
 	voxel = 4,
 	extent = { minX = -2, maxX = 3, minZ = -2, maxZ = 3 }, -- inclusive Chunk indices
-	floorY = -64, -- ground is at least 64 studs thick everywhere (lowest ground is ~10)
+	floorY = 0, -- ground stops here, and goes lower only under deep water or a cave
 
 	-- Gentle hills everywhere: mean height, amplitude, feature size and domain warp.
 	base = { mean = 52, amp = 34, scale = 260, octaves = 5, warpScale = 300, warpAmp = 60 },
@@ -99,7 +99,8 @@ return {
 			meander = 40,
 			widths = { 14, 16, 18, 20, 26, 34 }, -- grows towards the Lake
 			bendWiden = 0.5,
-			bedY = 10,
+			depths = { 8, 10, 14, 18, 26, 30 }, -- below the water
+			bedRough = 3,
 			waterLevel = 20,
 		},
 		{
@@ -111,7 +112,8 @@ return {
 			meander = 30,
 			widths = { 6, 10, 12, 14, 20 }, -- starts thin where it leaves the River
 			bendWiden = 0.5,
-			bedY = 10,
+			depths = { 4, 6, 8, 10, 16 }, -- below the water
+			bedRough = 3,
 			waterLevel = 20,
 		},
 		{
@@ -122,7 +124,8 @@ return {
 			meander = 30,
 			widths = { 6, 10, 12, 14, 14 },
 			bendWiden = 0.5,
-			bedY = 10,
+			depths = { 4, 6, 8, 10, 10 }, -- below the water
+			bedRough = 3,
 			waterLevel = 20,
 		},
 		{
@@ -131,7 +134,8 @@ return {
 			points = { { -733, -90 }, { -681, -156 }, { -596, -159 }, { -540, -96 }, { -552, -12 } },
 			curve = 1,
 			widths = { 6, 14, 18, 14, 6 },
-			bedY = 12,
+			depths = { 4, 10, 16, 10, 4 }, -- below the water
+			bedRough = 2,
 			waterLevel = 20,
 		},
 		{
@@ -140,12 +144,13 @@ return {
 			points = { { -6, 883 }, { -24, 961 }, { 35, 1015 }, { 111, 992 }, { 129, 914 } },
 			curve = 1,
 			widths = { 6, 10, 14, 10, 6 },
-			bedY = 12,
+			depths = { 4, 8, 12, 8, 4 }, -- below the water
+			bedRough = 2,
 			waterLevel = 20,
 		},
 	},
 	lakes = {
-		{ id = "lake", seed = 7006, center = { 500, 650 }, radius = 170, shore = 60, warp = 20, elongate = 1.2, angle = 30, bedY = 6, waterLevel = 20 },
+		{ id = "lake", seed = 7006, center = { 500, 650 }, radius = 170, shore = 60, warp = 20, elongate = 1.2, angle = 30, bedY = -20, bedRough = 6, waterLevel = 20 },
 	},
 	sites = {},
 	worldLimit = nil, -- not requested yet

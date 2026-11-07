@@ -43,7 +43,8 @@ function Writer.writeChunk(terrain: Terrain, plan, Gen, ci: number, cj: number, 
 	local lookup = Writer.materialLookup(Gen.Materials)
 	if opts.clear ~= false then
 		local c0 = os.clock()
-		Writer.clear(terrain, plan, Gen, ci, cj, cols.ymin, math.max(cols.ymax, plan.clearTop or 1024))
+		-- Well below this Chunk's own lowest ground, which an earlier plan may have taken deeper.
+		Writer.clear(terrain, plan, Gen, ci, cj, math.min(cols.ymin, plan.clearBottom or -256), math.max(cols.ymax, plan.clearTop or 1024))
 		stats.clear = os.clock() - c0
 		task.wait()
 	end
@@ -124,8 +125,10 @@ function Writer.borderReport(terrain: Terrain, plan, Gen, axis: string, ci: numb
 	local nci, ncj = if axis == "x" then ci + 1 else ci, if axis == "z" then cj + 1 else cj
 	local a, b = Gen.Chunk.columns(plan, ci, cj), Gen.Chunk.columns(plan, nci, ncj)
 	local n = a.n
-	local ymin, ny = a.ymin, math.max(a.ny, b.ny)
-	local ymax = ymin + ny * V
+	-- Two Chunks can start at different heights, when one holds deep water and the other does not.
+	local ymin = math.min(a.ymin, b.ymin)
+	local ymax = math.max(a.ymax, b.ymax)
+	local ny = (ymax - ymin) // V
 	local S = plan.chunkSize
 
 	local data, expA, expB
@@ -144,15 +147,16 @@ function Writer.borderReport(terrain: Terrain, plan, Gen, axis: string, ci: numb
 	local air = Enum.Material.Air
 	local function expected(channel, ix, iy, iz, aIndex)
 		-- ix, iz are read-array indices; pick the Chunk that owns this voxel.
-		local src, jx, jz
+		local src, jx, jz, own
 		if axis == "x" then
-			if ix <= 2 then src, jx = expA, ix else src, jx = expB, ix - 2 end
+			if ix <= 2 then src, jx, own = expA, ix, a else src, jx, own = expB, ix - 2, b end
 			jz = iz
 		else
-			if iz <= 2 then src, jz = expA, iz else src, jz = expB, iz - 2 end
+			if iz <= 2 then src, jz, own = expA, iz, a else src, jz, own = expB, iz - 2, b end
 			jx = ix
 		end
-		local row = src[channel][jx][iy]
+		-- Each Chunk's arrays start at its own lowest height.
+		local row = src[channel][jx][iy - (own.ymin - ymin) // V]
 		if row == nil then
 			return if channel == "SolidMaterial" then air else 0
 		end

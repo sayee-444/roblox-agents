@@ -55,6 +55,8 @@ function Chunk.columns(plan, ci: number, cj: number)
 
 	local G = table.create(n * n, 0)
 	local S, B = table.create(n * n, 0), table.create(n * n, 0)
+	local BOTTOM = table.create(n * n, 0)
+	local ymin = plan.floorY
 	for j = 0, n - 1 do
 		local zc = z0 + j * V + V / 2
 		for i = 0, n - 1 do
@@ -67,6 +69,8 @@ function Chunk.columns(plan, ci: number, cj: number)
 			local xc = x0 + i * V + V / 2
 			S[k] = Materials.surface(plan, xc, zc, H[p], g, MP[k], RD[k])
 			B[k] = if MP[k] > 0.02 then id.Sandstone else id.Rock
+			BOTTOM[k] = Shape.bottom(plan, xc, zc, H[p])
+			ymin = math.min(ymin, BOTTOM[k])
 		end
 	end
 
@@ -88,7 +92,6 @@ function Chunk.columns(plan, ci: number, cj: number)
 		end
 	end
 
-	local ymin = plan.floorY
 	local ny = math.ceil((math.max(hmax, wmax) + 8 - ymin) / V)
 	return {
 		ci = ci,
@@ -103,6 +106,7 @@ function Chunk.columns(plan, ci: number, cj: number)
 		G = G, -- slope
 		S = S, -- surface material id
 		B = B, -- body material id
+		BOTTOM = BOTTOM, -- lowest height of ground in the column
 		WL = WL, -- water level over the column (0 = dry)
 		caveRect = caveRect, -- {x0, z0, x1, z1} or nil
 	}
@@ -144,7 +148,7 @@ function Chunk.slab(plan, cols, i0: number, i1: number, lookup, j0: number?, j1:
 			local iyEnd = math.min(ny, math.floor((top - ymin) / V) + 2)
 			local zi = jj - j0 + 1
 
-			for iy = 1, iyEnd do
+			for iy = (cols.BOTTOM[k] - ymin) // V + 1, iyEnd do
 				local yb = ymin + (iy - 1) * V
 				local yc = yb + V / 2
 				-- Signed distance in studs, positive in rock: first-order estimate for the
