@@ -26,6 +26,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 | Set up a project with no world context | `world-project-setup` | Measured |
 | The whole cycle again | `run`: `sync`, `test`, `describe`, `generate`, `verify`, `heights` | Measured, also on the 144 Chunks of `lab` in one call: 3 of 3 |
 | The same world at another size | `scale <factor>`, then `run`. It multiplies the extent, positions, lengths and heights and keeps the seeds. Writes no terrain | Measured: `scale 2` gave the 160 lines of a double written by hand, apart from one field that double added, and `run` passed after `scale 2` and `scale 0.5` on the test map |
+| Keep a new world off terrain it did not write | `run` and `generate` stop before any step when the world has written nothing and the place holds terrain. `--over-terrain` writes over it, on the developer's word. A world that has written Chunks is not checked, since the terrain may be its own | Measured: asked for a world with no word about the terrain, the agent stopped and asked in 3 of 3, in 7 s, with the place's cells unchanged. Told the terrain may go, `create` and `create-fork` passed 3 of 3 with no extra request |
 
 ## Edit
 

@@ -117,6 +117,8 @@ From 0.34.0 the `create` and `create-fork` prompts call the place disposable, wh
 
 At the end of #53, on 0.37.1, 3 runs each, all passed: `start` 1 s and 16,348 tokens, `recover` 5 s and 33,558, `create` 21 s and 34,079, `create-fork` 21 s and 34,248, `edit` 13 s and 51,273. `engine` 10.8 s, and `run` on the whole of `lab` 122 s. `cost`: 462 tokens always on, 11,400 on invoke.
 
+On 0.39.0, with no memory and with the guard for a new world, 3 runs each, all passed: `recover` 5 s and 25,369 tokens, `create` 21 s and 25,856, `create-fork` 21 s and 26,109, `edit` 12 s and 38,954. `start` on 0.38.0: 1 s and 12,189. `engine` 11.05 s, against 10.8 s on 0.38.0, a run that skips the guard. `cost`: 462 tokens always on, 11,200 on invoke.
+
 All of these ran on `sonnet`, whose default `effort` is `medium` and which reasoned for almost nothing: 74 tokens in the median `edit`. So they say little about a session on another model or a higher `effort`.
 
 ## What a model, an `effort` and the memory cost
