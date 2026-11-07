@@ -3,6 +3,8 @@
 -- exist, what each Landform touches, and what a change would rewrite.
 
 local Shape = require("./Shape")
+local Geo = require("./Geo")
+local Route = require("./Route")
 local Chunk = require("./Chunk")
 
 local Describe = {}
@@ -63,6 +65,20 @@ function Describe.validate(plan): { string }
 		ids[rv.id] = true
 		rivers[rv.id] = rv
 		checkPoints(e, "river " .. tostring(rv.id), rv.points, 2)
+		if rv.curve ~= nil and not (isNum(rv.curve) and rv.curve >= 0 and rv.curve <= 1) then
+			table.insert(e, "river " .. tostring(rv.id) .. ": curve must be from 0 to 1")
+		end
+		if rv.meander ~= nil and not (isNum(rv.meander) and rv.meander >= 0) then
+			table.insert(e, "river " .. tostring(rv.id) .. ": meander cannot be negative")
+		end
+		if type(rv.points) == "table" then
+			for i = 1, #rv.points - 1 do
+				local a, b = rv.points[i], rv.points[i + 1]
+				if a[1] == b[1] and a[2] == b[2] then
+					table.insert(e, "river " .. tostring(rv.id) .. ": points " .. i .. " and " .. (i + 1) .. " are the same")
+				end
+			end
+		end
 		if not isNum(rv.waterLevel) or rv.waterLevel % 4 ~= 0 then
 			table.insert(e, "river " .. tostring(rv.id) .. ": waterLevel must be a multiple of 4")
 		elseif isNum(rv.bedY) and rv.bedY >= rv.waterLevel then
@@ -311,7 +327,8 @@ function Describe.heights(plan): string
 	end
 	for _, rv in ipairs(plan.rivers) do
 		local a, b = rv.points[1], rv.points[#rv.points]
-		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2]))
+		local route = Geo.polyline2(Route.points(rv)).length
+		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d, route %d studs, curve %s, meander %d", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2], route, tostring(rv.curve or 0), rv.meander or 0))
 	end
 	for _, lk in ipairs(plan.lakes or {}) do
 		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel))

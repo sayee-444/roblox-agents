@@ -9,6 +9,7 @@ local suites = {
 	{ "chunk", require("./chunk.test") },
 	{ "describe", require("./describe.test") },
 	{ "lake", require("./lake.test") },
+	{ "route", require("./route.test") },
 }
 
 local T = {}

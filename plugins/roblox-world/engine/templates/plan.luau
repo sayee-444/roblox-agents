@@ -59,12 +59,14 @@ return {
 		{
 			id = "river",
 			points = { { <x>, <z> }, { <x>, <z> }, { <x>, <z> }, { <x>, <z> } }, -- edge to edge, 4 to 6 points
+			curve = 1, -- 0 follows straight legs between the points, 1 a smooth curve through them
+			meander = 12, -- largest swing away from that line, in studs. It fades to nothing at each point
 			halfWidth = 20,
 			bedY = 10,
 			waterLevel = 20, -- multiple of the voxel size, so the surface meets a voxel boundary
 		},
 		-- A fork is a second River whose first point is one of this River's route points:
-		-- { id = "fork", points = { { <that x>, <that z> }, { <x>, <z> }, { <x>, <z> } }, halfWidth = 14, bedY = 10, waterLevel = 20 },
+		-- { id = "fork", points = { { <that x>, <that z> }, { <x>, <z> }, { <x>, <z> } }, curve = 1, meander = 8, halfWidth = 14, bedY = 10, waterLevel = 20 },
 	},
 	lakes = {},
 	-- For a lake, with any River ending in it holding the same waterLevel:
