@@ -1,6 +1,7 @@
 ## 2026-11-07: Lake shore shortened so the ground falls steeper into the water
 
-- **Why:** with `shore = 240` the lake reached 63.6 of the 110 studs asked, because its bed follows the slope of the ground around it. A shorter `shore` brings that slope down over fewer studs, and 110 and 240 did not get there (66.5 at 110).
+- **Why:** with `shore = 240` the lake reached 63.6 of the 110 studs asked, because its bed follows the slope of the ground around it. A shorter `shore` brings that slope down over fewer studs. A `shore` of 110 reached 66.5, since the ground nearer the Lake is lower.
+- **Implementation:** #62
 - **Chunks written:** 0,1 1,1 2,1 3,1 0,2 1,2 2,2 3,2 0,3 1,3 2,3 3,3
 - **Result:** lake depth 110 asked, 110.0 reached.
 - **Restore:** change the lake's `shore` back to 240 in the World Plan and generate those Chunks again.
@@ -12,9 +13,10 @@ shore = 240
 ## 2026-11-07: Valley sides now decide how deep the water gets
 
 - **Why:** the engine changed so a valley's `sides` set the depth of its water, and the River's `depths` and the Lake's `bedY` are only the deepest it may reach. `banks` no longer accepts `shallows`, `shallowDepth`, `bedFlat` or `steep`, so those were removed, and each valley got `sides`: `river` steep (0.7, then 1.2) in its last stretch before the Lake, and `fork`, `branch`, `oxbowA`, `oxbowB` gentle (0.1 to 0.12).
+- **Implementation:** #62
 - **Chunks written:** all 144 (extent -5..6)
 - **Result (asked / reached):** river depth 12 to 90 / 1.1 to 77.5; fork 8 to 70 / 1.0 to 4.9; branch 8 to 40 / 1.0 to 4.9; oxbowA 6 to 40 / 1.0 to 2.5; oxbowB 6 to 30 / 1.0 to 1.8; lake 110 / 63.6.
-- **Restore:** replace these lines in the World Plan with the old ones below, then generate every Chunk again. Delete the `sides` lines of the five valleys.
+- **Restore:** on plugin 0.39.0, since 0.40.0 refuses the old fields, replace these lines in the World Plan with the old ones below, delete the `sides` lines of the five valleys, and generate every Chunk again.
 
 ```luau
 -- river banks
