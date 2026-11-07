@@ -127,9 +127,9 @@ function Ops.borders(list)
 	)
 end
 
--- Wipes one Chunk, regenerates it and compares checksums. The wipe is the control: it must
+-- Wipes one Chunk, writes it again and compares checksums. The wipe is the control: it must
 -- change the checksum, or the comparison proves nothing. Refuses a Locked Chunk.
-function Ops.regenerate(ci, cj)
+function Ops.verify(ci, cj)
 	if isLocked(ci, cj) then
 		return "refused: Chunk " .. Gen.Chunk.key(ci, cj) .. " is Locked"
 	end

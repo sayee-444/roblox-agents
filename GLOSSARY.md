@@ -54,15 +54,41 @@ _Avoid_: tile, section, cell
 A Chunk edited by hand, which the Generator overwrites only when explicitly forced.
 _Avoid_: frozen chunk, manual chunk
 
+**Extent**:
+How many Chunks a world spans along each side, as the World Plan declares.
+_Avoid_: dimensions, map size
+
+**Generate**:
+To calculate Chunks from the World Plan and the seeds and write them to a place, whether they exist there already or not.
+_Avoid_: regenerate, rebuild
+
 ### Places
 
 **Development Place**:
 The private place holding every Chunk and experiment, which players never join.
-_Avoid_: test map, sandbox
+_Avoid_: sandbox
 
 **Game Place**:
 The place players join, which holds only Chunks approved for release.
 _Avoid_: live map, production map
+
+### Working on the agent
+
+**Test World**:
+A world that belongs to no game, kept to try the agent and to compare Implementations. `lab` is the one meant when no name is given.
+_Avoid_: test map
+
+**World Snapshot**:
+A place file the developer saved, holding a world's terrain as it stood at one point in its history.
+_Avoid_: backup, saved copy
+
+**Load**:
+To open a World Snapshot, which generates nothing.
+_Avoid_: restore, sync
+
+**Implementation**:
+One issue, or one finished change to the agent, its skills, its engine or its tools. It is what the developer approves, and what a map change is compared against.
+_Avoid_: feature, task
 
 ### Ground
 

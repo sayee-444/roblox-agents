@@ -14,8 +14,8 @@ test('help lists every command, without Studio', () => {
   assert.strictEqual(status, 0);
   const listed = stdout.split('\n').map((line) => line.match(/^ {2}([a-z]+)/)).filter(Boolean).map((match) => match[1]);
   assert.deepStrictEqual(listed.sort(), [
-    'borders', 'capture', 'check', 'describe', 'generate', 'height', 'heights', 'help', 'load', 'new',
-    'refresh', 'regenerate', 'run', 'shot', 'test', 'wipe',
+    'borders', 'capture', 'check', 'describe', 'generate', 'height', 'heights', 'help', 'new',
+    'refresh', 'run', 'shot', 'sync', 'test', 'verify', 'wipe',
   ]);
 });
 

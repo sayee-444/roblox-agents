@@ -17,13 +17,13 @@ Create and write terrain
   new <dir> --place <name> [--seed <n>] [--landforms <list>] [--test-map]
                                   Start a world. With --landforms (range,mesa,river,fork) it composes and
                                   writes the whole World Plan. Without, it prints a template to fill in
-  run [--remove-baseplate]        Whole cycle: load, test, describe, generate every Chunk, regenerate, heights
+  run [--remove-baseplate]        Whole cycle: sync, test, describe, generate every Chunk, verify, heights
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
-  regenerate <i> <j>              Rewrite one Chunk and prove the result is identical
+  verify <i> <j>                  Rewrite one Chunk and prove the result is identical
 
 Inspect, writing no terrain
-  check                           Debug start: load, test, describe
-  load                            Paste into Studio only the modules that differ
+  check                           Debug start: sync, test, describe
+  sync                            Paste into Studio only the modules that differ
   test                            Run the engine's tests
   describe                        What exists, which Chunks each thing touches, which are Locked
   borders [<i> <j> ...]           Compare the voxels on both sides of the borders of these Chunks, or of every Chunk. Slow, so only when the developer agrees
@@ -230,7 +230,7 @@ async function add(studio, mod, source) {
 }
 
 const steps = {
-  async load(studio, ctx) {
+  async sync(studio, ctx) {
     const hasLoader = await studio.luau('return tostring(shared.World ~= nil and shared.World.differs ~= nil)');
     if (hasLoader.trim() !== 'true') await studio.luau(readModule(path.join(ENGINE, 'tools/studio_loader.luau')));
     const mods = modules(ctx.project);
@@ -281,9 +281,9 @@ const steps = {
     return text;
   },
 
-  async regenerate(studio, ctx, args) {
+  async verify(studio, ctx, args) {
     const [i, j] = args.length === 2 ? args.map(Number) : [0, 0];
-    const text = await studio.luau(`return ${OPS}.regenerate(${i}, ${j})`);
+    const text = await studio.luau(`return ${OPS}.verify(${i}, ${j})`);
     if (!text.includes('identical=true') || !text.includes('checksum=true')) ctx.failed = true;
     return text;
   },
@@ -432,7 +432,7 @@ function newWorld(dir, flags) {
 
 The engine ships with the \`roblox-world\` plugin. This project holds only \`src/world/plan.luau\` and \`src/world/state.luau\`.
 
-\`node <engine>/tools/world.js run --place ${flags.place} --project .\` loads the engine, tests it, describes the plan, generates and verifies. Run it with a Bash timeout of 600000 ms. After a local change, run \`generate <i> <j> ...\` for the Chunks it touched instead. \`node <engine>/tools/world.js help\` lists every command.
+\`node <engine>/tools/world.js run --place ${flags.place} --project .\` syncs the engine, tests it, describes the plan, generates and verifies. Run it with a Bash timeout of 600000 ms. After a local change, run \`generate <i> <j> ...\` for the Chunks it touched instead. \`node <engine>/tools/world.js help\` lists every command.
 
 ## Decisions
 
@@ -454,8 +454,8 @@ async function main() {
   if (!command || command === 'help') { console.log(HELP); return 0; }
   if (command === 'new') { console.log(newWorld(args[0], flags)); return 0; }
   const cycles = {
-    run: ['load', 'test', 'describe', 'generate', 'regenerate', 'heights'],
-    check: ['load', 'test', 'describe'],
+    run: ['sync', 'test', 'describe', 'generate', 'verify', 'heights'],
+    check: ['sync', 'test', 'describe'],
   };
   if (!cycles[command] && !steps[command]) {
     console.error(`Unknown command "${command}". Run: node world.js help`);
@@ -465,7 +465,7 @@ async function main() {
     console.error(`${command} needs --place <name>. Run: node world.js help`);
     return 2;
   }
-  const order = cycles[command] || ['load', command];
+  const order = cycles[command] || ['sync', command];
   const ctx = { flags, project: path.resolve(typeof flags.project === 'string' ? flags.project : ENGINE), failed: false };
   if (!fs.existsSync(path.join(ctx.project, `${PLAN}.luau`))) {
     console.error(`No World Plan at ${path.join(ctx.project, `${PLAN}.luau`)}. Write it from the template that new printed`);
@@ -476,7 +476,7 @@ async function main() {
     await studio.connect(flags.place);
     const started = Date.now();
     for (const name of [...new Set(order)]) {
-      if (ctx.failed && ['generate', 'borders', 'regenerate', 'heights', 'capture'].includes(name)) {
+      if (ctx.failed && ['generate', 'borders', 'verify', 'heights', 'capture'].includes(name)) {
         console.log(`${name}: skipped after a failure`);
       } else {
         const t0 = Date.now();

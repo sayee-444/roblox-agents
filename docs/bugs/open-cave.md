@@ -14,7 +14,7 @@ This is not a rendering failure and no Chunk was left unwritten. The engine did 
 
 ## Evidence
 
-World `test-map-x2`, in `worlds/`. The agent moved the mesa, and was told to leave the cave in place.
+World `lab`, in `worlds/`. The agent moved the mesa, and was told to leave the cave in place.
 
 | Field | Value |
 |---|---|
@@ -45,7 +45,7 @@ Along the whole axis, sampled about every 4 studs, 36 of 36 samples were open to
 The place used, Place1, was not saved and is no longer a test place, so the terrain must be generated again. In the existing world, with Studio open on a disposable place:
 
 ```text
-cd worlds/test-map-x2
+cd worlds/lab
 node <engine>/tools/world.js run --place <name> --project .
 ```
 

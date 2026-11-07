@@ -1,3 +1,10 @@
+## 2026-11-07: Kept this map as the result of #43
+
+- **Why:** the developer wants the next Implementations compared against this state. PR #46, for issue #43, is the last Implementation that changed this World Plan, and doubling the map in #49 was undone in #50.
+- **Implementation:** #43
+- **Chunks written:** none for this entry. All 144 were last written on plugin 0.32.0, and Chunks 0,0 and -3,-5 rewrote identical on 0.33.0.
+- **Snapshot:** `lab-issue-43.rbxl`
+
 ## 2026-11-07: Made the world and its water larger, with parametrized banks
 
 - **Why:** the River read as a deep stream, its depth barely changed, the water fell straight from the shore, and hills stood around it.
