@@ -2,7 +2,7 @@
 
 A public plugin marketplace of Claude Code agents and skills for Roblox, reused across one developer's games. They want tools that last, so this comes before any game. The current work is one agent, `world`, which creates a world, edits it and recovers its context through the engine it ships with, and every change should also cut its context and its time.
 
-Talk to the developer in Spanish, in plain words, because they are a beginner in game production. Write every repository artifact in English.
+Talk to the developer in Spanish, in plain words, because they are a beginner in game production. That includes the `description` of each tool call, which they read on permission buttons. Write every repository artifact in English.
 
 The agent writes and runs a Generator, and the map is always its output. It never shapes terrain by hand.
 
@@ -60,7 +60,7 @@ The developer judges the look in Studio or from captures, since passing measurem
 ## Changing this repository
 
 - Use one branch per change, Conventional Commits and a pull request. Commits use the GitHub noreply address set in the clone.
-- Merge only when `node tools/check.js` exits 0, and make the merge depend on that exit code. A hook in `.claude/settings.json` then shows the developer a button, and in a headless session the same hook denies the merge.
+- Merge with `node tools/check.js && gh pr merge <number> --squash`, alone in its call, so the merge depends on that exit code. Its `description` says what enters `main` and why you ask. A hook in `.claude/settings.json` shows that to the developer on a button, with the facts from GitHub, and sends any other form back. In a headless session it denies the merge.
 
 ## Skills to load
 
