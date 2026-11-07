@@ -27,6 +27,8 @@ Create and write terrain
                                   keeping its seeds. Writes no terrain, so run comes next
   run [--remove-baseplate]        Whole cycle: sync, test, describe, generate every Chunk, verify, heights
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
+  remove <id> [--why <reason>]    Take a Landform, River or Lake out of the plan, with a River's Valley, write only
+                                  the generated Chunks it touched and record the exact block in the history
   verify <i> <j>                  Rewrite one Chunk and prove the result is identical
 
 Inspect, writing no terrain
@@ -296,6 +298,30 @@ const steps = {
       fs.writeFileSync(path.join(ctx.project, `${STATE}.luau`), `${source.trim()}\n`);
     }
     return text;
+  },
+
+  // Takes a Landform, River or Lake out of the plan, writes the Chunks it touched and records it, so
+  // that no model copies its block twice. A plan invalid without it is put back before any write.
+  async remove(studio, ctx, args) {
+    const planFile = path.join(ctx.project, `${PLAN}.luau`);
+    const before = readModule(planFile);
+    const { text, taken } = plans.remove(before, args[0]);
+    const ids = taken.map((block) => JSON.stringify(block.id)).join(', ');
+    const { rewrite, lockedReached } = JSON.parse(await studio.luau(`return ${OPS}.impact({ regionIds = { ${ids} } })`));
+    fs.writeFileSync(planFile, text);
+    await steps.sync(studio, ctx);
+    const described = await studio.luau(`return ${OPS}.describe()`);
+    if (described.startsWith('INVALID PLAN')) {
+      fs.writeFileSync(planFile, before);
+      await steps.sync(studio, ctx);
+      ctx.failed = true;
+      return `Nothing was removed, since the plan would be invalid:\n${described}`;
+    }
+    const why = typeof ctx.flags.why === 'string' ? ctx.flags.why : 'the developer asked for it.';
+    addHistory(ctx.project, plans.removalEntry(new Date().toISOString().slice(0, 10), why, taken, rewrite));
+    const written = rewrite.length ? await steps.generate(studio, ctx, rewrite.flatMap((key) => key.split(','))) : 'No generated Chunk to write';
+    const locked = lockedReached.length ? `\nLocked Chunks it reached, not written, so tell the developer: ${lockedReached.join(' ')}` : '';
+    return `Removed ${taken.map((block) => block.id).join(' and ')}, recorded in docs/world/history.md. Chunks: ${rewrite.join(' ') || 'none'}\n${written}${locked}`;
   },
 
   async borders(studio, ctx, args) {
@@ -596,6 +622,13 @@ async function main() {
   if (!fs.existsSync(path.join(ctx.project, `${PLAN}.luau`))) {
     console.error(`No World Plan at ${path.join(ctx.project, `${PLAN}.luau`)}. Write it from the template that new printed`);
     return 2;
+  }
+  if (command === 'remove') {
+    if (!args[0] || typeof flags.project !== 'string') {
+      console.error('Usage: world.js remove <id> --place <name> --project <dir> [--why <reason>]. Run: node world.js help');
+      return 2;
+    }
+    plans.remove(readModule(path.join(ctx.project, `${PLAN}.luau`)), args[0]); // Fails here, before reaching Studio, on a name the plan lacks.
   }
   const studio = new Studio();
   try {

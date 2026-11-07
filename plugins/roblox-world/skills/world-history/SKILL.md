@@ -7,7 +7,7 @@ The current state is the World Plan, the generation state and `describe`. Orient
 
 ## Removing something
 
-A removal leaves the World Plan as if the thing never existed, with no commented code, disabled flag or leftover reference. Write the unlocked Chunks it touched again, because terrain is the Generator's output. Then record it, and the history becomes the only place it remains.
+`world.js remove <id> --place <name> --project <dir> --why "<reason>"` takes it out of the World Plan with a River's Valley, writes the generated unlocked Chunks it touched and adds its entry, with the exact block. The history becomes the only place it remains, so the World Plan keeps no commented code, disabled flag or leftover reference. Done when it exits 0.
 
 ## Adding an entry
 

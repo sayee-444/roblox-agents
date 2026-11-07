@@ -120,6 +120,51 @@ function stateFacts(text) {
   return { generated, locked };
 }
 
+// An entry with what makes it a block of its own: its indentation, its comma and the rest of its line.
+function blockAt(text, entry) {
+  let start = entry.start;
+  while (start > 0 && (text[start - 1] === ' ' || text[start - 1] === '\t')) start -= 1;
+  if (start > 0 && text[start - 1] !== '\n') start = entry.start;
+  let end = entry.end + 1;
+  if (text[end] === ',') end += 1;
+  const lineEnd = text.indexOf('\n', end);
+  const stop = lineEnd < 0 ? text.length : lineEnd;
+  if (/^\s*(--.*)?$/.test(text.slice(end, stop))) end = lineEnd < 0 ? text.length : lineEnd + 1;
+  return { start, end };
+}
+
+// Takes `id` out of the plan, with any Valley that exists only for it. Returns the new text and what
+// was taken, each with its list and exact text. Throws when the plan has no such thing.
+function remove(text, id) {
+  const code = withoutComments(text);
+  const taken = [];
+  for (const name of SECTIONS) {
+    const range = sectionRange(code, name);
+    for (const entry of range ? entries(code, range) : []) {
+      const blockId = textField(entry.source, 'id');
+      if (blockId === id || (name === 'regions' && textField(entry.source, 'riverId') === id)) {
+        const { start, end } = blockAt(text, entry);
+        taken.push({ section: name, id: blockId, kind: textField(entry.source, 'kind') || name.replace(/s$/, ''), start, end, text: text.slice(start, end) });
+      }
+    }
+  }
+  if (!taken.some((block) => block.id === id)) {
+    const held = facts(text);
+    throw new Error(`The World Plan has no "${id}". It holds: ${SECTIONS.flatMap((name) => held[name].map((thing) => thing.id)).join(' ')}`);
+  }
+  let out = text;
+  for (const block of [...taken].sort((a, b) => b.start - a.start)) out = out.slice(0, block.start) + out.slice(block.end);
+  for (const name of SECTIONS) out = out.replace(new RegExp(`^([ \\t]*${name}[ \\t]*=[ \\t]*)\\{\\s*\\}`, 'm'), '$1{}');
+  return { text: out, taken };
+}
+
+// A history entry for what was taken out of the plan, holding it exactly, so restoring it needs no Git.
+function removalEntry(date, why, taken, chunks) {
+  const names = taken.map((block) => `${block.kind} \`${block.id}\``).join(' and ');
+  const blocks = taken.map((block) => `Into \`${block.section}\`:\n\n\`\`\`luau\n${block.text.trimEnd()}\n\`\`\``).join('\n\n');
+  return `## ${date}: Removed ${names}\n\n- **Why:** ${why}\n- **Chunks written:** ${chunks.join(' ') || 'none'}\n- **Restore:** paste each block below into its list in the World Plan, and generate those Chunks again.\n\n${blocks}\n`;
+}
+
 const round2 = (value) => Math.round(value * 100) / 100;
 
 // New Chunk indices for one axis: as many Chunks as hold the scaled span, around the same centre.
@@ -220,4 +265,4 @@ function lastChange(history) {
   return match ? match[1] : null;
 }
 
-module.exports = { facts, stateFacts, scale, lastChange };
+module.exports = { facts, stateFacts, remove, removalEntry, scale, lastChange };

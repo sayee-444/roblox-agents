@@ -84,6 +84,18 @@ return {
 		t.eq(#all.rewrite, 8, "all unlocked chunks")
 	end,
 
+	["impact of several regions lists each generated chunk once, and skips those never generated"] = function(t)
+		local s = allGenerated()
+		s.chunks["1,1"] = { generated = true, locked = true }
+		s.chunks["0,0"] = nil
+		local impact = Describe.impact(plan, s, { regionIds = { "mesa", "cave" } })
+		t.ok(has(impact.lockedReached, "1,1"), "locked chunk reported")
+		t.eq(#impact.lockedReached, 1, "reported once, though both touch it")
+		t.ok(not has(impact.rewrite, "1,1"), "locked chunk is not rewritten")
+		t.ok(not has(impact.rewrite, "0,0"), "a chunk never generated stays that way")
+		t.ok(has(impact.rewrite, "1,0"), "a chunk the mesa touches")
+	end,
+
 	["with no list, the borders are every pair of generated neighbours"] = function(t)
 		t.eq(#Describe.bordersOf(plan, allGenerated(), nil), 12)
 	end,
