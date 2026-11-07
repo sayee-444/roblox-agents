@@ -28,7 +28,7 @@ Materials.sub = {
 }
 
 -- Surface material of a bed, by the depth of the water over it: sand under shallow water, earth
--- coming through it further down, and earth with gravel and a little sand at the bottom.
+-- coming through it further down, and earth with patches of rock and a little sand at the bottom.
 local function bed(plan, x: number, z: number, depth: number, n: number): number
 	local M = plan.materials
 	if depth < (M.bedSand or 6) + n * 3 then

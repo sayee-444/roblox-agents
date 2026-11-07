@@ -70,6 +70,16 @@ On plugin 0.26.1, in Place1:
 
 On plugin 0.27.0, `Materials.surface` takes the water level, and a bed chooses by the depth of its water: Sand under about 6 studs, then Ground coming through the Sand, and from about 14 studs Ground with patches of Rock and a little Sand. `bedSand` and `bedDeep` in the plan's `materials` move those depths. Roblox has no gravel terrain material. Cobblestone was tried first and looked like paving, so Rock stands in for it.
 
-Not changed: the shape of the bed, cause 3, and the rock under it, cause 4. A camera inside the ground still sees through the map.
+## The cause of the bulge
 
-Not verified: whether this is what the developer meant by old ground. They judge the look on `test-map-x2`.
+The developer then said what they meant: the bowl under the map is there, but they cannot get into it, because a floor sits over it. Read at their camera, 146, 15, 200, on 2026-11-07: the bed was at -8, 8 studs below the map's floor at 0, and solid ground went on to -28. So the bulge seen from below was 20 studs of ground and not open water, and the depth looked the same. No old ground was left over: the bed itself was too shallow, flat, and sitting on a thick shell.
+
+Also on plugin 0.27.0:
+
+- **Bowl:** past `BOWL_FROM`, 10 studs under the water, a River's bed deepens towards its line instead of staying flat. A River no deeper than that keeps its shape.
+- **No gaps:** a column's ground now reaches below the beds beside it. With a thin shell on a steep wall, a capture showed water through holes, since each column only went below its own bed.
+- **`test-map-x2`:** `rockUnder` 8, deeper `depths` on `river` and `fork`, and the Lake's bed at -50. The bed at x 120 now reads down to about -20, with ground ending at about -36.
+
+Measured: 102 of 102 engine tests, all 33 borders agree, and captures from the developer's camera and from below show a bowl with no holes.
+
+Not verified: a character going down into it in Play, which nothing has done, and how much the solid cells changed. The developer judges the look.

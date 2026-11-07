@@ -31,7 +31,7 @@ return {
 		t.ok(surface(24, 0.1, 0, 200) ~= "Sand", "far from the river is not sand")
 	end,
 
-	["a bed changes with the depth of its water: sand, then earth, then gravel"] = function(t)
+	["a bed changes with the depth of its water: sand, then earth, then earth with rock"] = function(t)
 		local function seenAt(depth)
 			local seen = {}
 			for i = 0, 400 do
@@ -43,7 +43,7 @@ return {
 		local shallow, middle, deep = seenAt(2), seenAt(10.5), seenAt(24)
 		t.ok(shallow.Sand and not shallow.Ground and not shallow.Rock, "shallow water lies on sand only")
 		t.ok(middle.Sand and middle.Ground and not middle.Rock, "further down, earth comes through the sand")
-		t.ok(deep.Ground and deep.Rock and deep.Sand, "at the bottom: earth, gravel and a little sand")
+		t.ok(deep.Ground and deep.Rock and deep.Sand, "at the bottom: earth, rock and a little sand")
 	end,
 
 	["ground below height 0 with no water over it is not a bed"] = function(t)

@@ -1,8 +1,8 @@
-## 2026-11-07: Beds change material with depth
+## 2026-11-07: Made the deep water a bowl, with a thin wall under it
 
-- **Why:** the developer wanted sand near the surface and a real bed further down.
+- **Why:** the developer could see the bulge under the map and could not get into it, because the bed stopped at about -8 on 20 studs of ground. They also wanted sand near the surface and a real bed further down.
 - **Chunks written:** -2,0 -1,0 0,0 1,0 -2,1 -1,1 0,1 1,1 2,1 -2,2 -1,2 0,2 1,2 2,2
-- **Restore:** the plan did not change. Plugin 0.26.1 wrote Sand at every depth.
+- **Restore:** remove `rockUnder`, set `river` to `depths = { 8, 10, 14, 18, 26, 30 }`, `fork` to `depths = { 4, 6, 8, 10, 16 }` and the Lake to `bedY = -20`, and regenerate those Chunks. The materials and the bowl come from plugin 0.27.0.
 
 ## 2026-11-07: Gave the water varied depth, and removed the slab under the map
 
