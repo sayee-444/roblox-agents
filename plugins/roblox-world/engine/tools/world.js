@@ -70,8 +70,9 @@ const FAR_VIEW_STUDS = 1000;
 // of retries by the model. An empty listing is waited out, and a listing of other places is an answer.
 const LIST_TRIES = 20;
 const LIST_WAIT_MS = Number(process.env.WORLD_LIST_WAIT_MS || 1000);
-// status answers from the files whatever Studio does, so it waits little for it.
-const STATUS_LIST_TRIES = 3;
+// status answers from the files whatever Studio does, so it waits little for it. A place comes back in
+// the listing on the third or fourth try after any command, measured, so fewer tries report it closed.
+const STATUS_LIST_TRIES = 6;
 const STATUS_WAIT_MS = Number(process.env.WORLD_STATUS_WAIT_MS || 10000);
 
 async function oneCapture(studio, id, camera, look) {
@@ -468,7 +469,7 @@ async function studioLine() {
   const studio = new Studio();
   const read = async () => {
     const studios = await studio.places(STATUS_LIST_TRIES);
-    if (!studios.length) return 'Studio: no place open';
+    if (!studios.length) return `Studio: no place open after ${(STATUS_LIST_TRIES * LIST_WAIT_MS) / 1000} s`;
     const open = [];
     for (const { id, name } of studios) {
       studio.id = id;
