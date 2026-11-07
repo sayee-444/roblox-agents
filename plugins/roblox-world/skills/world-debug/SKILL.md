@@ -5,7 +5,7 @@ description: Debug mode for a world, as the last step of a task. Use when a chec
 
 Debugging is bounded: find which kind of problem this is, then fix it or report it. Build first, and debug last.
 
-1. **Run the facts.** `world.js check --place <name> --project <dir>` tests the engine, validates the plan and compares every border, and writes no terrain. A failing test, an invalid plan or a border mismatch is a real defect, so reproduce it with a failing test and fix it through the World Plan or the Generator.
+1. **Run the facts.** `world.js check --place <name> --project <dir>` tests the engine and validates the plan, and writes no terrain. A failing test or an invalid plan is a real defect, so reproduce it with a failing test and fix it through the World Plan or the Generator.
 2. **Read the one spot.** For a place the developer points at, use `height <x> <z>`, a raycast or a voxel read. Confirm an empty test on a known-good spot, because a wrong index once reported 2,806 false holes.
 3. **Refresh once.** When voxels are correct, the problem is only rendering. `capture` and `shot` rebuild the render by themselves after a write or a far view, so a new capture is the first comparison. Otherwise run `refresh` once, then ask the developer what they see.
 4. **Stop and report.** If it stays after one refresh, report it as rendering. Chasing one such rectangle once cost 5.5 minutes and proved nothing.
