@@ -24,7 +24,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 | A new world the engine composes | `new --landforms range,mesa,river,fork`, then `run` | Measured |
 | A new world with chosen positions | `new`, writing the World Plan from the template it prints, then `run` | Measured |
 | Set up a project with no world context | `world-project-setup` | Measured |
-| The whole cycle again | `run`: `load`, `test`, `describe`, `generate`, `regenerate`, `heights` | Measured |
+| The whole cycle again | `run`: `load`, `test`, `describe`, `generate`, `regenerate`, `heights`. `generate` and `regenerate` run as background jobs in Studio, so a large map is not cut off | Measured |
 
 ## Edit
 

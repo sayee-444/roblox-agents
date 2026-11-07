@@ -49,6 +49,44 @@ function Ops.markRenderStale()
 	return "stale"
 end
 
+-- Starts one background job, so a long operation outlives the call that started it and Studio can
+-- answer between its steps. It lives in `shared`, which stays between commands. The same id does
+-- not start twice, and a job of another id waits for the running one to end.
+function Ops.startJob(id, work)
+	local job = shared.World.job
+	if job and job.id == id then
+		return "started"
+	end
+	if job and job.running then
+		return "busy with job " .. job.id .. ", " .. job.done .. " of " .. job.total .. " done"
+	end
+	job = { id = id, running = true, done = 0, total = 0 }
+	shared.World.job = job
+	task.spawn(function()
+		task.wait() -- lets this call answer before the work blocks Studio
+		local ok, result = pcall(work)
+		if ok then
+			job.result = result
+		else
+			job.error = tostring(result)
+		end
+		job.running = false
+	end)
+	return "started"
+end
+
+-- The job's status as JSON, for tools/world.js to poll.
+function Ops.jobStatus()
+	return game:GetService("HttpService"):JSONEncode(shared.World.job or { id = "none", running = false, done = 0, total = 0 })
+end
+
+local function jobProgress(done, total)
+	local job = shared.World.job
+	if job and job.running then
+		job.done, job.total = done, total
+	end
+end
+
 local function sameData(a, b)
 	return a.s1 == b.s1 and a.s2 == b.s2 and a.solid == b.solid and a.liquid == b.liquid
 end
@@ -68,6 +106,9 @@ function Ops.generate(list)
 	local t = workspace.Terrain
 	local seconds, skipped = {}, {}
 	local total = 0
+	local e = plan.extent
+	local planned = if list then #list else (e.maxX - e.minX + 1) * (e.maxZ - e.minZ + 1)
+	local finished = 0
 	local function write(ci, cj)
 		local key = Gen.Chunk.key(ci, cj)
 		if isLocked(ci, cj) then
@@ -79,6 +120,8 @@ function Ops.generate(list)
 		table.insert(seconds, stats.wall)
 		total += stats.wall
 		state.chunks[key] = { generated = true, locked = false }
+		finished += 1
+		jobProgress(finished, planned)
 		task.wait()
 	end
 	if list then

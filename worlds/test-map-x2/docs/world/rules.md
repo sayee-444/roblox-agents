@@ -11,12 +11,13 @@
 
 The engine ships with the `roblox-world` plugin. This project holds only `src/world/plan.luau` and `src/world/state.luau`.
 
-`node <engine>/tools/world.js run --place Place1 --project .` loads the engine, tests it, describes the plan, generates and verifies. Run it with a Bash timeout of 600000 ms. After a local change, run `generate <i> <j> ...` for the Chunks it touched instead. `node <engine>/tools/world.js help` lists every command.
+`node <engine>/tools/world.js run --place Place1 --project .` loads the engine, tests it, describes the plan, generates and verifies. At 576 Chunks it took about 15 minutes, longer than a foreground Bash call may last, so run it in the background. After a local change, run `generate <i> <j> ...` for the Chunks it touched instead. `node <engine>/tools/world.js help` lists every command.
 
 ## Decisions
 
 Newest first: the date, the decision and why it was made.
 
+- 2026-11-07: 24 x 24 Chunks, extent -11..12 (12,288 studs a side), keeping `chunkSize` 512 so that one Chunk stays quick to rewrite. Every position went through 2x - 256, which keeps the map's centre, and every length and height doubled, because the developer wanted the River and the mountains larger and a wider footprint alone would flatten them. `octaves` went to 6 to keep the small relief at the same size.
 - 2026-11-07: 12 x 12 Chunks, extent -5..6, with every Landform's position doubled and the River, its branches and the Lake about 2 to 2.5 times wider, because the River read as a deep stream. Depths now differ a lot along each River, all water has `banks`, and Valleys reach up to 700 studs so the land comes down gently. `river` has `smooth` 48, and `fork` and `branch` 40, to fill the needles between close passes. The cave moved with the rest, keeps its axis at y 60 and sits about 2 to 8 studs above the ground there.
 - 2026-11-07: `floorY` 0, with depths declared per point on each River and the Lake's bed at -20, to try varied water with no slab under the map.
 - 2026-11-06: mesa moved from (1300, 1250) to (1300, -100), closer to the range; the cave stayed where it was (see history.md).
