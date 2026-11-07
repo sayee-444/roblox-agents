@@ -20,7 +20,7 @@ Each change is a change to the World Plan. Moving the mesa closer to the range t
 
 ![A forked River ending in a Lake](docs/images/world-lake-and-rivers.jpg)
 
-Known defects are in [`docs/next-steps.md`](docs/next-steps.md), such as [a cave left open](docs/bugs/open-cave.md) when the ground over it moves.
+Known defects are in the [issues](https://github.com/sayee-444/roblox-agents/issues), such as [a cave left open](docs/bugs/open-cave.md) when the ground over it moves.
 
 ## Requirements
 
@@ -95,7 +95,7 @@ While the plugin is enabled, a hook applies to the whole Claude Code session, in
 | `node tools/benchmark.js cost` | Free measure of the plugin's context, with more in [`docs/benchmark.md`](docs/benchmark.md) |
 | `node tools/measure-run.js <transcript.jsonl>` | Time, tokens and what a run actually did |
 
-Where the work stands is in [`docs/next-steps.md`](docs/next-steps.md), the vocabulary in [`GLOSSARY.md`](GLOSSARY.md) and the recorded decisions in [`docs/adr/`](docs/adr/).
+Pending work is in the [issues](https://github.com/sayee-444/roblox-agents/issues), what the agent can do in [`docs/functions.md`](docs/functions.md), the vocabulary in [`GLOSSARY.md`](GLOSSARY.md) and the recorded decisions in [`docs/adr/`](docs/adr/).
 
 ## License
 

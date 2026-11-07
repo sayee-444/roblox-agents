@@ -74,7 +74,7 @@ These are the developer's ideas and first thoughts on them, and nothing here is 
 
 **Report it where the agent already reads.** `describe` and `heights` print on every `run`, and a line such as `cave: 36 of 36 samples without cover` costs little. Whether it fails the run is a choice: a failure stops `run`, as an invalid plan does, and a warning lets it finish and leaves the choice to the agent.
 
-**Catch it before writing.** `Describe.impact` exists and no command reaches it (`docs/next-steps.md`). A check run on the plan before `generate` would warn before any terrain is written.
+**Catch it before writing.** `Describe.impact` exists and no command reaches it (`docs/functions.md`). A check run on the plan before `generate` would warn before any terrain is written.
 
 **Tell a mouth from a cave.** The developer's idea: a mouth and a cave are different parts, so a mouth has no roof to check, and a mouth with no cave connected to it is removed too. A mouth may be a wedge open to the sky, and a very short stretch of cave behind it is enough to keep it.
 

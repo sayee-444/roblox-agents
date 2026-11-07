@@ -14,7 +14,7 @@ To load this world, open the World Snapshot named by the newest entry in `histor
 
 ## History
 
-Each entry in `history.md` also names its Implementation, and the World Snapshot if the developer saved one.
+Each entry in `history.md` also names its Implementation, and the World Snapshot if the developer saved one. When a finished Implementation changes the map, ask the developer to save it with `File > Save to File As`, giving the whole path of `.local/snapshots/lab-issue-<n>.rbxl`, because `Ctrl+S` would overwrite the copy already open in Studio.
 
 ## Generator
 
@@ -22,7 +22,7 @@ The engine ships with the `roblox-world` plugin. This project holds only `src/wo
 
 `node <engine>/tools/world.js run --place <open place> --project .` syncs the engine, tests it, describes the plan, generates and verifies. Run it with a Bash timeout of 600000 ms. After a local change, run `generate <i> <j> ...` for the Chunks it touched instead. `node <engine>/tools/world.js help` lists every command.
 
-On this world `run`, `verify` and any `generate` holding several River Chunks can fail with `Target is not reachable`, as `docs/next-steps.md` records. `generate` with one Chunk per call has not failed, so write River Chunks that way until it is fixed, and do not count a failed `verify` as a wrong map.
+On this world `run`, `verify` and any `generate` holding several River Chunks can fail with `Target is not reachable`, as #53 records. `generate` with one Chunk per call has not failed, so write River Chunks that way until it is fixed, and do not count a failed `verify` as a wrong map.
 
 ## Decisions
 
