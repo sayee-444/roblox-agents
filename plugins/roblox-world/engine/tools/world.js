@@ -9,14 +9,22 @@ const { spawn } = require('child_process');
 const fs = require('fs');
 const path = require('path');
 const layouts = require('./layout.js');
+const plans = require('./plan-file.js');
 
-const HELP = `Runs the Generator in Studio. Every command except help takes --place <name>, and all that
-touch a world take --project <dir>. Exits 1 when a check fails.
+const HELP = `Runs the Generator in Studio. Every command except help, status and scale takes --place <name>,
+and all that touch a world take --project <dir>. Exits 1 when a check fails.
+
+Where a world stands
+  status [--project <dir>]        What the plan holds, which Chunks exist, the last change, and which
+                                  places are open with how much terrain. Changes nothing, works with Studio closed
 
 Create and write terrain
   new <dir> --place <name> [--seed <n>] [--landforms <list>] [--test-map]
                                   Start a world. With --landforms (range,mesa,river,fork) it composes and
                                   writes the whole World Plan. Without, it prints a template to fill in
+  scale <factor> --project <dir> [--why <reason>]
+                                  Rewrite the World Plan at a new size: extent, positions, lengths and heights,
+                                  keeping its seeds. Writes no terrain, so run comes next
   run [--remove-baseplate]        Whole cycle: sync, test, describe, generate every Chunk, verify, heights
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
   verify <i> <j>                  Rewrite one Chunk and prove the result is identical
@@ -60,6 +68,10 @@ const FAR_VIEW_STUDS = 1000;
 // of retries by the model. An empty listing is waited out, and a listing of other places is an answer.
 const LIST_TRIES = 20;
 const LIST_WAIT_MS = Number(process.env.WORLD_LIST_WAIT_MS || 1000);
+// status answers from the files whatever Studio does, so it waits little for it. A place comes back in
+// the listing on the third or fourth try after any command, measured, so fewer tries report it closed.
+const STATUS_LIST_TRIES = 6;
+const STATUS_WAIT_MS = Number(process.env.WORLD_STATUS_WAIT_MS || 10000);
 
 async function oneCapture(studio, id, camera, look) {
   const result = await studio.tool('screen_capture', { capture_id: id, camera_position: camera, look_at_position: look });
@@ -106,6 +118,7 @@ function parseArgs(argv) {
 class Studio {
   constructor() {
     this.pending = new Map();
+    this.timers = new Set();
     this.nextId = 1;
     // WORLD_FAKE_STUDIO names a stand-in for Studio's server, for the tests.
     const fake = process.env.WORLD_FAKE_STUDIO;
@@ -132,8 +145,10 @@ class Studio {
     this.nextId += 1;
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => reject(new Error(`Studio did not answer ${method} within 5 minutes`)), 300000);
+      this.timers.add(timer);
       this.pending.set(id, (message) => {
         clearTimeout(timer);
+        this.timers.delete(timer);
         if (message.error) reject(new Error(JSON.stringify(message.error)));
         else resolve(message.result);
       });
@@ -141,18 +156,24 @@ class Studio {
     });
   }
 
-  async connect(place) {
+  // The places open in Studio, waiting out an empty listing up to `tries` times.
+  async places(tries) {
     await this.request('initialize', { protocolVersion: '2024-11-05', capabilities: {}, clientInfo: { name: 'world', version: '1' } });
     this.child.stdin.write(`${JSON.stringify({ jsonrpc: '2.0', method: 'notifications/initialized' })}\n`);
     let listed;
-    for (let tries = 1; tries <= LIST_TRIES; tries += 1) {
+    for (let attempt = 1; attempt <= tries; attempt += 1) {
       listed = JSON.parse((await this.request('tools/call', { name: 'list_roblox_studios', arguments: {} })).content[0].text);
       if (listed.studios.length > 0) break;
-      if (tries < LIST_TRIES) await new Promise((resolve) => { setTimeout(resolve, LIST_WAIT_MS); });
+      if (attempt < tries) await new Promise((resolve) => { setTimeout(resolve, LIST_WAIT_MS); });
     }
-    const match = listed.studios.filter((studio) => studio.name === place);
+    return listed.studios;
+  }
+
+  async connect(place) {
+    const studios = await this.places(LIST_TRIES);
+    const match = studios.filter((studio) => studio.name === place);
     if (match.length !== 1) {
-      throw new Error(`Place "${place}" must be open exactly once. Open: ${listed.studios.map((s) => s.name).join(', ') || 'none'}`);
+      throw new Error(`Place "${place}" must be open exactly once. Open: ${studios.map((s) => s.name).join(', ') || 'none'}`);
     }
     this.id = match[0].id;
   }
@@ -177,6 +198,7 @@ class Studio {
   }
 
   close() {
+    for (const timer of this.timers) clearTimeout(timer);
     this.child.stdin.end();
     if (this.child.pid) spawn('taskkill', ['/PID', String(this.child.pid), '/T', '/F'], { stdio: 'ignore' });
   }
@@ -185,6 +207,8 @@ class Studio {
 function readModule(file) {
   return fs.readFileSync(file, 'utf8').split('\r').join('');
 }
+
+const readIfThere = (file) => (fs.existsSync(file) ? readModule(file) : '');
 
 function adler32(text) {
   let a = 1;
@@ -404,6 +428,122 @@ function composedPlan(seed, layout) {
   return `-- World Plan: declares what exists where. It wins over the seeds. Composed by new from the World Seed.\n-- Chunk (i, j) covers x in [i*512-256, i*512+256) and z in [j*512-256, j*512+256).\n\n${before}${layouts.renderLuau(layout, regionSeeds(seed))}\n${after}`;
 }
 
+const extentText = (e) => (e.minX === e.minZ && e.maxX === e.maxZ ? `${e.minX}..${e.maxX}` : `${e.minX}..${e.maxX} x ${e.minZ}..${e.maxZ}`);
+
+// Puts an entry at the top of a world's history, creating the file when it is missing.
+const whyOf = (flags) => (typeof flags.why === 'string' ? flags.why : 'the developer asked for it.');
+
+// Decisions run newest first, under the line that says so.
+function addDecision(project, decision) {
+  const file = path.join(project, 'docs/world/rules.md');
+  if (!fs.existsSync(file)) return;
+  const text = readModule(file);
+  const first = /^(Newest first:.*)\n*/m;
+  fs.writeFileSync(file, first.test(text) ? text.replace(first, (_, line) => `${line}\n\n${decision}\n`) : `${text.trimEnd()}\n\n${decision}\n`);
+}
+
+function addHistory(project, entry) {
+  const file = path.join(project, 'docs/world/history.md');
+  const before = fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, `${entry}${before ? `\n${before}` : ''}`);
+}
+
+// One line on the places open in Studio, read without writing anything.
+async function studioLine() {
+  const studio = new Studio();
+  const read = async () => {
+    const studios = await studio.places(STATUS_LIST_TRIES);
+    if (!studios.length) return `Studio: no place open after ${(STATUS_LIST_TRIES * LIST_WAIT_MS) / 1000} s`;
+    const open = [];
+    for (const { id, name } of studios) {
+      studio.id = id;
+      const cells = Number(await studio.luau('return workspace.Terrain:CountCells()'));
+      open.push(`${name} open, ${cells.toLocaleString('en-US')} terrain cells`);
+    }
+    return `Studio: ${open.join('; ')}`;
+  };
+  let timer;
+  const late = new Promise((resolve) => { timer = setTimeout(() => resolve(`Studio: did not answer within ${STATUS_WAIT_MS / 1000} s`), STATUS_WAIT_MS); });
+  try {
+    return await Promise.race([read(), late]);
+  } catch (error) {
+    return `Studio: could not be read: ${error.message.slice(0, 200)}`;
+  } finally {
+    clearTimeout(timer);
+    studio.close();
+  }
+}
+
+// What a world holds and where it stands, from its files, so that no model reads and adds them up.
+function worldLines(project) {
+  const lines = [];
+  const plan = readIfThere(path.join(project, `${PLAN}.luau`));
+  if (plan) {
+    const held = plans.facts(plan);
+    const { generated, locked } = plans.stateFacts(readIfThere(path.join(project, `${STATE}.luau`)));
+    const e = held.extent;
+    const inExtent = generated.filter((key) => {
+      const [i, j] = key.split(',').map(Number);
+      return i >= e.minX && i <= e.maxX && j >= e.minZ && j <= e.maxZ;
+    }).length;
+    const outside = generated.length - inExtent;
+    const names = (things) => things.map((thing) => thing.id).join(', ') || 'none';
+    lines.push(
+      `Seed ${held.seed}, extent ${extentText(e)}, ${e.maxX - e.minX + 1} x ${e.maxZ - e.minZ + 1}, ${held.chunks} Chunks`,
+      `${inExtent} of ${held.chunks} Chunks generated${outside ? `, and ${outside} outside the extent` : ''}. Locked: ${locked.join(' ') || 'none'}`,
+      `Regions: ${held.regions.map((region) => `${region.id} (${region.kind})`).join(', ') || 'none'}`,
+      `Rivers: ${names(held.rivers)}`,
+      `Lakes: ${names(held.lakes)}`,
+      `Last change: ${plans.lastChange(readIfThere(path.join(project, 'docs/world/history.md'))) || 'none recorded'}`,
+    );
+  } else {
+    lines.push(`No World Plan in ${project}`);
+  }
+  const rules = readIfThere(path.join(project, 'docs/world/rules.md'));
+  const place = /PlaceId or window title \| *([^|\n]*?) *\|/.exec(rules);
+  if (!rules) lines.push('No docs/world/rules.md');
+  else if (place && place[1]) lines.push(`Development Place: ${place[1]}`);
+  return lines;
+}
+
+async function status(flags) {
+  const project = path.resolve(typeof flags.project === 'string' ? flags.project : '.');
+  console.log([...worldLines(project), await studioLine()].join('\n'));
+  return 0;
+}
+
+// Rewrites a World Plan at a new size, so that no model writes it. Writes no terrain and needs no Studio.
+function scaleWorld(args, flags) {
+  const factor = Number(args[0]);
+  if (!(factor > 0) || typeof flags.project !== 'string') {
+    console.error('Usage: world.js scale <factor above 0> --project <dir> [--why <reason>]. Run: node world.js help');
+    return 2;
+  }
+  const project = path.resolve(flags.project);
+  const planFile = path.join(project, `${PLAN}.luau`);
+  if (!fs.existsSync(planFile)) {
+    console.error(`No World Plan at ${planFile}`);
+    return 2;
+  }
+  const { locked } = plans.stateFacts(readIfThere(path.join(project, `${STATE}.luau`)));
+  if (locked.length) throw new Error(`Locked Chunks would no longer fit the map: ${locked.join(' ')}. Nothing was changed`);
+  const scaled = plans.scale(readModule(planFile), factor);
+  fs.writeFileSync(planFile, scaled.text);
+  const date = new Date().toISOString().slice(0, 10);
+  const change = `extent ${extentText(scaled.before)} to ${extentText(scaled.extent)}`;
+  addDecision(project, `- ${date}: scaled by ${factor}, ${change}. Why: ${whyOf(flags)}`);
+  addHistory(project, `## ${date}: Scaled the world by ${factor}\n\n- **Why:** ${whyOf(flags)}\n- **Chunks written:** none yet, until \`run\` writes every Chunk.\n- **Restore:** the World Plan before this entry, in Git, and generate every Chunk again.\n`);
+  const side = (min, max) => max - min + 1;
+  const e = scaled.extent;
+  const notes = [`Scaled by ${factor}: ${change}, ${side(e.minX, e.maxX)} x ${side(e.minZ, e.maxZ)} Chunks.`];
+  if (scaled.droppedComments) notes.push(`${scaled.droppedComments} comments holding a number were removed, since they described the old size.`);
+  if (factor < 1) notes.push('Chunks outside the new extent keep their terrain until the developer orders a wipe.');
+  notes.push('No terrain changed. To write it: run --place <name> --project <dir>');
+  console.log(notes.join('\n'));
+  return 0;
+}
+
 function newWorld(dir, flags) {
   if (!dir || typeof flags.place !== 'string') throw new Error('Usage: world.js new <dir> --place <name> [--seed <n>] [--test-map]');
   const project = path.resolve(dir);
@@ -453,6 +593,8 @@ async function main() {
   const [command, ...args] = positional;
   if (!command || command === 'help') { console.log(HELP); return 0; }
   if (command === 'new') { console.log(newWorld(args[0], flags)); return 0; }
+  if (command === 'scale') return scaleWorld(args, flags);
+  if (command === 'status') return status(flags);
   const cycles = {
     run: ['sync', 'test', 'describe', 'generate', 'verify', 'heights'],
     check: ['sync', 'test', 'describe'],

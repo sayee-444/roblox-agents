@@ -15,7 +15,7 @@ test('help lists every command, without Studio', () => {
   const listed = stdout.split('\n').map((line) => line.match(/^ {2}([a-z]+)/)).filter(Boolean).map((match) => match[1]);
   assert.deepStrictEqual(listed.sort(), [
     'borders', 'capture', 'check', 'describe', 'generate', 'height', 'heights', 'help', 'new',
-    'refresh', 'run', 'shot', 'sync', 'test', 'verify', 'wipe',
+    'refresh', 'run', 'scale', 'shot', 'status', 'sync', 'test', 'verify', 'wipe',
   ]);
 });
 
@@ -39,6 +39,238 @@ test('new prints a World Plan template that holds no position of the test map', 
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// A plan and the numbers a double of it must hold, taken from the double written by hand in commit 51602ae.
+const SMALL_PLAN = `-- World Plan: declares what exists where. It wins over the seeds.
+-- Chunk (i, j) covers x in [i*512-256, i*512+256) and z in [j*512-256, j*512+256),
+-- so indices -5..6 give 12 x 12 Chunks (6,144 x 6,144 studs).
+
+return {
+	worldSeed = 12345,
+	chunkSize = 512,
+	voxel = 4,
+	extent = { minX = -5, maxX = 6, minZ = -5, maxZ = 6 }, -- inclusive Chunk indices
+	floorY = 0, -- ground stops here
+	rockUnder = 8,
+	base = { mean = 52, amp = 34, scale = 260, octaves = 5, warpScale = 300, warpAmp = 60 },
+	regions = {
+		{
+			-- Range across the north, west to east.
+			id = "range",
+			kind = "mountain",
+			seed = 7001,
+			points = { { -2456, -1856 }, { -1456, -2056 } },
+			halfWidth = 300,
+			height = 250,
+			ridgeScale = 150,
+			crestScale = 220,
+		},
+		{
+			id = "mesa",
+			kind = "mesa",
+			seed = 7002,
+			center = { 2344, -456 },
+			radius = 60,
+			margin = 150,
+			levels = 5,
+			height = 100,
+			warp = 40,
+			elongate = 1.3,
+			angle = 90,
+			gully = 8,
+		},
+		{
+			id = "valley",
+			kind = "valley",
+			seed = 7003,
+			riverId = "river",
+			halfWidth = 700,
+			floorY = 28,
+		},
+		{
+			id = "cave",
+			kind = "cave",
+			seed = 7004,
+			points = { { 1928, 60, 2244 }, { 2004, 60, 2244 } },
+			radius = 14,
+		},
+	},
+	rivers = {
+		{
+			-- Leaves the mesa at (120, 40).
+			id = "river",
+			points = { { -2656, -556 }, { -1956, -356 } },
+			loops = { { leg = 1, radius = 220, turn = 290, side = "right" } },
+			curve = 1,
+			meander = 80,
+			widths = { 30, 36 }, -- grows towards the Lake
+			bendWiden = 0.5,
+			depths = { 12, 34 },
+			depthVary = 0.5,
+			banks = { shore = 50, shallows = 30, shallowDepth = 4, bedFlat = 0.2, steep = 1.6, rough = 3, vary = 0.6, smooth = 48 },
+			bedRough = 6,
+			waterLevel = 20,
+		},
+		{
+			id = "fork",
+			points = { { -1956, -356 }, { -1096, 644 } },
+			halfWidth = 20,
+			bedY = 10,
+			waterLevel = 20,
+		},
+	},
+	lakes = {
+		{ id = "lake", seed = 7006, center = { 744, 1044 }, radius = 340, shore = 240, warp = 40, elongate = 1.2, angle = 30, bedY = -90, bedRough = 10, depthVary = 0.4, banks = { shallows = 50, shallowDepth = 6, bedFlat = 0.25, steep = 1.3, rough = 6, vary = 0.6 }, waterLevel = 20 },
+	},
+	sites = {},
+	worldLimit = nil, -- not requested yet
+	materials = {
+		snowLine = 205,
+		snowBlend = 30,
+		snowMaxSlope = 1.4,
+		steep = 0.85,
+		rockLine = 140,
+		bankDist = 26,
+		bankHeight = 28,
+		mesaRiser = 1.1,
+	},
+}
+`;
+
+function withPlan({ plan = SMALL_PLAN, state, history, rules }, check) {
+  const dir = tempDir();
+  try {
+    fs.mkdirSync(path.join(dir, 'src/world'), { recursive: true });
+    fs.mkdirSync(path.join(dir, 'docs/world'), { recursive: true });
+    fs.writeFileSync(path.join(dir, 'src/world/plan.luau'), plan);
+    fs.writeFileSync(path.join(dir, 'src/world/state.luau'), state || 'return {\n\tgeneratorVersion = 1,\n\tchunks = {},\n}\n');
+    if (history) fs.writeFileSync(path.join(dir, 'docs/world/history.md'), history);
+    fs.writeFileSync(path.join(dir, 'docs/world/rules.md'), rules || '# World rules\n\n## Decisions\n\nNewest first.\n');
+    check(dir, (file) => fs.readFileSync(path.join(dir, file), 'utf8'));
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+test('scale 2 gives the plan that doubling by hand gave, with no Studio', () => {
+  withPlan({}, (dir, read) => {
+    const { status, stdout } = world('scale', '2', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const plan = read('src/world/plan.luau');
+    for (const expected of [
+      'extent = { minX = -11, maxX = 12, minZ = -11, maxZ = 12 }',
+      'base = { mean = 104, amp = 68, scale = 520, octaves = 6, warpScale = 600, warpAmp = 120 }',
+      'points = { { -5168, -3968 }, { -3168, -4368 } }',
+      'halfWidth = 600',
+      'height = 500',
+      'ridgeScale = 300',
+      'center = { 4432, -1168 }',
+      'margin = 300',
+      'gully = 16',
+      'floorY = 56',
+      'points = { { 3600, 120, 4232 }, { 3752, 120, 4232 } }',
+      'radius = 28',
+      'loops = { { leg = 1, radius = 440, turn = 290, side = "right" } }',
+      'meander = 160',
+      'widths = { 60, 72 }',
+      'depths = { 24, 68 }',
+      'banks = { shore = 100, shallows = 60, shallowDepth = 8, bedFlat = 0.2, steep = 1.6, rough = 6, vary = 0.6, smooth = 96 }',
+      'bedRough = 12',
+      'waterLevel = 40',
+      'center = { 1232, 1832 }, radius = 680, shore = 480, warp = 80, elongate = 1.2, angle = 30, bedY = -180, bedRough = 20',
+      'snowLine = 410',
+      'bankHeight = 56',
+    ]) assert.ok(plan.includes(expected), expected);
+  });
+});
+
+test('scale keeps seeds, ratios and slopes, since those do not grow with the map', () => {
+  withPlan({}, (dir, read) => {
+    world('scale', '2', '--project', dir);
+    const plan = read('src/world/plan.luau');
+    for (const kept of ['worldSeed = 12345', 'chunkSize = 512', 'voxel = 4', 'seed = 7001', 'levels = 5', 'elongate = 1.3', 'angle = 90', 'curve = 1', 'bendWiden = 0.5', 'depthVary = 0.5', 'snowMaxSlope = 1.4', 'steep = 0.85', 'mesaRiser = 1.1', 'rockUnder = 8']) {
+      assert.ok(plan.includes(kept), kept);
+    }
+  });
+});
+
+test('scale leaves a fork on the point of the River it leaves', () => {
+  withPlan({}, (dir, read) => {
+    world('scale', '1.5', '--project', dir);
+    const [river, fork] = [...read('src/world/plan.luau').matchAll(/id = "(?:river|fork)"[^]*?points = \{ (\{[^}]*\}), (\{[^}]*\})/g)];
+    assert.strictEqual(fork[1], river[2]);
+  });
+});
+
+test('scale keeps water and the floor on the voxel grid, which validation requires', () => {
+  withPlan({}, (dir, read) => {
+    world('scale', '1.5', '--project', dir);
+    const plan = read('src/world/plan.luau');
+    assert.ok(plan.includes('waterLevel = 32'), 'a water level of 30 moves to 32');
+    assert.ok(plan.includes('floorY = 44'), 'a valley floor of 42 moves to 44');
+  });
+});
+
+test('scale stops smooth at the most validation accepts', () => {
+  withPlan({}, (dir, read) => {
+    world('scale', '4', '--project', dir);
+    assert.ok(read('src/world/plan.luau').includes('smooth = 100'));
+  });
+});
+
+test('scale removes comments holding a number, which would now be wrong, and keeps the others', () => {
+  withPlan({}, (dir, read) => {
+    const { stdout } = world('scale', '2', '--project', dir);
+    const plan = read('src/world/plan.luau');
+    assert.ok(!plan.includes('indices -5..6'), 'the header line of the old extent');
+    assert.ok(!plan.includes('(120, 40)'), 'a position in a comment');
+    assert.ok(plan.includes('-- Range across the north, west to east.'));
+    assert.ok(plan.includes('-- grows towards the Lake'));
+    assert.ok(plan.includes('-- Chunk (i, j) covers x in'), 'what a Chunk covers does not change');
+    assert.match(stdout, /2 comments/);
+  });
+});
+
+test('scale records itself in the history and the rules, and says what to run next', () => {
+  withPlan({ history: '## 2026-01-01: An older change\n' }, (dir, read) => {
+    const { stdout } = world('scale', '2', '--project', dir);
+    const history = read('docs/world/history.md');
+    assert.ok(history.startsWith('## '), history);
+    assert.match(history.split('\n')[0], /Scaled the world by 2/);
+    assert.ok(history.includes('## 2026-01-01: An older change'));
+    assert.match(read('docs/world/rules.md'), /scaled by 2, extent -5\.\.6 to -11\.\.12/i);
+    assert.match(stdout, /run --place/);
+    assert.match(stdout, /24 x 24/);
+  });
+});
+
+test('scale refuses a world with Locked Chunks and changes nothing, since their hand edits would no longer fit', () => {
+  const state = 'return {\n\tgeneratorVersion = 1,\n\tchunks = {\n\t\t["1,1"] = { generated = true, locked = true },\n\t},\n}\n';
+  withPlan({ state }, (dir, read) => {
+    const { status, stderr } = world('scale', '2', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /Locked/);
+    assert.match(stderr, /1,1/);
+    assert.strictEqual(read('src/world/plan.luau'), SMALL_PLAN);
+  });
+});
+
+test('scale refuses a plan with Sites, which it would leave behind', () => {
+  withPlan({ plan: SMALL_PLAN.replace('sites = {}', 'sites = { { id = "a", at = { 1, 2 } } }') }, (dir) => {
+    const { status, stderr } = world('scale', '2', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /sites/i);
+  });
+});
+
+test('scale needs a number above 0 and a project', () => {
+  withPlan({}, (dir) => {
+    assert.strictEqual(world('scale', '--project', dir).status, 2);
+    assert.strictEqual(world('scale', '0', '--project', dir).status, 2);
+    assert.strictEqual(world('scale', 'big', '--project', dir).status, 2);
+    assert.strictEqual(world('scale', '2').status, 2);
+  });
 });
 
 test('the template shows how to fork a River', () => {
@@ -264,4 +496,124 @@ test('the template starts a River curved', () => {
   } finally {
     fs.rmSync(dir, { recursive: true, force: true });
   }
+});
+
+// A command in a real world folder, against the stand-in for Studio.
+function inStudio(dir, env, ...args) {
+  const log = path.join(os.tmpdir(), `fake-studio-${process.pid}-${Date.now()}.log`);
+  try {
+    const result = spawnSync(process.execPath, [cli, ...args], {
+      encoding: 'utf8',
+      timeout: 15000,
+      env: { ...process.env, FAKE_STUDIO_LOG: log, WORLD_FAKE_STUDIO: path.resolve(__dirname, 'fixtures/fake-studio.js'), WORLD_LIST_WAIT_MS: '1', WORLD_STATUS_WAIT_MS: '500', ...env },
+    });
+    const calls = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
+    return { ...result, calls };
+  } finally {
+    fs.rmSync(log, { force: true });
+  }
+}
+
+const TWO_CHUNKS = 'return {\n\tgeneratorVersion = 1,\n\tchunks = {\n\t\t["0,0"] = { generated = true, locked = false },\n\t\t["1,1"] = { generated = true, locked = true },\n\t},\n}\n';
+
+test('status says what a world holds, where it stands and what changed last', () => {
+  const rules = '# World rules\n\n| Field | Value |\n|---|---|\n| PlaceId or window title | My Place |\n';
+  withPlan({ state: TWO_CHUNKS, rules, history: '## 2026-11-06: Removed River `old`\n\ntext\n\n## 2026-01-01: Older\n' }, (dir) => {
+    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_CELLS: '1234567' }, 'status', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.match(stdout, /Seed 12345/);
+    assert.match(stdout, /extent -5\.\.6, 12 x 12, 144 Chunks/);
+    assert.match(stdout, /2 of 144 Chunks generated/);
+    assert.match(stdout, /Locked: 1,1/);
+    assert.match(stdout, /range \(mountain\), mesa \(mesa\), valley \(valley\), cave \(cave\)/);
+    assert.match(stdout, /Rivers: river, fork/);
+    assert.match(stdout, /Lakes: lake/);
+    assert.match(stdout, /Last change: 2026-11-06: Removed River `old`/);
+    assert.match(stdout, /Development Place: My Place/);
+    assert.match(stdout, /P open, 1,234,567 terrain cells/);
+  });
+});
+
+test('status writes nothing, in the world or in Studio', () => {
+  withPlan({}, (dir, read) => {
+    const { calls } = inStudio(dir, {}, 'status', '--project', dir);
+    assert.ok(calls.includes('list_roblox_studios'));
+    assert.ok(!calls.includes('paste'), calls.join(' | '));
+    assert.strictEqual(read('src/world/plan.luau'), SMALL_PLAN);
+  });
+});
+
+test('status names every place open, since several open means asking the developer', () => {
+  withPlan({}, (dir) => {
+    const { stdout } = inStudio(dir, { FAKE_STUDIO_PLACES: 'A,B', FAKE_STUDIO_CELLS: '5' }, 'status', '--project', dir);
+    assert.match(stdout, /A open, 5 terrain cells; B open, 5 terrain cells/);
+  });
+});
+
+test('status still answers from the files when no place is open', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_MISSES: '9999' }, 'status', '--project', dir);
+    assert.strictEqual(status, 0);
+    assert.match(stdout, /Seed 12345/);
+    assert.match(stdout, /Studio: no place open after [\d.]+ s/);
+  });
+});
+
+test('status still answers from the files when Studio never answers, and ends', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_SILENT: 'true' }, 'status', '--project', dir);
+    assert.strictEqual(status, 0);
+    assert.match(stdout, /Seed 12345/);
+    assert.match(stdout, /Studio: did not answer/);
+  });
+});
+
+test('status says when a folder has no world yet', () => {
+  const dir = tempDir();
+  try {
+    const { status, stdout } = inStudio(dir, {}, 'status', '--project', dir);
+    assert.strictEqual(status, 0);
+    assert.match(stdout, /No World Plan/);
+    assert.match(stdout, /No docs\/world\/rules\.md/);
+    assert.match(stdout, /P open/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('scale below 1 shrinks the plan about its centre, and says the old terrain stays', () => {
+  withPlan({}, (dir, read) => {
+    const { status, stdout } = world('scale', '0.5', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const plan = read('src/world/plan.luau');
+    // Worked out by hand: the centre of -5..6 is x 256, and a position p becomes (p - 256) / 2 + 256.
+    for (const expected of [
+      'extent = { minX = -2, maxX = 3, minZ = -2, maxZ = 3 }',
+      'base = { mean = 26, amp = 17, scale = 130, octaves = 4, warpScale = 150, warpAmp = 30 }',
+      'points = { { -1100, -800 }, { -600, -900 } }',
+      'center = { 1300, -100 }',
+      'halfWidth = 150',
+      'height = 125',
+      'floorY = 16',
+    ]) assert.ok(plan.includes(expected), expected);
+    assert.match(stdout, /6 x 6 Chunks/);
+    assert.match(stdout, /outside the new extent keep their terrain/);
+  });
+});
+
+test('scale puts its decision first in the rules, with its reason, since they run newest first', () => {
+  const rules = '# World rules\n\n## Decisions\n\nNewest first: the date, the decision and why it was made.\n\n- 2026-01-01: an older decision.\n';
+  withPlan({ rules }, (dir, read) => {
+    world('scale', '2', '--project', dir, '--why', 'the map felt small.');
+    const text = read('docs/world/rules.md');
+    assert.match(text, /Newest first: the date, the decision and why it was made\.\n\n- \d{4}-\d{2}-\d{2}: scaled by 2, extent -5\.\.6 to -11\.\.12\. Why: the map felt small\.\n- 2026-01-01: an older decision\.\n$/);
+  });
+});
+
+test('status counts only the Chunks inside the extent, and says how many lie outside it', () => {
+  const state = 'return {\n\tgeneratorVersion = 1,\n\tchunks = {\n\t\t["0,0"] = { generated = true, locked = false },\n\t\t["9,9"] = { generated = true, locked = false },\n\t\t["-6,0"] = { generated = true, locked = false },\n\t},\n}\n';
+  withPlan({ state }, (dir) => {
+    const { stdout } = inStudio(dir, {}, 'status', '--project', dir);
+    assert.match(stdout, /1 of 144 Chunks generated, and 2 outside the extent\. Locked: none/);
+  });
 });
