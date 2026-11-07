@@ -197,6 +197,16 @@ return {
 		end
 	end,
 
+	["no spot of a River passes the ceiling of its width, worked out by hand"] = function(t)
+		local rv = { id = "r", points = { { 0, 0 }, { 200, 0 }, { 200, 200 }, { 400, 200 } }, widths = { 10, 30, 20, 15 }, bendWiden = 0.5 }
+		local width = Route.width(rv)
+		t.eq(width.ceiling, 45, "the widest declared, with all of bendWiden")
+		for s = 0, 600, 2 do
+			t.ok(width.at(s) <= width.ceiling, "at " .. s .. ": " .. width.at(s))
+		end
+		t.eq(Route.width({ id = "r", points = { { 0, 0 }, { 200, 0 } }, halfWidth = 20 }).ceiling, 20, "one width, no bends")
+	end,
+
 	["bendWiden widens by how tight the bend is, worked out by hand"] = function(t)
 		-- A square corner: 90 degrees within the distance judged, so the whole of bendWiden.
 		local square = Route.width({ id = "r", points = { { 0, 0 }, { 200, 0 }, { 200, 200 } }, halfWidth = 20, bendWiden = 0.5 })

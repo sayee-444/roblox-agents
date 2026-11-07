@@ -243,7 +243,9 @@ function Route.width(rv)
 			measure(s)
 		end
 	end
-	return { at = at, narrowest = narrowest, widest = widest }
+	-- No spot passes this, which `widest`, measured at some spots, cannot promise.
+	local ceiling = (if rv.widths then math.max(table.unpack(rv.widths)) else rv.halfWidth) * (1 + bendWiden)
+	return { at = at, narrowest = narrowest, widest = widest, ceiling = ceiling }
 end
 
 return Route

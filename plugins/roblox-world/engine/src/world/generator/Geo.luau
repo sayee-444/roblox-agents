@@ -39,8 +39,10 @@ function Geo.polyline2(points: { { number } })
 end
 
 -- Returns distance and arc length of the nearest point on the polyline.
-function Geo.dist2(poly: any, px: number, pz: number): (number, number)
-	local best, bestS = math.huge, 0
+-- With `limit`, a line no nearer than that gives math.huge, and blocks past it cost no segment.
+function Geo.dist2(poly: any, px: number, pz: number, limit: number?): (number, number)
+	local start = if limit then limit * limit else math.huge
+	local best, bestS = start, 0
 	local segs = poly.segs
 	for _, block in ipairs(poly.blocks) do
 		local gapX = math.max(block[1] - px, 0, px - block[2])
@@ -63,6 +65,9 @@ function Geo.dist2(poly: any, px: number, pz: number): (number, number)
 				end
 			end
 		end
+	end
+	if best == start then
+		return math.huge, 0
 	end
 	return math.sqrt(best), bestS
 end

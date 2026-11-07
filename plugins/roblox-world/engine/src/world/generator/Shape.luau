@@ -47,7 +47,20 @@ local function prepare(plan)
 			edges[r.levels + 1] = 1
 			table.insert(P.mesas, { def = r, edges = edges })
 		elseif r.kind == "valley" then
-			table.insert(P.valleys, { def = r, river = P.rivers[r.riverId] })
+			-- Past carveReach the River digs nothing, and past effectReach it has no effect at all, so the
+			-- costly part of the height runs only nearer than these. Both are ceilings, never estimates:
+			-- the widest the River can get with its noise, and the widest its shore can get.
+			local river = P.rivers[r.riverId]
+			local banks = river.def.banks
+			local edge = river.width.ceiling * (1 + WIDTH_NOISE)
+			local carveReach = if banks then edge + math.max(1, Bank.widestShore(banks)) else edge
+			table.insert(P.valleys, {
+				def = r,
+				river = river,
+				carveReach = carveReach,
+				carveLimit = math.min(r.halfWidth, carveReach),
+				effectReach = if banks then carveReach + Bank.smooth(banks) else edge * 1.5,
+			})
 		elseif r.kind == "cave" then
 			local rng = Noise.newRng(r.seed)
 			local x0, x1, z0, z1, y0, y1 = math.huge, -math.huge, math.huge, -math.huge, math.huge, -math.huge
@@ -69,15 +82,21 @@ local function prepare(plan)
 	return P
 end
 
+-- A River's bed at a spot. A spot on a shore never needs it.
+local function bedAt(v, s: number, x: number, z: number): number
+	local def, rv = v.def, v.river
+	local bed = rv.def.waterLevel - Bank.pools(rv.depth.at(s), rv.def.depthVary, def.seed, s, 80)
+	if rv.def.bedRough then
+		bed += rv.def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
+	end
+	return bed
+end
+
 -- How far one River lowers the valley floor at this spot, then its half width there and how far out
 -- its water can reach. `d` and `s` are the spot's distance to the River's line and along it.
 local function bedCarve(v, d: number, s: number, x: number, z: number): (number, number, number)
 	local def, rv = v.def, v.river
 	local hw = rv.width.at(s) * (1 + WIDTH_NOISE * Noise.perlin(s / 120, 0.5, def.seed + 1))
-	local bed = rv.def.waterLevel - Bank.pools(rv.depth.at(s), rv.def.depthVary, def.seed, s, 80)
-	if rv.def.bedRough then
-		bed += rv.def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
-	end
 	local banks = rv.def.banks
 	if banks then
 		local inside = hw - d
@@ -85,11 +104,12 @@ local function bedCarve(v, d: number, s: number, x: number, z: number): (number,
 		local aboveWater = def.floorY - rv.def.waterLevel
 		local waterTo = math.max(hw * 1.5, hw + shore)
 		if inside > 0 then
-			local deepest = math.max(1, rv.def.waterLevel - bed)
+			local deepest = math.max(1, rv.def.waterLevel - bedAt(v, s, x, z))
 			return aboveWater + Bank.depth(banks, def.seed, x, z, inside, hw, deepest), hw, waterTo
 		end
 		return aboveWater * (1 - smoothstep(0, shore, -inside)), hw, hw + shore
 	end
+	local bed = bedAt(v, s, x, z)
 	local c = 1 - smoothstep(hw * 0.4, hw, d)
 	-- The banks and the water's edge come from the first BOWL_FROM studs. Anything deeper is a bowl
 	-- under them, deepest on the River's line, so a shallow River keeps its shape.
@@ -107,18 +127,25 @@ local function riverCarve(v, d: number, s: number, x: number, z: number): (numbe
 		local reach = v.river.width.widest * (1 + WIDTH_NOISE) + Bank.widestShore(banks)
 		local found = Geo.stretches2(v.river.poly, x, z, reach)
 		for i = 1, #found, 2 do
-			depth = math.max(depth, (bedCarve(v, found[i], found[i + 1], x, z)))
+			-- The nearest pass is one of these, and its depth is already known.
+			if found[i] ~= d or found[i + 1] ~= s then
+				depth = math.max(depth, (bedCarve(v, found[i], found[i + 1], x, z)))
+			end
 		end
 	end
 	return depth, hw, waterTo
 end
 
-local function carveAt(P, x: number, z: number): number
+-- The deepest carve at a spot `moved` studs from the column, whose distance to each River is in `v.d`,
+-- so the spot lies at least v.d - moved from that River.
+local function carveAt(P, x: number, z: number, moved: number): number
 	local carve = 0
 	for _, v in ipairs(P.valleys) do
-		local d, s = Geo.dist2(v.river.poly, x, z)
-		if d < v.def.halfWidth then
-			carve = math.max(carve, (riverCarve(v, d, s, x, z)))
+		if v.d - moved < v.carveReach then
+			local d, s = Geo.dist2(v.river.poly, x, z, v.carveLimit)
+			if d < v.carveLimit then
+				carve = math.max(carve, (riverCarve(v, d, s, x, z)))
+			end
 		end
 	end
 	return carve
@@ -129,12 +156,13 @@ local RIDGE_AXES = { { 1, 0 }, { 0, 1 }, { 0.7071, 0.7071 }, { 0.7071, -0.7071 }
 -- Where water runs close to itself or to another River, each stretch digs towards its own line and a
 -- thin crest stands between them. A spot on a crest has deeper ground on both opposite sides, and a
 -- spot on a plain wall never does, so this fills crests and leaves walls and shores where they are.
-local function fillRidge(P, x: number, z: number, reach: number): number
-	local filled = 0
+-- Only a fill deeper than `carve` counts, so an axis that cannot beat it skips its other side.
+local function fillRidge(P, x: number, z: number, reach: number, carve: number): number
+	local filled = carve
 	for _, axis in ipairs(RIDGE_AXES) do
-		local a = carveAt(P, x + axis[1] * reach, z + axis[2] * reach)
+		local a = carveAt(P, x + axis[1] * reach, z + axis[2] * reach, reach)
 		if a > filled then
-			filled = math.max(filled, math.min(a, carveAt(P, x - axis[1] * reach, z - axis[2] * reach)))
+			filled = math.max(filled, math.min(a, carveAt(P, x - axis[1] * reach, z - axis[2] * reach, reach)))
 		end
 	end
 	return filled
@@ -227,7 +255,7 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 	for _, v in ipairs(P.valleys) do
 		local def, rv = v.def, v.river
 		local d, s = v.d, v.s
-		if d < def.halfWidth then
+		if d < def.halfWidth and d < v.effectReach then
 			local depth, hw, waterTo = riverCarve(v, d, s, x, z)
 			carve = math.max(carve, depth)
 			if h - depth < rv.def.waterLevel and d < waterTo then
@@ -240,7 +268,7 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 		end
 	end
 	if smooth > 0 then
-		local filled = fillRidge(P, x, z, smooth)
+		local filled = fillRidge(P, x, z, smooth, carve)
 		if filled > carve then
 			carve = filled
 			if h - carve < smoothLevel then
