@@ -9,7 +9,7 @@ return {
 	chunkSize = 512,
 	voxel = 4,
 	extent = { minX = -1, maxX = 1, minZ = -1, maxZ = 1 }, -- inclusive Chunk indices
-	floorY = -64, -- ground is at least 64 studs thick everywhere
+	floorY = 0, -- ground stops here, and goes lower only under deep water or a cave
 
 	-- Gentle hills everywhere: mean height, amplitude, feature size and domain warp.
 	base = { mean = 52, amp = 34, scale = 260, octaves = 5, warpScale = 300, warpAmp = 60 },
@@ -65,11 +65,12 @@ return {
 			bendWiden = 0.5, -- widens by this fraction at a 90 degree bend, and in proportion at gentler ones. 0 turns it off
 			-- For a bend close to a circle, on the leg between points 2 and 3. A turn of 180 is a semicircle, 290 leaves a neck, 360 closes with an island:
 			-- loops = { { leg = 2, radius = 110, turn = 290, side = "right" } },
-			bedY = 10,
+			bedY = 10, -- or depths = { 8, 14, 30, 12 }, below the water, one per point, changing gradually between them
+			bedRough = 3, -- largest rise or fall of the bed, in studs. Keep it below the shallowest depth
 			waterLevel = 20, -- multiple of the voxel size, so the surface meets a voxel boundary
 		},
 		-- A fork is a second River whose first point is one of this River's route points:
-		-- { id = "fork", points = { { <that x>, <that z> }, { <x>, <z> }, { <x>, <z> } }, curve = 1, meander = 30, bendWiden = 0.5, halfWidth = 14, bedY = 10, waterLevel = 20 },
+		-- { id = "fork", points = { { <that x>, <that z> }, { <x>, <z> }, { <x>, <z> } }, curve = 1, meander = 30, bendWiden = 0.5, halfWidth = 14, bedY = 10, bedRough = 3, waterLevel = 20 },
 	},
 	lakes = {},
 	-- For a lake, with any River ending in it holding the same waterLevel:

@@ -30,6 +30,27 @@ local function checkPoints(errors, label, points, dims)
 	end
 end
 
+local function checkDepths(errors, label, rv)
+	local shallowest = if isNum(rv.waterLevel) and isNum(rv.bedY) then rv.waterLevel - rv.bedY else nil
+	if rv.depths ~= nil then
+		if type(rv.depths) ~= "table" or type(rv.points) ~= "table" or #rv.depths ~= #rv.points then
+			table.insert(errors, label .. ": depths needs one depth per point")
+			return
+		end
+		shallowest = math.huge
+		for i = 1, #rv.depths do
+			if not (isNum(rv.depths[i]) and rv.depths[i] > 0) then
+				table.insert(errors, label .. ": depth " .. i .. " must be above 0")
+				return
+			end
+			shallowest = math.min(shallowest, rv.depths[i])
+		end
+	end
+	if rv.bedRough ~= nil and not (isNum(rv.bedRough) and rv.bedRough >= 0 and shallowest and rv.bedRough < shallowest) then
+		table.insert(errors, label .. ": bedRough must be from 0 to below the shallowest depth")
+	end
+end
+
 local function checkLoops(errors, label, rv)
 	local loops = rv.loops
 	if loops == nil then
@@ -147,12 +168,12 @@ function Describe.validate(plan): { string }
 		end
 		if not isNum(rv.waterLevel) or rv.waterLevel % 4 ~= 0 then
 			table.insert(e, "river " .. tostring(rv.id) .. ": waterLevel must be a multiple of 4")
-		elseif isNum(rv.bedY) and rv.bedY >= rv.waterLevel then
+		elseif rv.depths == nil and not isNum(rv.bedY) then
+			table.insert(e, "river " .. tostring(rv.id) .. ": needs bedY, or depths")
+		elseif rv.depths == nil and rv.bedY >= rv.waterLevel then
 			table.insert(e, "river " .. tostring(rv.id) .. ": bedY must be below waterLevel")
 		end
-		if isNum(rv.bedY) and isNum(plan.floorY) and rv.bedY - plan.floorY < 64 then
-			table.insert(e, "river " .. tostring(rv.id) .. ": less than 64 studs of ground under the bed")
-		end
+		checkDepths(e, "river " .. tostring(rv.id), rv)
 		-- Any error here already refuses the plan, so only a sound River is measured.
 		if #e == before then
 			widest[rv.id] = Route.width(rv).widest
@@ -178,8 +199,8 @@ function Describe.validate(plan): { string }
 		elseif isNum(lk.bedY) and lk.bedY >= lk.waterLevel then
 			table.insert(e, label .. ": bedY must be below waterLevel")
 		end
-		if isNum(lk.bedY) and isNum(plan.floorY) and lk.bedY - plan.floorY < 64 then
-			table.insert(e, label .. ": less than 64 studs of ground under the bed")
+		if lk.bedRough ~= nil and not (isNum(lk.bedRough) and lk.bedRough >= 0 and isNum(lk.bedY) and isNum(lk.waterLevel) and lk.bedRough < lk.waterLevel - lk.bedY) then
+			table.insert(e, label .. ": bedRough must be from 0 to below the lake's depth")
 		end
 		-- Still water holds one level, so a River ending in a lake must meet it.
 		if type(lk.center) == "table" and isNum(lk.radius) then
@@ -399,9 +420,11 @@ function Describe.heights(plan): string
 		local a, b = rv.points[1], rv.points[#rv.points]
 		local route = Geo.polyline2(Route.points(rv)).length
 		local width = Route.width(rv)
+		local depth = Route.depth(rv)
+		local deepRange = if depth.shallowest == depth.deepest then tostring(depth.deepest) else depth.shallowest .. " to " .. depth.deepest
 		local narrowest, widest = math.round(width.narrowest), math.round(width.widest)
 		local span = if narrowest == widest then tostring(widest) else narrowest .. " to " .. widest
-		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d, route %d studs, curve %s, meander %d, width %s%s", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2], route, tostring(rv.curve or 0), rv.meander or 0, span, if rv.loops and #rv.loops > 0 then ", loops " .. #rv.loops else ""))
+		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d, route %d studs, curve %s, meander %d, depth %s, width %s%s", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2], route, tostring(rv.curve or 0), rv.meander or 0, deepRange, span, if rv.loops and #rv.loops > 0 then ", loops " .. #rv.loops else ""))
 	end
 	for _, lk in ipairs(plan.lakes or {}) do
 		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel))

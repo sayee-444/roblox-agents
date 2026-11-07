@@ -3,6 +3,7 @@ local Route = require("../src/world/generator/Route")
 local Geo = require("../src/world/generator/Geo")
 local Shape = require("../src/world/generator/Shape")
 local Describe = require("../src/world/generator/Describe")
+local Chunk = require("../src/world/generator/Chunk")
 
 local BEND = { { 0, 0 }, { 200, 0 }, { 200, 200 }, { 400, 200 } }
 
@@ -51,7 +52,7 @@ local function straightPlan(fields)
 	local p = clone(plan)
 	p.regions = { { id = "v", kind = "valley", seed = 1, riverId = "r", halfWidth = 130, floorY = 24 } }
 	p.lakes = {}
-	local rv = { id = "r", points = { { 0, 0 }, { 500, 0 }, { 1000, 0 } }, bedY = 10, waterLevel = 20 }
+	local rv = { id = "r", points = { { 0, 0 }, { 500, 0 }, { 1000, 0 } }, bedY = if fields.depths then nil else 10, waterLevel = 20 }
 	for k, v in pairs(fields) do
 		rv[k] = v
 	end
@@ -390,6 +391,119 @@ return {
 		local looped = straightPlan({ widths = { 20, 20, 20 }, curve = 1, loops = { { leg = 1, radius = 100, turn = 290, side = "right" } } })
 		t.ok(Describe.heights(looped):find("loops 1", 1, true) ~= nil, "counted")
 		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20 } })):find("loops", 1, true) == nil, "left out when there are none")
+	end,
+
+	["declared depths hold at their points, and change gradually between them"] = function(t)
+		local depth = Route.depth({ id = "r", points = { { 0, 0 }, { 100, 0 }, { 300, 0 } }, depths = { 10, 20, 40 }, waterLevel = 20 })
+		t.near(depth.at(0), 10, 0.001, "first point")
+		t.near(depth.at(100), 20, 0.001, "second point")
+		t.near(depth.at(300), 40, 0.001, "last point")
+		t.near(depth.at(50), 15, 0.001, "halfway along the first leg")
+		t.eq(depth.shallowest, 10)
+		t.eq(depth.deepest, 40)
+	end,
+
+	["a River with no depths keeps the depth of its bedY"] = function(t)
+		local depth = Route.depth({ id = "r", points = BEND, curve = 1, meander = 12, bedY = 10, waterLevel = 20 })
+		t.eq(depth.at(100), 10)
+		t.eq(depth.deepest, 10)
+	end,
+
+	["a declared depth digs the bed that far below the water, even below the plan's floor"] = function(t)
+		local deep = straightPlan({ widths = { 30, 30, 30 }, depths = { 8, 60, 8 } })
+		deep.rivers[1].bedY = nil
+		deep.floorY = 0
+		t.eq(#Describe.validate(deep), 0, table.concat(Describe.validate(deep), "; "))
+		t.near((Shape.height(deep, 500, 0)), 20 - 60, 3, "60 below the water at the middle")
+		t.near((Shape.height(deep, 0, 0)), 20 - 8, 3, "8 below the water at the start")
+	end,
+
+	["bedRough varies the bed by up to its size, and only inside the water"] = function(t)
+		local even = straightPlan({ widths = { 30, 30, 30 }, depths = { 20, 20, 20 } })
+		local rough = straightPlan({ widths = { 30, 30, 30 }, depths = { 20, 20, 20 }, bedRough = 6 })
+		local biggest, unchanged = 0, 0
+		for x = 0, 1000, 10 do
+			biggest = math.max(biggest, math.abs(Shape.height(rough, x, 0) - Shape.height(even, x, 0)))
+			unchanged = math.max(unchanged, math.abs(Shape.height(rough, x, 100) - Shape.height(even, x, 100)))
+		end
+		t.ok(biggest > 2 and biggest <= 6, string.format("the bed moved by up to %.1f", biggest))
+		t.eq(unchanged, 0, "the dry valley does not move")
+	end,
+
+	["a plan is refused for a bad depth, or a bedRough that could reach the surface"] = function(t)
+		for label, change in pairs({
+			["a depth of zero"] = function(rv) rv.depths = { 10, 0, 10 } end,
+			["a negative depth"] = function(rv) rv.depths = { 10, -4, 10 } end,
+			["too few depths"] = function(rv) rv.depths = { 10, 10 } end,
+			["no depth and no bedY"] = function(rv) rv.bedY = nil end,
+			["a negative bedRough"] = function(rv) rv.bedRough = -1 end,
+			["a bedRough as large as the shallowest depth"] = function(rv)
+				rv.depths = { 10, 30, 10 }
+				rv.bedRough = 10
+			end,
+		}) do
+			local bad = straightPlan({ widths = { 20, 20, 20 } })
+			t.eq(#Describe.validate(bad), 0, "the plan starts valid")
+			change(bad.rivers[1])
+			t.ok(#Describe.validate(bad) > 0, "refused: " .. label)
+		end
+	end,
+
+	["a lake's bedRough varies its bed"] = function(t)
+		local function lake(rough)
+			local p = straightPlan({ widths = { 20, 20, 20 } })
+			p.lakes = { { id = "l", seed = 3, center = { 500, 600 }, radius = 170, shore = 60, warp = 0, bedY = 6, waterLevel = 20, bedRough = rough } }
+			return p
+		end
+		local biggest = 0
+		for x = 450, 550, 5 do
+			biggest = math.max(biggest, math.abs(Shape.height(lake(4), x, 600) - Shape.height(lake(nil), x, 600)))
+		end
+		t.ok(biggest > 1 and biggest <= 4, string.format("the bed moved by up to %.1f", biggest))
+		local bad = lake(14)
+		t.ok(#Describe.validate(bad) > 0, "refused: as large as the lake's depth")
+	end,
+
+	["ground goes below the plan's floor only under deep water, by rockUnder studs"] = function(t)
+		local deep = straightPlan({ widths = { 30, 30, 30 }, depths = { 8, 60, 8 } })
+		deep.rivers[1].bedY = nil
+		deep.floorY = 0
+		local cols = Chunk.columns(deep, 1, 0) -- holds the deepest point, at 500,0
+		t.ok(cols.ymin <= -56, "the Chunk reaches under the deep bed, ymin " .. cols.ymin)
+		local slab = Chunk.slab(deep, cols, 0, cols.n - 1)
+		local function lowest(x, z)
+			local i, j = (x - cols.x0) // 4, (z - cols.z0) // 4
+			for iy = 1, cols.ny do
+				if slab.SolidOccupancy[i + 1][iy][j + 1] > 0 then
+					return cols.ymin + (iy - 1) * 4
+				end
+			end
+		end
+		local bed = Shape.height(deep, 502, 2)
+		t.ok(lowest(502, 2) <= bed - 16 + 4 and lowest(502, 2) >= bed - 16 - 4, string.format("16 under the bed at %.1f, lowest %d", bed, lowest(502, 2)))
+		t.eq(lowest(502, 202), 0, "dry ground stops at the plan's floor")
+	end,
+
+	["ground also reaches under a cave that goes below the plan's floor"] = function(t)
+		local p = straightPlan({ widths = { 20, 20, 20 } })
+		p.floorY = 0
+		table.insert(p.regions, { id = "c", kind = "cave", seed = 2, radius = 10, points = { { 500, -10, 300 }, { 540, -10, 300 } } })
+		t.ok(Shape.bottom(p, 520, 300, 50) <= -10 - 10 * 1.4 - 10 - 16, "under the cave")
+		t.eq(Shape.bottom(p, 520, 700, 50), 0, "away from the cave")
+	end,
+
+	["rockUnder sets how much rock lies under deep water, on the voxel grid"] = function(t)
+		local p = straightPlan({ widths = { 20, 20, 20 } })
+		p.floorY = 0
+		t.eq(Shape.bottom(p, 0, 0, -30), -48, "16 by default: -46 down to a multiple of 4")
+		p.rockUnder = 32
+		t.eq(Shape.bottom(p, 0, 0, -30), -64, "-62 down to a multiple of 4")
+	end,
+
+	["heights report the range of a River's depth"] = function(t)
+		local p = straightPlan({ widths = { 20, 20, 20 }, depths = { 8, 30, 12 } })
+		t.ok(Describe.heights(p):find("depth 8 to 30", 1, true) ~= nil, Describe.heights(p))
+		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20 }, bedY = 10 })):find("depth 10,", 1, true) ~= nil, "one depth")
 	end,
 
 	["heights report the range of a River's width"] = function(t)
