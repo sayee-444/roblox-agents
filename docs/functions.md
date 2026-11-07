@@ -31,7 +31,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 
 | Ask for | What runs | Status |
 |---|---|---|
-| Remove a Landform, River or Lake | `remove <id>`: takes it out of the plan with a River's Valley, writes only the generated Chunks it touched and records the exact block | Measured |
+| Remove a Landform, River or Lake | `remove <id>`: takes it out of the plan with a River's Valley, writes only the generated Chunks it touched and records the exact block | Measured: `verify` identical on its 4 Chunks and 2 others, and `edit` passed 3 of 3 |
 | Add or change a Landform, River or Lake | `world-generation`, `world-history`, then `generate <i> <j>` | Built. In 2 of 2 runs the agent rewrote everything with `run` instead |
 | Restore something removed | `world-history` | Measured |
 | Write a single Chunk | `generate <i> <j>` | Measured |

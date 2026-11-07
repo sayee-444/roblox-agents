@@ -40,7 +40,7 @@ Done when `run` exits 0 and its heights show each requested Landform.
 | Generate or verify with a declared Generator | Nothing more: the rules hold the commands |
 | Say what exists or where the world stands | Nothing more: `status` holds it |
 | Resize the world | Nothing more: `scale <factor> --project .`, then `run` |
-| Remove a Landform, River or Lake | Nothing more: `remove <id> --place <name> --project . --why "<reason>"` also writes its Chunks and its history entry, which covers steps 3 to 5 and the record of step 7 |
+| Remove a Landform, River or Lake | Nothing more: `remove <id> --place <name> --project . --why "<reason>"`, with the id `status` printed. It takes a River's Valley with it, checks the plan, writes the Chunks and adds the history entry, so it covers steps 3 to 5 and the record of step 7, and exit 0 proves them |
 | Change the World Plan, or the Generator's logic | `world-generation` |
 | New world | Nothing more: follow "A new world" |
 | Add a Landform kind or a parameter to the engine | `world-generation` |

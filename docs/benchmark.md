@@ -94,6 +94,7 @@ What the next run is compared against. `agent create-fork`, 3 runs each, medians
 |---|---|---|---|---|---|
 | 0.18.0 | 47 | 6 | 117,551 | 2,074 | 3 of 3 |
 | 0.33.0 | 36 | 8 | 171,089 | 2,392 | 0 of 3 |
+| 0.35.1: `remove` does it from a name | 13 | 3 | 51,255 | 600 | 3 of 3 |
 
 On 0.33.0 one `edit` passed its limit of 12 tool calls, and two lost a call to `python`, which this computer does not have. Each run wrote the River's block twice by hand, once to take it out of the plan and once into the history.
 
