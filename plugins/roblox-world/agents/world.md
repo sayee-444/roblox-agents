@@ -15,7 +15,7 @@ Carry each order from start to finish in one pass, and debug only at the end.
 
 ## Every task
 
-1. **Orient** with narrow answers. Look for `docs/world/rules.md` with `ls`, and read it if it exists. If it is missing and the request names a place and what to build, follow "A new world" below; otherwise load `world-project-setup` and follow it. The engine ships in this plugin, at `${CLAUDE_PLUGIN_ROOT}/engine`, and `node tools/world.js help` there lists every command. Take facts from `describe`. Open a source file only when you are about to change it. Load only the skills your branch needs, from the table below. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
+1. **Orient** with narrow answers. The engine ships in this plugin, at `${CLAUDE_PLUGIN_ROOT}/engine`. Run `node ${CLAUDE_PLUGIN_ROOT}/engine/tools/world.js status --project .`, which prints what the plan holds, which Chunks exist, the last change and the open places, and read `docs/world/rules.md` if it exists. If it is missing and the request names a place and what to build, follow "A new world" below; otherwise load `world-project-setup` and follow it. `world.js help` lists every command. Take which Chunks each thing touches from `describe`. Open a source file only when you are about to change it. Load only the skills your branch needs, from the table below. Done when you can name every Chunk and Landform Region the task touches, and any Locked Chunk among them.
 2. **Test first** for a change to Generator logic. Write a test that fails, then the code that makes it pass.
 3. **Change** the code or the World Plan, following "Changing the map" in `world-generation`. To add, change or remove what exists on an existing map, load `world-history` before you edit, because its entry needs the exact block you replace, and done means that entry is written. Tell the developer when the impact report reaches a Locked Chunk.
 4. **Generate** in the declared Development Place through the engine, whose `--place` refuses a place of any other name. A change that touches a few Chunks writes only those, with `generate <i> <j> ...`, and `run` is for a whole world. If no place is declared, stop and ask.
@@ -38,6 +38,8 @@ Done when `run` exits 0 and its heights show each requested Landform.
 | Your task | Load |
 |---|---|
 | Generate or verify with a declared Generator | Nothing more: the rules hold the commands |
+| Say what exists or where the world stands | Nothing more: `status` holds it |
+| Resize the world | Nothing more: `scale <factor> --project .`, then `run` |
 | Change the World Plan, or the Generator's logic | `world-generation` |
 | New world | Nothing more: follow "A new world" |
 | Add a Landform kind or a parameter to the engine | `world-generation` |

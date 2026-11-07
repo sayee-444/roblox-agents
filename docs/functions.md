@@ -25,6 +25,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 | A new world with chosen positions | `new`, writing the World Plan from the template it prints, then `run` | Measured |
 | Set up a project with no world context | `world-project-setup` | Measured |
 | The whole cycle again | `run`: `sync`, `test`, `describe`, `generate`, `verify`, `heights` | Measured |
+| The same world at another size | `scale <factor>`, then `run`. It multiplies the extent, positions, lengths and heights and keeps the seeds. Writes no terrain | Measured: `scale 2` gave the 160 lines of a double written by hand, apart from one field that double added |
 
 ## Edit
 
@@ -42,7 +43,8 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 | Ask for | What answers | Status |
 |---|---|---|
 | Load a Test World | Open the World Snapshot its `docs/world/history.md` names, which generates nothing. `docs/world/rules.md` says what to do when there is none | Built |
-| What exists now | `describe`, the World Plan and the generation state | Measured |
+| Where a world stands | `status`: what the plan holds, Chunks generated and Locked, the last change, the places open and their terrain. Changes nothing, and answers from the files with Studio closed | Built |
+| Which Chunks each thing touches | `describe` | Measured |
 | What changed, and why | `docs/world/history.md`, through `world-history` | Measured |
 | How high the ground is at one spot | `height <x> <z>` | Measured |
 | How high each Landform and River is | `heights` | Measured |
