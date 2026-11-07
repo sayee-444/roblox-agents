@@ -27,7 +27,7 @@
     "about": "Create: a new world in an empty folder, through a World Plan and the engine",
     "studio": true,
     "setup": "empty",
-    "prompt": "Create a new world in {place}, which is open in Studio with empty terrain: a mountain range, a mesa and a River. Use defaults for anything you would ask me. Do not commit.",
+    "prompt": "Create a new world in {place}, a disposable place open in Studio whose terrain you may write over: a mountain range, a mesa and a River. Use defaults for anything you would ask me. Do not commit.",
     "expect": {
       "commands": ["new", "run"],
       "absentCommands": ["capture", "shot", "wipe"],
@@ -41,7 +41,7 @@
     "about": "Create with a forked River: a new world on a new seed, through a World Plan and the engine",
     "studio": true,
     "setup": "empty",
-    "prompt": "Create a new world in {place}, which is open in Studio with empty terrain, on a new random World Seed: a mountain range, a mesa and a River that forks into two branches. Use defaults for anything you would ask me. Do not commit.",
+    "prompt": "Create a new world in {place}, a disposable place open in Studio whose terrain you may write over, on a new random World Seed: a mountain range, a mesa and a River that forks into two branches. Use defaults for anything you would ask me. Do not commit.",
     "expect": {
       "commands": ["new", "run"],
       "absentCommands": ["capture", "shot", "wipe"],

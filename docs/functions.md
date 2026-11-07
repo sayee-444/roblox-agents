@@ -44,7 +44,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 | Ask for | What answers | Status |
 |---|---|---|
 | Load a Test World | Open the World Snapshot its `docs/world/history.md` names, which generates nothing. `docs/world/rules.md` says what to do when there is none | Built |
-| Where a world stands | `status`: what the plan holds, Chunks generated and Locked, the last change, the places open and their terrain. Changes nothing, and answers from the files with Studio closed | Built |
+| Where a world stands | `status`: what the plan holds, Chunks generated and Locked, the last change, the places open and their terrain. Changes nothing, and answers from the files with Studio closed | Measured |
 | Which Chunks each thing touches | `describe` | Measured |
 | What changed, and why | `docs/world/history.md`, through `world-history` | Measured |
 | How high the ground is at one spot | `height <x> <z>` | Measured |

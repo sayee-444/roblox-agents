@@ -86,6 +86,7 @@ What the next run is compared against. `agent create-fork`, 3 runs each, medians
 | 0.15.0: points shown as arrays, plan and `run` sent together | 38 | 3 | 54,620 | 2 of 3 |
 | 0.18.0: `new --landforms` composes the plan from the seed, on a plainer prompt | 27 | 3 | 51,596 | 3 of 3 |
 | 0.33.0: the baseline of #53 | 24 | 3 | 51,562 | 3 of 3 |
+| 0.34.2: a request for a new world goes straight to `new` | 25 | 2 | 34,061 | 3 of 3 |
 
 `edit`, 3 runs each:
 
@@ -97,6 +98,10 @@ What the next run is compared against. `agent create-fork`, 3 runs each, medians
 On 0.33.0 one `edit` passed its limit of 12 tool calls, and two lost a call to `python`, which this computer does not have. Each run wrote the River's block twice by hand, once to take it out of the plan and once into the history.
 
 The other scenarios on 0.33.0, 3 runs each, all passed: `start` 1 s and 16,087 tokens, `recover` 6 s and 51,096 tokens, `create` 21 s and 33,555 tokens. `engine` on the test map: 10.2 s, of which `test` 4.9 s and `generate` 4.3 s. `cost`: 462 tokens always on, 10,860 on invoke.
+
+On 0.34.2, 3 runs each, all passed: `recover` 6 s and 33,336 tokens, now that `status` answers it in one call, and `create` 23 s and 33,851 tokens.
+
+From 0.34.0 the `create` and `create-fork` prompts call the place disposable, where they used to call it empty. Each run leaves terrain for the next, which no agent saw until `status` showed it, and then it rightly stopped to ask. The 6 runs on the old prompt are on record under the label `prompt-said-empty`.
 
 All of these ran on `sonnet`, whose default `effort` is `medium` and which reasoned for almost nothing: 74 tokens in the median `edit`. So they say little about a session on another model or a higher `effort`.
 
