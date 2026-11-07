@@ -62,12 +62,12 @@ return {
 			curve = 1, -- 0 follows straight legs between the points, 1 a smooth curve through them
 			meander = 40, -- largest swing away from that line, in studs. It fades to nothing at each point
 			halfWidth = 20, -- or widths = { 14, 20, 32, 40 }, half widths, one per point, changing gradually between them
-			-- bendWiden = 0.5, -- widens by this fraction at a 90 degree bend, and in proportion at gentler ones
+			bendWiden = 0.5, -- widens by this fraction at a 90 degree bend, and in proportion at gentler ones. 0 turns it off
 			bedY = 10,
 			waterLevel = 20, -- multiple of the voxel size, so the surface meets a voxel boundary
 		},
 		-- A fork is a second River whose first point is one of this River's route points:
-		-- { id = "fork", points = { { <that x>, <that z> }, { <x>, <z> }, { <x>, <z> } }, curve = 1, meander = 30, halfWidth = 14, bedY = 10, waterLevel = 20 },
+		-- { id = "fork", points = { { <that x>, <that z> }, { <x>, <z> }, { <x>, <z> } }, curve = 1, meander = 30, bendWiden = 0.5, halfWidth = 14, bedY = 10, waterLevel = 20 },
 	},
 	lakes = {},
 	-- For a lake, with any River ending in it holding the same waterLevel:

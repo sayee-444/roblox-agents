@@ -37,7 +37,7 @@ Plugin 0.14.0 gained little because its template let every run write points the 
 
 - **Open cave:** a cave stays carved as an open trench after the ground over it moves, and nothing reports it. Evidence in `docs/bugs/open-cave.md` and #22, design in #30.
 - **Empty listing of places:** Studio lists no place for about 3 s when a command starts right after another ends, in 14 of 14 such runs on 2026-11-06, and the cause is unknown. `world.js` waits it out, for up to about 20 s, so a command with Studio closed takes that long to fail.
-- **River widths:** measured in tests, borders and cost on `test-map-x2`, and the developer approved its curves on 2026-11-07. `bendWiden` stays out of new worlds until they choose it.
+- **River widths:** measured in tests, borders and cost on `test-map-x2`, and the developer approved its curves on 2026-11-07. New worlds start with `bendWiden` 0.5, which each River can change, and a plan that leaves it out gets 0.
 - **Lake:** measured in voxels and tests on `exam-4`, and not yet judged by eye. A River's valley keeps its width up to the shore.
 - **Worlds the agent places by hand look alike:** on plugin 0.15.0, 3 of 3 put the range in the north, the River running west to east and the mesa in the east. `new --landforms` avoids this, and a request with chosen positions or a cave still goes through the template.
 - **Composed layouts:** seen as text and by tests only. Whether they look good is the developer's call, and the range favours the south over the north, 651 to 351 of 2,000 seeds.

@@ -249,6 +249,12 @@ test('borders passes on the Chunks it is given, and with none it checks them all
   });
 });
 
+test('the template opens the bends of a River and of a fork, each with its own value', () => {
+  const template = fs.readFileSync(path.resolve(__dirname, '../plugins/roblox-world/engine/templates/plan.luau'), 'utf8');
+  assert.match(template, /^\s*bendWiden = 0\.5,/m, 'the River sets it');
+  assert.match(template, /id = "fork".*bendWiden = 0\.5/, 'the fork sets it');
+});
+
 test('the template starts a River curved', () => {
   const dir = tempDir();
   try {
