@@ -1,3 +1,10 @@
+## 2026-11-08: This map is the default for tests
+
+- **Why:** the developer wants the next Implementations tested and compared on this state, the result of #62 with the larger Lake, in place of the result of #43.
+- **Implementation:** #62
+- **Chunks written:** none for this entry. The entries below wrote them.
+- **Snapshot:** `lab-issue-62.rbxl`
+
 ## 2026-11-08: Lake 25% larger
 
 - **Why:** the developer approved the map and wanted the Lake a bit bigger. Its `radius` went from 340 to 425; center, `elongate`, `angle`, `warp`, `shore` and `bedY` are unchanged.

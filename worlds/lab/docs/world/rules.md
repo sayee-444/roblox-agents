@@ -26,6 +26,7 @@ The engine ships with the `roblox-world` plugin. This project holds only `src/wo
 
 Newest first: the date, the decision and why it was made.
 
+- 2026-11-08: the map left by #62, with the larger Lake, is the default for tests, in snapshot `lab-issue-62.rbxl`, because the developer approved it. It takes the place of the result of #43.
 - 2026-11-07: 12 x 12 Chunks, extent -5..6, with every Landform's position doubled and the River, its branches and the Lake about 2 to 2.5 times wider, because the River read as a deep stream. Depths now differ a lot along each River, all water has `banks`, and Valleys reach up to 700 studs so the land comes down gently. `river` has `smooth` 48, and `fork` and `branch` 40, to fill the needles between close passes. The cave moved with the rest, keeps its axis at y 60 and sits about 2 to 8 studs above the ground there.
 - 2026-11-07: `floorY` 0, with depths declared per point on each River and the Lake's bed at -20, to try varied water with no slab under the map.
 - 2026-11-06: mesa moved from (1300, 1250) to (1300, -100), closer to the range; the cave stayed where it was (see history.md).
