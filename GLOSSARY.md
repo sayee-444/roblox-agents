@@ -26,9 +26,25 @@ _Avoid_: local seed, sub-seed
 A watercourse of still water whose route passes through points declared in the World Plan, in straight legs or a curve, with a width that can change along it.
 _Avoid_: stream, flow
 
+**Water Body**:
+Any still water declared in the World Plan. A pond, a Lake, a Sea and an Ocean are one kind of thing, told apart by their size and by whether land surrounds them.
+_Avoid_: pool, basin
+
 **Lake**:
-A body of still water declared in the World Plan, where Rivers end.
-_Avoid_: ocean, sea
+A Water Body with land all around it, where Rivers end. A pond is a small Lake.
+_Avoid_: pond
+
+**Sea**:
+A large Water Body almost enclosed by land, whose shore has bays and peninsulas.
+_Avoid_: gulf
+
+**Ocean**:
+The Water Body that reaches out from the land to the edge of the world.
+_Avoid_: sea
+
+**Landmass**:
+A stretch of land left between Oceans, which the World Plan does not declare. Its size alone makes it read as a continent or an island.
+_Avoid_: continent, island, land structure
 
 **Banks**:
 How a River or Lake meets the land, from the ground around it down to its deepest line, falling as one curve with no break at the waterline: its Shore and its Shallows.
