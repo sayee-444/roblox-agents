@@ -102,7 +102,7 @@ The World Plan declares what exists where, and the seeds fill in the detail. The
 | `mountain` | `points`, `halfWidth`, `height`, `ridgeScale`, `crestScale` | A range along a crest line. `halfWidth` includes the blend margin, so nothing of it reaches further |
 | `mesa` | `center`, `radius`, `margin`, `levels`, `height`, `warp`, `elongate`, `angle`, `gully` | A flat top of `radius` with a stepped flank `margin` wide in `levels` steps. `warp` shifts the outline, `elongate` and `angle` stretch and turn it, and `gully` bites into the flank |
 | `valley` | `riverId`, `halfWidth`, `floorY`, `sides` | The valley a River runs through. `sides`, from 0.02 to 1.5, is how steep it comes down to the water: 0.1 a plain, 0.3 medium, 0.8 a mountain valley. It can take one value per point of its River |
-| `cave` | `points` of `{ x, y, z }`, `radius` | A tunnel along a path, kept one radius above the ground |
+| `cave` | `points` of `{ x, y, z }`, `radius` | A tunnel of `radius` along a path. The template says how high to place its points from what `height` reports |
 
 ### Water
 
