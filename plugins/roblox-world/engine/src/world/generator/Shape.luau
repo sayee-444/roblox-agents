@@ -431,9 +431,9 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 					slopes[def] = slopes[def] or lakeSlope(P, plan, def)
 					local slope = slopes[def]
 					local edge = slope * shoreVaried(def, dx, dz)
-					-- A depth from its size also lets the shallows lower that ceiling, so pools and shallows show
-					-- where the ground is steep enough to reach it. With `bedY` the ceiling stays as it was.
-					local ceiling = if fromSize then Bank.shallows(asked, vary, def.seed, x, z) else asked
+					-- On steep ground the whole bed reaches its ceiling and comes out even, so a depth from its size
+					-- also lets its pools lower that ceiling. With `bedY` the ceiling stays as it was.
+					local ceiling = if fromSize then Bank.poolsUpTo(asked, vary, def.seed, x, z) else asked
 					local deepest = Bank.deepest(slope, def.radius, ceiling, (def.waterLevel - bed) / asked)
 					local inside = def.radius - d
 					if inside > 0 then

@@ -580,7 +580,7 @@ function Describe.heights(plan): string
 			end
 		end
 		local asked, fromSize, capped = Shape.lakeDepth(lk)
-		local depth = if not fromSize then string.format("depth %g asked", asked) elseif capped then string.format("depth %.1f from its size, cut to depthCap", asked) else string.format("depth %.1f from its size", asked)
+		local depth = if not fromSize then string.format("depth %g asked", asked) elseif capped then string.format("depth %.1f from its size, cut to its cap", asked) else string.format("depth %.1f from its size", asked)
 		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d, %s, %.1f reached", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel, depth, deepest))
 	end
 	return table.concat(lines, "\n")

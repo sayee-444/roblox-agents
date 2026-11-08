@@ -54,16 +54,20 @@ local function ground(plan, x, z)
 	return (Shape.height(plan, x, z))
 end
 
--- A Lake with banks that leaves out bedY, among ground high enough around it that its depth reaches the
--- most it may.
+-- The plan among ground high enough around its Lake that its depth reaches the most it may.
+local function amongHills(plan)
+	plan.base = table.clone(shipped.base)
+	plan.base.mean = 110
+	return plan
+end
+
+-- A Lake with banks that leaves out bedY, among hills.
 local function sizedLake(fields)
 	fields = fields or {}
 	fields.banks = fields.banks or {}
 	local plan = lakePlan(fields)
 	plan.lakes[1].bedY = nil
-	plan.base = table.clone(shipped.base)
-	plan.base.mean = 110
-	return plan
+	return amongHills(plan)
 end
 
 -- The most water over any spot of a Lake, on a grid across it.
@@ -392,9 +396,7 @@ return {
 	end,
 
 	["a Lake that gives bedY keeps the heights it had before bedY became optional"] = function(t)
-		local banked = lakePlan({ banks = { rough = 4, vary = 0.5 }, depthVary = 0.4, bedRough = 4 })
-		banked.base = table.clone(shipped.base)
-		banked.base.mean = 110
+		local banked = amongHills(lakePlan({ banks = { rough = 4, vary = 0.5 }, depthVary = 0.4, bedRough = 4 }))
 		local got = {}
 		for _, plan in ipairs({ banked, lakePlan({ depthVary = 0.4, bedRough = 4 }) }) do
 			for _, spot in ipairs(SPOTS) do
@@ -425,7 +427,7 @@ return {
 		t.eq(asked({ radius = 2000 }), "220.0", "radius 2000 would ask 270.8")
 		t.eq(asked({ radius = 2000, depthCap = false }), "270.8", "no cap")
 		t.eq(asked({ radius = 850, depthCap = 150 }), "150.0", "a cap of 150")
-		t.ok(Describe.heights(sizedLake({ radius = 2000 })):find("cut to depthCap", 1, true) ~= nil, "heights say when the cap cut it")
+		t.ok(Describe.heights(sizedLake({ radius = 2000 })):find("220.0 from its size, cut to its cap", 1, true) ~= nil, "heights say when the cap cut it")
 	end,
 
 	["a Lake with banks may leave out bedY, and depthCap only limits a depth from its size"] = function(t)
@@ -448,9 +450,7 @@ return {
 			end
 			return high - low
 		end
-		local even = lakePlan({ radius = 400, banks = {}, bedY = WATER - 100, depthVary = 0.4 })
-		even.base = table.clone(shipped.base)
-		even.base.mean = 110
+		local even = amongHills(lakePlan({ radius = 400, banks = {}, bedY = WATER - 100, depthVary = 0.4 }))
 		t.ok(spread(even) < 1, "with bedY the bed spans " .. spread(even) .. " studs 100 studs from the middle")
 		local zoned = spread(sizedLake({ radius = 400 }))
 		t.ok(zoned > 8, "without bedY it spans " .. zoned .. " studs")
