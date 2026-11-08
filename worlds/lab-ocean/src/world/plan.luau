@@ -17,7 +17,7 @@ return {
 	seaLevel = 20, -- one level for every Ocean, a multiple of 4
 	-- An Ocean holds whole Chunks, as rectangles { i0, j0, i1, j1 } of Chunk indices, inclusive.
 	oceans = {
-		{ id = "ocean", seed = 8001, chunks = { { -11, -11, 12, 12 } }, depthCap = 220 },
+		{ id = "ocean", seed = 8001, chunks = { { -11, -11, 12, 12 } }, depthCap = 100 },
 	},
 
 	regions = {},
