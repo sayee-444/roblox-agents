@@ -350,6 +350,16 @@ local function land(P, plan, x: number, z: number): (number, number, number, num
 	return math.min(h - carve, low), mesaP, riverD, waterLevel
 end
 
+-- How much a Lake's `banks` vary on its shore in the direction (dx, dz) from its centre. Taken at the shore
+-- rather than at the spot itself, it changes along the shore and stays the same towards the middle.
+local function shoreVaried(def, dx: number, dz: number): number
+	local far = math.sqrt(dx * dx + dz * dz)
+	if far < 1 then
+		return 1
+	end
+	return Bank.varied(def.banks, def.seed, def.center[1] + dx / far * def.radius, def.center[2] + dz / far * def.radius)
+end
+
 -- How steeply the ground comes down to a Lake: from the mean ground on a ring at the outer edge of its
 -- shore, before the Lake lowers it, down to its water, across the shore.
 local function lakeSlope(P, plan, def): number
@@ -391,16 +401,21 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 				local target
 				if def.banks then
 					-- The ground keeps the slope it comes down with under the water, and `bedY` is the deepest it may reach.
+					-- How deep it gets comes from the mean slope, and `vary` changes only the slope along the shore,
+					-- fading out towards the middle, so it gives steeper and gentler stretches of shore and no hills.
 					local slopes = P.lakeSlopes
 					slopes[def] = slopes[def] or lakeSlope(P, plan, def)
-					local slope = slopes[def] * Bank.varied(def.banks, def.seed, x, z)
+					local slope = slopes[def]
+					local edge = slope * shoreVaried(def, dx, dz)
+					local asked = def.waterLevel - def.bedY
+					local deepest = Bank.deepest(slope, def.radius, asked, (def.waterLevel - bed) / asked)
 					local inside = def.radius - d
 					if inside > 0 then
-						local asked = def.waterLevel - def.bedY
-						local deepest, power = Bank.deepest(slope, def.radius, asked, (def.waterLevel - bed) / asked)
+						local mean = Bank.power(slope, def.radius, deepest)
+						local power = mean + (Bank.power(edge, def.radius, deepest) - mean) * (1 - inside / def.radius) ^ 2
 						target = def.waterLevel - Bank.depth(def.banks, def.seed, x, z, inside, def.radius, deepest, power)
 					else
-						target = def.waterLevel + Bank.rise(-inside, Bank.edgeSlope(slope, def.radius, def.radius), math.max(1, h - def.waterLevel))
+						target = def.waterLevel + Bank.rise(-inside, Bank.edgeSlope(edge, def.radius, def.radius, deepest), math.max(1, h - def.waterLevel))
 					end
 				else
 					local beach = def.waterLevel + 3

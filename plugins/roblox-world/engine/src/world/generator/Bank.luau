@@ -11,7 +11,9 @@ local Bank = {}
 
 local DEFAULT_SHORE = 20
 local DEFAULT_SMOOTH = 24
-local MIN_DEPTH = 1 -- studs of water over the deepest line, however gentle the slope
+-- Studs of water over the deepest line, however gentle the slope: two voxels, past the depth where a bed
+-- turns to sand (materials.bedSand), since shallower water barely shows and reads as a wide sand flat.
+local MIN_DEPTH = 8
 local VARY_SCALE = 80 -- studs for one change of the banks, short enough that two sides of a River differ
 local ROUGH_SCALE = 18 -- studs for one small slope under the water
 local DEPTH_SCALE = 160 -- studs for one pool or shallow
@@ -53,18 +55,27 @@ end
 -- How deep the deepest line gets, and the power of the curve that falls to it. The ground meets the
 -- water at `slope`, rise over run, and the deepest line lies `span` studs in, so a gentle slope reaches
 -- only so deep. `moved` moves that depth by the pools and rough bed the World Plan asks for, as a
--- multiple of it, and `ceiling`, the depth the World Plan asks for, is the most it may reach.
+-- multiple of it, and `ceiling`, the depth the World Plan asks for, is the most it may reach, even when
+-- it asks for less than MIN_DEPTH.
 function Bank.deepest(slope: number, span: number, ceiling: number, moved: number): (number, number)
 	local drop = fall(slope, span)
 	-- Never past `drop` either, or the curve would come to a point at the deepest line.
-	local deepest = math.max(MIN_DEPTH, math.min(ceiling, drop / 2 * moved, drop))
+	local deepest = math.max(math.min(MIN_DEPTH, ceiling), math.min(ceiling, drop / 2 * moved, drop))
 	return deepest, drop / deepest
 end
 
+-- The power of a curve that falls to a deepest line `deepest` studs down and leaves the water's edge at
+-- `slope` across `span`. Never below 1, or the curve would come to a point at the deepest line, so an
+-- edge gentler than that depth needs comes down a little steeper.
+function Bank.power(slope: number, span: number, deepest: number): number
+	return math.max(fall(slope, span), deepest) / deepest
+end
+
 -- The slope at the water's edge of a half of the water whose deepest line lies `reach` studs in, where
--- the water as a whole meets its ground at `slope` across `span`. Equal to the curve's own slope there.
-function Bank.edgeSlope(slope: number, span: number, reach: number): number
-	return fall(slope, span) / reach
+-- the water as a whole meets its ground at `slope` across `span`. Equal to the curve's own slope there,
+-- also when `deepest`, a depth set apart from `slope`, steepens the curve as Bank.power does.
+function Bank.edgeSlope(slope: number, span: number, reach: number, deepest: number?): number
+	return math.max(fall(slope, span), deepest or 0) / reach
 end
 
 -- Studs under the water `inside` studs in from its edge, on a half that reaches its deepest line, `deepest`

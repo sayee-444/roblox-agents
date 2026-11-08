@@ -95,18 +95,6 @@ local function surfaceAt(plan, x, z)
 	return Materials.surface(plan, x, z, h, math.sqrt(gx * gx + gz * gz), mesaP, riverD, water)
 end
 
--- The steepest fall between two spots `run` studs apart, walking from the deepest line out to the waterline.
-local function steepestUnder(plan, x, z, dx, dz, run)
-	local at = waterline(plan, x, z, dx, dz)
-	local steepest = 0
-	for d = 0, at - run, 1 do
-		local a = ground(plan, x + dx * d, z + dz * d)
-		local b = ground(plan, x + dx * (d + run), z + dz * (d + run))
-		steepest = math.max(steepest, math.abs(b - a) / run)
-	end
-	return steepest
-end
-
 return {
 	["the ground keeps its slope across the waterline, with no break"] = function(t)
 		local plan = riverPlan({ banks = { shore = 30 } }, nil, { sides = 0.3 })
@@ -136,10 +124,10 @@ return {
 			local outUnder = slopesAtWaterline(plan, x, z, 0, 1, 0.25)
 			local inUnder = slopesAtWaterline(plan, x, z, 0, -1, 0.25)
 			t.ok(outUnder > inUnder * 1.3, "at " .. x .. " the outside falls into the water at " .. outUnder .. " and the inside at " .. inUnder)
-			local sandIn = surfaceAt(plan, x, z - inEdge - 25)
-			local sandOut = surfaceAt(plan, x, z + outEdge + 25)
-			t.eq(sandIn, Materials.id.Sand, "25 studs from the water on the inside at " .. x)
-			t.ok(sandOut ~= Materials.id.Sand, "25 studs from the water on the outside at " .. x .. " there is no sand")
+			local sandIn = surfaceAt(plan, x, z - inEdge - 20)
+			local sandOut = surfaceAt(plan, x, z + outEdge + 20)
+			t.eq(sandIn, Materials.id.Sand, "20 studs from the water on the inside at " .. x)
+			t.ok(sandOut ~= Materials.id.Sand, "20 studs from the water on the outside at " .. x .. " there is no sand")
 		end
 	end,
 
@@ -184,14 +172,18 @@ return {
 		t.ok(farSand >= plan.materials.bankDist, "grass 64 studs from the water")
 	end,
 
-	["a gentle valley keeps its water shallow and its bed gentle, so the Shallows come by themselves"] = function(t)
-		local plan = riverPlan({ banks = { shore = 30 } }, nil, { sides = 0.1 })
+	["a gentle valley's water is 8 studs deep at its deepest line, the least that shows over a sand bed, and no deeper than asked"] = function(t)
+		local plan = riverPlan({ banks = { shore = 30, smooth = 0 }, depthVary = 0.6 }, nil, { sides = 0.05 })
+		local shallowest, deepest = math.huge, 0
+		for x = 50, 950, 10 do
+			local depth = WATER - ground(plan, x, 0)
+			shallowest, deepest = math.min(shallowest, depth), math.max(deepest, depth)
+		end
+		t.ok(shallowest >= 8, "the shallowest the middle gets is " .. shallowest)
+		t.ok(deepest < 12, "and it stays shallow: " .. deepest)
+		local little = riverPlan({ banks = { shore = 30, smooth = 0 }, depths = { 5, 5, 5 } }, nil, { sides = 0.05 })
 		for x = 100, 900, 100 do
-			for _, dz in ipairs({ 1, -1 }) do
-				local steepest = steepestUnder(plan, x, 0, 0, dz, 2)
-				t.ok(steepest < 0.13, "the steepest slope under the water at " .. x .. " is " .. steepest)
-			end
-			t.ok(ground(plan, x, 0) > WATER - 4, "the middle is shallow at " .. x .. ": " .. ground(plan, x, 0))
+			t.near(WATER - ground(little, x, 0), 5, 0.001, "a River asked for 5 studs at " .. x)
 		end
 	end,
 
@@ -209,7 +201,7 @@ return {
 
 	["a steeper valley gives deeper water than a gentle one"] = function(t)
 		local gentle = riverPlan({ banks = { shore = 30 } }, nil, { sides = 0.15 })
-		local steep = riverPlan({ banks = { shore = 30 } }, nil, { sides = 0.6 })
+		local steep = riverPlan({ banks = { shore = 30 } }, nil, { sides = 1.2 })
 		for x = 100, 900, 100 do
 			local shallow, deep = WATER - ground(gentle, x, 0), WATER - ground(steep, x, 0)
 			t.ok(deep > shallow * 2.5, "at " .. x .. " the steep valley's water is " .. deep .. " deep, the gentle one's " .. shallow)
@@ -270,7 +262,7 @@ return {
 	end,
 
 	["sides can change along a River, deep where they are steep and shallow where they are gentle"] = function(t)
-		local plan = riverPlan({ banks = { shore = 30 } }, nil, { sides = { 0.1, 0.3, 0.9 } })
+		local plan = riverPlan({ banks = { shore = 30 } }, nil, { sides = { 0.1, 0.6, 1.2 } })
 		local upstream, middle, downstream = WATER - ground(plan, 60, 0), WATER - ground(plan, 500, 0), WATER - ground(plan, 940, 0)
 		t.ok(upstream < middle and middle < downstream, "the depth goes " .. upstream .. ", " .. middle .. ", " .. downstream)
 		local step = 0
@@ -347,6 +339,28 @@ return {
 		t.ok(high - low > 10, "the Lake's bed spans " .. (high - low) .. " studs")
 	end,
 
+	["vary changes a Lake's slope around its shore, and raises no hills across its bed"] = function(t)
+		local plan = lakePlan({ banks = { vary = 0.8 } })
+		plan.base = table.clone(shipped.base)
+		plan.base.mean = 110
+		local gentlest, steepest = math.huge, 0
+		for k = 0, 15 do
+			local a = 2 * math.pi * k / 16
+			local dx, dz = math.cos(a), math.sin(a)
+			-- Walking out from the middle, the bed only rises.
+			local last = -math.huge
+			for r = 0, 110, 2 do
+				local h = ground(plan, 450 + dx * r, dz * r)
+				t.ok(h >= last - 0.01, string.format("a hill %.1f studs high, %d studs out towards %.2f, %.2f", last - h, r, dx, dz))
+				last = math.max(last, h)
+			end
+			local under, above = slopesAtWaterline(plan, 450, 0, dx, dz, 0.25)
+			t.near(under, above, 0.05, string.format("the ground keeps its slope across the waterline towards %.2f, %.2f", dx, dz))
+			gentlest, steepest = math.min(gentlest, under), math.max(steepest, under)
+		end
+		t.ok(steepest > gentlest * 1.3, "around the shore the ground meets the water at " .. gentlest .. " to " .. steepest)
+	end,
+
 	["a River passing close to itself leaves no crest between its two stretches"] = function(t)
 		local plan = riverPlan({ points = { { 0, 0 }, { 400, 0 }, { 400, 60 }, { 0, 60 } }, depths = { 40, 40, 40, 40 }, banks = { shore = 30 } })
 		local crest, _, _, water = Shape.height(plan, 200, 30)
@@ -392,7 +406,7 @@ return {
 		local gentle = Describe.heights(riverPlan({ banks = { shore = 30 } }, nil, { sides = 0.15 }))
 		local asked, low, high = reached(gentle, "r")
 		t.eq(asked, 40, gentle)
-		t.ok(low and low > 1 and high < 5, "a gentle valley's River reached " .. tostring(low) .. " to " .. tostring(high))
+		t.ok(low and low > 7.9 and high < 9, "a gentle valley's River reached only the least that shows, 8: " .. tostring(low) .. " to " .. tostring(high))
 		local steep = Describe.heights(riverPlan({ banks = { shore = 30 }, depths = { 10, 10, 10 } }, nil, { sides = 1.2 }))
 		local _, _, deep = reached(steep, "r")
 		t.ok(deep and deep > 9 and deep <= 10, "a steep valley's River reached " .. tostring(deep) .. " of 10")

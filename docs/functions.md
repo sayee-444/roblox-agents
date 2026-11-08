@@ -122,7 +122,7 @@ The transcript of a session is the record. A skill that loaded and an engine com
 
 Nothing has gone into deep water in Play or walked a Shore. Nothing has walked or dug on ground with `floorY` at 0, or seen the underside of a map from below. Streaming, play mode and phones. What the render rebuild does to a place with scripts, since Play runs them. A character walking a cave. The tests under Lute. Any system other than Windows. The guard's approval window in an interactive session. Opening a World Snapshot from a command.
 
-Valley Sides are measured by the tests alone. Where two valleys with different `sides` meet, as at a fork, the ground meets in a crease, which no one has looked at. A Point Bar's sand was measured on one half circle of a test, and a Lake's slope only on a round Lake among even hills.
+Valley Sides are measured by the tests alone. Where two valleys with different `sides` meet, as at a fork, the ground meets in a crease, which no one has looked at. A Point Bar's sand was measured on one half circle of a test, and a Lake's slope only on a round Lake among even hills. That a Lake's `vary` raises fewer hills on its bed was counted on `lab`, 33 against 10, and its stretches of steeper and gentler shore have not been looked at.
 
 `remove` when Studio fails partway has run only against the fake Studio of the tests. `scale` followed by `run` has run on the test map, and not on `lab`. A session's `effort` was measured on `edit` and `create-fork`, and not on a plan the model composes or on debugging.
 

@@ -48,7 +48,7 @@ return {
 			halfWidth = 130, -- at least 1.3 times the River's widest half width plus 20
 			floorY = 24, -- above the water level
 			-- How steep its sides come down to a River with banks, rise over run, which decides how deep the water gets.
-			-- 0.1 is a plain with shallow water, 0.3 medium, 0.8 a mountain valley. Or one per point of the River, eased like widths
+			-- 0.1 is a plain, whose water is 8 studs deep, the least that shows, 0.3 medium, 0.8 a mountain valley. Or one per point of the River, eased like widths
 			sides = 0.3,
 		},
 		-- For a forked River, a valley for the branch:
@@ -75,7 +75,7 @@ return {
 			banks = {
 				shore = 24, -- studs of Shore, the ground beside the water, about half of it sand
 				rough = 2.5, -- studs of small slopes under the water, which leave the waterline and the deepest line alone
-				vary = 0.5, -- how much the slope and the shore change along each side, placed by the seed. 0 to 0.9
+				vary = 0.5, -- how much the slope and the shore change along each side, or around a Lake, placed by the seed. 0 to 0.9
 				smooth = 24, -- crests thinner than about twice this, between stretches of water, are filled. 0 turns it off
 			},
 			waterLevel = 20, -- multiple of the voxel size, so the surface meets a voxel boundary
