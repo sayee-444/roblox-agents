@@ -1,3 +1,10 @@
+## 2026-11-08: Kept this map as the result of #62
+
+- **Why:** the developer approved how it looks and wants it kept, with the World Plan of commit 28c24e8 written on the engine of commit 0fec6be. The overview in `docs/captures/run/01-overview.jpg` shows it.
+- **Implementation:** #62
+- **Chunks written:** none for this entry. All 144 were written for the entry below.
+- **Snapshot:** `lab-issue-62.rbxl`
+
 ## 2026-11-08: Regenerated with water at least 8 studs deep, and fewer hills in the Lake
 
 - **Why:** the developer saw wide sand where the gentle valleys' water was 1 stud deep and did not show, and too many peaks on the Lake's bed. The engine now leaves at least 8 studs of water at a River's deepest line, unless the World Plan asks less, and a Lake's `vary` changes its slope only along its shore. The World Plan did not change.
