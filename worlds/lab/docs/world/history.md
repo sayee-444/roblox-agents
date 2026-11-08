@@ -4,6 +4,7 @@
 - **Implementation:** #64
 - **Depth (from `heights`):** before, bed -90.0, depth 110 asked, 110.0 reached. After, bed -85.6, depth 106.2 from its size, 105.6 reached.
 - **Chunks written:** 0,1 1,1 2,1 3,1 0,2 1,2 2,2 3,2 0,3 1,3 2,3 3,3
+- **Snapshot:** `lab-issue-64.rbxl`, saved by the developer after they looked at the map, shown in `docs/captures/run/01-overview.jpg`.
 - **Restore:** replace the `lake` block in `lakes` in the World Plan with the one below, and generate those Chunks again.
 
 ```luau
