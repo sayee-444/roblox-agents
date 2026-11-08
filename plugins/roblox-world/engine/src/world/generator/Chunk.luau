@@ -10,6 +10,9 @@ local Chunk = {}
 
 local id = Materials.id
 local V = 4 -- voxel size in studs; the plan's `voxel` must equal this
+-- Studs of earth on top of the open Ocean's bed, as deep as a sloped bed keeps its surface materials
+-- (voxels centred less than 14 studs down), with rock under them.
+local FLAT_SKIN = 12
 
 function Chunk.key(i: number, j: number): string
 	return i .. "," .. j
@@ -29,6 +32,28 @@ function Chunk.columns(plan, ci: number, cj: number, breathe: (() -> ())?)
 	assert(plan.voxel == V, "plan.voxel must be 4")
 	local n = math.floor(plan.chunkSize / V)
 	local x0, z0 = Chunk.origin(plan, ci, cj)
+
+	-- The open Ocean is the same in every column, so it is written as plain blocks: earth for the top
+	-- FLAT_SKIN studs of its bed, rock under it, and water up to the sea level. A flat layer of one
+	-- material is what saves smallest, and it needs no column worked out.
+	local ocean = Shape.oceanAt(plan, x0 + plan.chunkSize / 2, z0 + plan.chunkSize / 2)
+	if ocean then
+		local level = plan.seaLevel
+		local bed = level - Shape.oceanDepth(ocean)
+		local bottom = Shape.bottom(plan, x0 + plan.chunkSize / 2, z0 + plan.chunkSize / 2, bed)
+		local ny = (level + 8 - bottom) // V -- 8 studs of air over the water, as a Chunk of land keeps over its top
+		return {
+			ci = ci,
+			cj = cj,
+			n = n,
+			x0 = x0,
+			z0 = z0,
+			ymin = bottom,
+			ny = ny,
+			ymax = bottom + ny * V,
+			flat = { bed = bed, level = level, bottom = bottom, skin = FLAT_SKIN, surface = id.Ground, body = id.Rock },
+		}
+	end
 	local w = n + 2
 	local H = table.create(w * w, 0)
 	local MP, RD, WL = table.create(n * n, 0), table.create(n * n, 0), table.create(n * n, 0)
@@ -129,6 +154,28 @@ function Chunk.slab(plan, cols, i0: number, i1: number, lookup, j0: number?, j1:
 	local w = n + 2
 	local air = if lookup then lookup[id.Air] else id.Air
 	local mats, occs, liqs = {}, {}, {}
+	local flat = cols.flat
+	if flat then
+		local skin = if lookup then lookup[flat.surface] else flat.surface
+		local body = if lookup then lookup[flat.body] else flat.body
+		for ii = i0, i1 do
+			local mx, ox, lx = {}, {}, {}
+			for iy = 1, ny do
+				local yb = ymin + (iy - 1) * V
+				if yb < flat.bed then
+					mx[iy] = table.create(nz, if yb >= flat.bed - flat.skin then skin else body)
+					ox[iy] = table.create(nz, 1)
+					lx[iy] = table.create(nz, 0)
+				else
+					mx[iy] = table.create(nz, air)
+					ox[iy] = table.create(nz, 0)
+					lx[iy] = table.create(nz, if yb < flat.level then 1 else 0)
+				end
+			end
+			mats[ii - i0 + 1], occs[ii - i0 + 1], liqs[ii - i0 + 1] = mx, ox, lx
+		end
+		return { SolidMaterial = mats, SolidOccupancy = occs, LiquidOccupancy = liqs }
+	end
 	local rect = cols.caveRect
 	local slate = id.Slate
 

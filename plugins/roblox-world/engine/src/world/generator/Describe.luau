@@ -311,6 +311,41 @@ function Describe.validate(plan): { string }
 			end
 		end
 	end
+	local oceans = plan.oceans or {}
+	if #oceans > 0 and not (isNum(plan.seaLevel) and plan.seaLevel % 4 == 0) then
+		table.insert(e, "seaLevel must be a multiple of 4, so the water meets a voxel boundary")
+	end
+	for _, oc in ipairs(oceans) do
+		local label = "ocean " .. tostring(oc.id)
+		if ids[oc.id] then
+			table.insert(e, "duplicate id " .. tostring(oc.id))
+		end
+		ids[oc.id] = true
+		if not isNum(oc.seed) then
+			table.insert(e, label .. ": needs a seed")
+		end
+		if oc.depthCap ~= nil and not (isNum(oc.depthCap) and oc.depthCap > 0 and oc.depthCap % 4 == 0) then
+			table.insert(e, label .. ": depthCap must be a multiple of 4 above 0, so the bed meets a voxel boundary")
+		end
+		local sound = type(oc.chunks) == "table" and #oc.chunks > 0
+		for _, r in ipairs(if sound then oc.chunks else {}) do
+			local whole = type(r) == "table" and #r == 4
+			for k = 1, 4 do
+				whole = whole and isNum(r[k]) and r[k] % 1 == 0
+			end
+			sound = sound and whole and r[1] <= r[3] and r[2] <= r[4]
+		end
+		if not sound then
+			table.insert(e, label .. ": chunks needs rectangles of Chunk indices { i0, j0, i1, j1 }, with i0 <= i1 and j0 <= j1")
+		elseif type(x) == "table" and isNum(x.minX) and isNum(x.maxX) and isNum(x.minZ) and isNum(x.maxZ) then
+			for _, r in ipairs(oc.chunks) do
+				if r[1] < x.minX or r[3] > x.maxX or r[2] < x.minZ or r[4] > x.maxZ then
+					table.insert(e, label .. ": chunks must lie inside the extent, which only the developer's order changes")
+					break
+				end
+			end
+		end
+	end
 	for _, r in ipairs(plan.regions or {}) do
 		local label = "region " .. tostring(r.id)
 		if ids[r.id] then
@@ -372,9 +407,29 @@ local function allChunks(plan)
 	return list
 end
 
+local function oceanOf(plan, id)
+	for _, oc in ipairs(plan.oceans or {}) do
+		if oc.id == id then
+			return oc
+		end
+	end
+	return nil
+end
+
 local function touching(plan, id)
-	local b = Shape.bounds(plan, id)
 	local out = {}
+	-- An Ocean holds whole Chunks, which a bounding box would overstate for an L or a U.
+	local ocean = oceanOf(plan, id)
+	if ocean then
+		for _, c in ipairs(allChunks(plan)) do
+			local x0, z0 = Chunk.origin(plan, c.i, c.j)
+			if Shape.oceanAt(plan, x0 + plan.chunkSize / 2, z0 + plan.chunkSize / 2) == ocean then
+				table.insert(out, c.key)
+			end
+		end
+		return out
+	end
+	local b = Shape.bounds(plan, id)
 	for _, c in ipairs(allChunks(plan)) do
 		local x0, z0 = Chunk.origin(plan, c.i, c.j)
 		if b and overlaps(b, x0, z0, plan.chunkSize) then
@@ -401,6 +456,9 @@ function Describe.report(plan, state)
 	end
 	for _, reg in ipairs(plan.regions) do
 		table.insert(ids, { reg.id, reg.kind })
+	end
+	for _, oc in ipairs(plan.oceans or {}) do
+		table.insert(ids, { oc.id, "ocean" })
 	end
 	for _, entry in ipairs(ids) do
 		r.regions[entry[1]] = { kind = entry[2], chunks = touching(plan, entry[1]) }
@@ -582,6 +640,10 @@ function Describe.heights(plan): string
 		local asked, fromSize, capped = Shape.lakeDepth(lk)
 		local depth = if not fromSize then string.format("depth %g asked", asked) elseif capped then string.format("depth %.1f from its size, cut to its cap", asked) else string.format("depth %.1f from its size", asked)
 		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d, %s, %.1f reached", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel, depth, deepest))
+	end
+	for _, oc in ipairs(plan.oceans or {}) do
+		local depth = Shape.oceanDepth(oc)
+		table.insert(lines, string.format("%s: sea level %d, bed %.1f, depth %d, %d Chunks", oc.id, plan.seaLevel, plan.seaLevel - depth, depth, #touching(plan, oc.id)))
 	end
 	return table.concat(lines, "\n")
 end

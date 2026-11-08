@@ -126,6 +126,22 @@ On 0.40.0, with Valley Sides from #62, measured on 2026-11-07. `run` on the whol
 
 All of these ran on `sonnet`, whose default `effort` is `medium` and which reasoned for almost nothing: 74 tokens in the median `edit`. So they say little about a session on another model or a higher `effort`.
 
+## What a pure Ocean costs
+
+Measured on 2026-11-08, plugin 0.42.0, issue #69. `lab-ocean`, 24 x 24 Chunks (-11..12, 12,288 studs a side), all one Ocean at sea level 20: a flat bed under water, each Chunk written as three plain blocks. The `world` agent ran each depth on `sonnet`, one run each. The developer saved the place with `File > Save to File As` after each, and the size is that file's.
+
+| Depth | Bed | Place before | `generate` | Per Chunk, mean | Whole session | Saved place | Terrain cells |
+|---|---|---|---|---|---|---|---|
+| 220 | -200 | 4 of its Chunks only | 29.2 s | 0.03 s | 55 s | 86,553 bytes | 530,841,600 |
+| 100 | -80 | the Ocean at 220 | 49.1 s | 0.07 s | 80 s | 87,770 bytes | not read |
+| 40 | -20 | the Ocean at 100 | 50.4 s | 0.07 s | 75 s | 87,395 bytes | 108,527,616 |
+
+- **Depth costs almost nothing.** The three files differ by 1.4%, and all are under 0.1 MB, against 4.8 MB for the 144 Chunks of `lab`. So flat water of one level, over a flat bed of one material, saves almost free, and 24 x 24 is not too heavy. Measured.
+- **Writing over an earlier Ocean costs more than writing on an empty place.** At 100 and 40 `generate` took about 50 s against 29 s at 220, while a shallower Ocean has fewer voxels to write. Each Chunk is first set to Air from below its bed to y 1,024, so this is likely that clearing, which was not timed apart.
+- **One Chunk rewrites identically.** `verify 0 0` passed at every depth, and `verify 1 1` at 220.
+- **Two more writes, for the developer to look at, not saved:** 220 over the Ocean at 40 took 50.4 s of `generate`, and 400 over the Ocean at 220 took 58.8 s, of which 53.0 s writing Chunks. The developer kept 400.
+- **Not measured:** whether the saved files hold the whole Ocean, since none was opened again; a Chunk with a coast, which #70 writes column by column and which will cost what a Chunk of `lab` does; Play, streaming and phones over this Ocean; precision at 6,400 studs from the origin.
+
 ## What a model, an `effort` and the memory cost
 
 Medians of 3 runs on plugin 0.37.0, all passed. `--effort` stands for the session's level, and each result records the level its requests really used, read from the transcript.

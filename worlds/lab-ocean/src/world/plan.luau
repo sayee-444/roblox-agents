@@ -1,0 +1,42 @@
+-- World Plan: declares what exists where. It wins over the seeds.
+-- Chunk (i, j) covers x in [i*512-256, i*512+256) and z in [j*512-256, j*512+256),
+-- so indices -11..12 give 24 x 24 Chunks (12,288 x 12,288 studs), x and z from -5,888 to 6,400.
+-- A pure Ocean, to measure what one costs to generate and save (issue #69). It holds no land yet.
+
+return {
+	worldSeed = 12345,
+	chunkSize = 512,
+	voxel = 4,
+	extent = { minX = -11, maxX = 12, minZ = -11, maxZ = 12 }, -- inclusive Chunk indices
+	floorY = 0, -- ground stops here, and goes lower only under deep water or a cave
+	rockUnder = 8, -- a thin wall of rock under a deep bed
+
+	-- Gentle hills everywhere: mean height, amplitude, feature size and domain warp.
+	base = { mean = 52, amp = 34, scale = 260, octaves = 5, warpScale = 300, warpAmp = 60 },
+
+	seaLevel = 20, -- one level for every Ocean, a multiple of 4
+	-- An Ocean holds whole Chunks, as rectangles { i0, j0, i1, j1 } of Chunk indices, inclusive.
+	oceans = {
+		{ id = "ocean", seed = 8001, chunks = { { -11, -11, 12, 12 } }, depthCap = 400 },
+	},
+
+	regions = {},
+	rivers = {},
+	lakes = {},
+	sites = {},
+	worldLimit = nil, -- not requested yet
+
+	-- Material thresholds.
+	materials = {
+		snowLine = 205,
+		snowBlend = 30,
+		snowMaxSlope = 1.4,
+		steep = 0.85, -- rise over run above which ground is bare rock
+		rockLine = 140,
+		bankDist = 26, -- sand within this distance of the route: a band, not a road
+		bankHeight = 28,
+		bedSand = 6, -- a bed is sand under water this shallow, and earth comes through it below
+		bedDeep = 14, -- from this depth down, a bed is earth with patches of rock and a little sand
+		mesaRiser = 1.1,
+	},
+}
