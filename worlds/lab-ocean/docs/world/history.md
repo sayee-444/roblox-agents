@@ -6,7 +6,7 @@
 - **Implementation:** #69
 - **Chunks written:** all 576 (-11,-11 to 12,12), at 220 and then at 400.
 - **Result:** bed at -380, `generate` 58.8 s over the Ocean at 220. A shallower depth would leave the old bed hidden under the new one until #77, since a write clears only down to -256.
-- **Snapshot:** `lab-ocean-issue-69.rbxl`, if the developer saves it.
+- **Snapshot:** `lab-ocean-issue-69.rbxl`, 89,813 bytes, saved by the developer.
 - **Restore:** set `depthCap = 40` in the `ocean` block of the World Plan, and generate all Chunks again.
 
 ```luau
