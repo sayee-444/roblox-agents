@@ -139,6 +139,7 @@ Measured on 2026-11-08, plugin 0.42.0, issue #69. `lab-ocean`, 24 x 24 Chunks (-
 - **Depth costs almost nothing.** The three files differ by 1.4%, and all are under 0.1 MB, against 4.8 MB for the 144 Chunks of `lab`. So flat water of one level, over a flat bed of one material, saves almost free, and 24 x 24 is not too heavy. Measured.
 - **Writing over an earlier Ocean costs more than writing on an empty place.** At 100 and 40 `generate` took about 50 s against 29 s at 220, while a shallower Ocean has fewer voxels to write. Each Chunk is first set to Air from below its bed to y 1,024, so this is likely that clearing, which was not timed apart.
 - **One Chunk rewrites identically.** `verify 0 0` passed at every depth, and `verify 1 1` at 220.
+- **Two more writes, for the developer to look at, not saved:** 220 over the Ocean at 40 took 50.4 s of `generate`, and 400 over the Ocean at 220 took 58.8 s, of which 53.0 s writing Chunks. The developer kept 400.
 - **Not measured:** whether the saved files hold the whole Ocean, since none was opened again; a Chunk with a coast, which #70 writes column by column and which will cost what a Chunk of `lab` does; Play, streaming and phones over this Ocean; precision at 6,400 studs from the origin.
 
 ## What a model, an `effort` and the memory cost

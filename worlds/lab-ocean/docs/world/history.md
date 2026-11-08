@@ -1,23 +1,12 @@
 # World history
 
-## 2026-11-08: Ocean `ocean` depthCap 220 to 400
+## 2026-11-08: Ocean `ocean` depthCap 40 to 400, kept as the result of #69
 
-- **Why:** the developer asked to see an Ocean 400 studs deep.
+- **Why:** the developer looked at the Ocean at 220 and then at 400, and kept 400. The open Ocean of a very wide world is to reach 800 to 1,200 through #70.
 - **Implementation:** #69
-- **Chunks written:** all 576 (-11,-11 to 12,12)
-- **Result:** bed at -380, depth 400, `generate` 58.8 s (53.00 s writing Chunks).
-- **Restore:** set `depthCap = 220` in the `ocean` block of the World Plan, and generate all Chunks again.
-
-```luau
-{ id = "ocean", seed = 8001, chunks = { { -11, -11, 12, 12 } }, depthCap = 220 },
-```
-
-## 2026-11-08: Ocean `ocean` depthCap 40 to 220
-
-- **Why:** the developer asked to see an Ocean 220 studs deep and decide.
-- **Implementation:** #69
-- **Chunks written:** all 576 (-11,-11 to 12,12)
-- **Result:** bed at -200, depth 220, `generate` 50.4 s.
+- **Chunks written:** all 576 (-11,-11 to 12,12), at 220 and then at 400.
+- **Result:** bed at -380, `generate` 58.8 s over the Ocean at 220. A shallower depth would leave the old bed hidden under the new one until #77, since a write clears only down to -256.
+- **Snapshot:** `lab-ocean-issue-69.rbxl`, if the developer saves it.
 - **Restore:** set `depthCap = 40` in the `ocean` block of the World Plan, and generate all Chunks again.
 
 ```luau

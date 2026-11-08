@@ -26,7 +26,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 | Set up a project with no world context | `world-project-setup` | Measured |
 | The whole cycle again | `run`: `sync`, `test`, `describe`, `generate`, `verify`, `heights` | Measured, also on the 144 Chunks of `lab` in one call: 3 of 3 |
 | The same world at another size | `scale <factor>`, then `run`. It multiplies the extent, positions, lengths and heights and keeps the seeds. Writes no terrain | Measured: `scale 2` gave the 160 lines of a double written by hand, apart from one field that double added, and `run` passed after `scale 2` and `scale 0.5` on the test map |
-| An open Ocean | `oceans` in the World Plan, each a list of rectangles of whole Chunks with `depthCap`, under one `seaLevel`, then `run`. Each Ocean Chunk is a flat bed written as three plain blocks | Measured on `lab-ocean`: 576 Chunks in 29 s on an empty place, saved under 0.1 MB, and the agent changed `depthCap` and rewrote them in 2 of 2. See `docs/benchmark.md` |
+| An open Ocean | `oceans` in the World Plan, each a list of rectangles of whole Chunks with `depthCap`, under one `seaLevel`, then `run`. Each Ocean Chunk is a flat bed written as three plain blocks | Measured on `lab-ocean`: 576 Chunks in 29 s on an empty place, saved under 0.1 MB, and the agent changed `depthCap` and rewrote them in 4 of 4. See `docs/benchmark.md` |
 | Keep a new world off terrain it did not write | `run` and `generate` stop before any step when the world has written nothing and the place holds terrain. `--over-terrain` writes over it, on the developer's word. A world that has written Chunks is not checked, since the terrain may be its own | Measured: asked for a world with no word about the terrain, the agent stopped and asked in 3 of 3, in 7 s, with the place's cells unchanged. Told the terrain may go, `create` and `create-fork` passed 3 of 3 with no extra request |
 
 ## Edit
@@ -116,7 +116,9 @@ The transcript of a session is the record. A skill that loaded and an engine com
 - Detecting hand edits: the developer says which Chunks they touched. Designed in #30.
 - Routes that follow the relief: a River curves through points placed by hand and holds one water level.
 - Sites and the World Limit: the World Plan has fields for them, and no code generates them.
-- An Ocean's coast: an Ocean Chunk beside land is a wall as deep as its bed, and its depth does not grow from the coast. Designed in #70 and #71. `remove` does not take an Ocean out, and `status` does not list one.
+- An Ocean's coast: an Ocean Chunk beside land is a wall as deep as its bed, and its depth does not grow from the coast. Designed in #70 and #71. `remove` does not take an Ocean out, and `status` does not list one. `scale` does not handle one: it scales `depthCap` off the voxel grid, which validation then refuses, and leaves `chunks` and `seaLevel` as they were.
+- A Depth Limit and the place's Destroy Height: nothing keeps beds above the height where Roblox removes a character, -500 in a new place. Designed in #77. A Chunk written deep and then shallower keeps its old bed under the new one, since a write clears only down to -256 or its new ground.
+- Trenches: designed in #78.
 - Composing a Lake: `new --landforms` does not place one, so a Lake is written into the World Plan.
 - Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather and Graphics Profiles: designed only, in `docs/designs/world-systems.md`, which also holds their terms.
 
