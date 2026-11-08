@@ -9,7 +9,7 @@ const LENGTHS = [
   'mean', 'amp', 'scale', 'warpScale', 'warpAmp',
   'halfWidth', 'height', 'ridgeScale', 'crestScale',
   'radius', 'margin', 'warp', 'gully', 'shore',
-  'meander', 'bedY', 'bedRough', 'rough', 'smooth',
+  'meander', 'bedY', 'bedRough', 'depthCap', 'rough', 'smooth',
   'clearBottom', 'clearTop',
   'snowLine', 'snowBlend', 'rockLine', 'bankDist', 'bankHeight', 'bedSand', 'bedDeep',
 ];

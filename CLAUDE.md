@@ -56,6 +56,7 @@ The developer judges the look in Studio or from captures, since passing measurem
 - Write to whichever place is open, whatever its name. Stop and ask only if several are open, or it holds terrain this session did not write.
 - Commit each map change on its own, in the branch of its Implementation. The pull request says which map changed and why, so the map can be compared against what changed in the agent.
 - End an Implementation that changes the look with `capture overview`, and commit that one image. It moves the developer's camera once, and an Implementation that changes nothing visible skips it.
+- The overview leaves the developer's camera far above the map, about 3,200 studs on `lab`, and Studio then turns slow for them and for every command, such as `height` at 15 s instead of 0.1 s. So take it once, report a half-drawn one instead of retrying it, and then bring the camera down with `shot <name> <x y z> <x y z> --no-refresh` near what changed, leaving its image out of Git. Seen on 2026-11-08.
 
 ## Changing this repository
 

@@ -54,6 +54,40 @@ local function ground(plan, x, z)
 	return (Shape.height(plan, x, z))
 end
 
+-- The plan among ground high enough around its Lake that its depth reaches the most it may.
+local function amongHills(plan)
+	plan.base = table.clone(shipped.base)
+	plan.base.mean = 110
+	return plan
+end
+
+-- A Lake with banks that leaves out bedY, among hills.
+local function sizedLake(fields)
+	fields = fields or {}
+	fields.banks = fields.banks or {}
+	local plan = lakePlan(fields)
+	plan.lakes[1].bedY = nil
+	return amongHills(plan)
+end
+
+-- The most water over any spot of a Lake, on a grid across it.
+local function deepestOf(plan)
+	local lake = plan.lakes[1]
+	local deepest = 0
+	for i = -10, 10 do
+		for j = -10, 10 do
+			local h = ground(plan, lake.center[1] + lake.radius * i / 10, lake.center[2] + lake.radius * j / 10)
+			deepest = math.max(deepest, WATER - h)
+		end
+	end
+	return deepest
+end
+
+-- Spots across a Lake and its shore, where a Lake that gives bedY was measured before bedY became optional.
+local SPOTS = { { 450, 0 }, { 500, 30 }, { 380, -60 }, { 560, 0 }, { 450, 110 }, { 600, -40 }, { 330, 90 } }
+-- Measured on the engine of commit 180a8d7: first the Lake with banks, then the one without.
+local BEDY_HEIGHTS = "-60.000 -37.785 -19.737 4.035 4.938 91.026 83.845 -61.159 -61.544 -41.315 11.298 14.646 40.626 35.852"
+
 local function errorsOf(plan)
 	return table.concat(Describe.validate(plan), "\n")
 end
@@ -359,6 +393,67 @@ return {
 			gentlest, steepest = math.min(gentlest, under), math.max(steepest, under)
 		end
 		t.ok(steepest > gentlest * 1.3, "around the shore the ground meets the water at " .. gentlest .. " to " .. steepest)
+	end,
+
+	["a Lake that gives bedY keeps the heights it had before bedY became optional"] = function(t)
+		local banked = amongHills(lakePlan({ banks = { rough = 4, vary = 0.5 }, depthVary = 0.4, bedRough = 4 }))
+		local got = {}
+		for _, plan in ipairs({ banked, lakePlan({ depthVary = 0.4, bedRough = 4 }) }) do
+			for _, spot in ipairs(SPOTS) do
+				table.insert(got, string.format("%.3f", ground(plan, spot[1], spot[2])))
+			end
+		end
+		t.eq(table.concat(got, " "), BEDY_HEIGHTS, "heights")
+	end,
+
+	["a Lake with banks and no bedY may reach a quarter of its radius"] = function(t)
+		local deepest = deepestOf(sizedLake())
+		-- Radius 120: a quarter is 30, and the shallows take off at most 0.4 of it.
+		t.ok(deepest > 18 and deepest <= 30.01, "a Lake of radius 120 reached " .. deepest)
+	end,
+
+	["a larger Lake without bedY may reach deeper, and its depth grows ever more slowly past radius 425"] = function(t)
+		local small, large = deepestOf(sizedLake()), deepestOf(sizedLake({ radius = 400 }))
+		t.ok(large > 60 and large <= 100.01, "a Lake of radius 400 reached " .. large .. ", up to 100")
+		t.ok(large > small * 2, "radius 400 reached " .. large .. " and radius 120 " .. small)
+		local text = Describe.heights(sizedLake({ radius = 850 }))
+		t.ok(text:find("depth 179.9 from its size,", 1, true) ~= nil, "radius 850 takes 106.25 times 1 + ln 2: " .. text)
+	end,
+
+	["a Lake's depth from its size stops at 220 studs, at another depthCap, or at none"] = function(t)
+		local function asked(fields)
+			return Describe.heights(sizedLake(fields)):match("l: .-depth ([%d%.]+) from its size")
+		end
+		t.eq(asked({ radius = 2000 }), "220.0", "radius 2000 would ask 270.8")
+		t.eq(asked({ radius = 2000, depthCap = false }), "270.8", "no cap")
+		t.eq(asked({ radius = 850, depthCap = 150 }), "150.0", "a cap of 150")
+		t.ok(Describe.heights(sizedLake({ radius = 2000 })):find("220.0 from its size, cut to its cap", 1, true) ~= nil, "heights say when the cap cut it")
+	end,
+
+	["a Lake with banks may leave out bedY, and depthCap only limits a depth from its size"] = function(t)
+		t.eq(errorsOf(sizedLake()), "", "no bedY")
+		t.eq(errorsOf(sizedLake({ depthCap = false, bedRough = 10 })), "", "no cap, and a rough bed under its 30 studs")
+		t.ok(errorsOf(sizedLake({ bedRough = 40 })):find("bedRough", 1, true), "a rough bed deeper than its 30 studs")
+		t.ok(errorsOf(sizedLake({ depthCap = 0 })):find("depthCap", 1, true), "a cap of 0")
+		t.ok(errorsOf(sizedLake({ depthCap = "deep" })):find("depthCap", 1, true), "a cap that is no number")
+		t.ok(errorsOf(lakePlan({ banks = {}, depthCap = 150 })):find("depthCap", 1, true), "a cap with bedY")
+	end,
+
+	["pools and shallows show on steep ground around a Lake without bedY"] = function(t)
+		-- With bedY, ground this steep takes the whole bed to its ceiling, so it is even all round.
+		local function spread(plan)
+			local low, high = math.huge, -math.huge
+			for k = 0, 15 do
+				local a = 2 * math.pi * k / 16
+				local h = ground(plan, 450 + math.cos(a) * 100, math.sin(a) * 100)
+				low, high = math.min(low, h), math.max(high, h)
+			end
+			return high - low
+		end
+		local even = amongHills(lakePlan({ radius = 400, banks = {}, bedY = WATER - 100, depthVary = 0.4 }))
+		t.ok(spread(even) < 1, "with bedY the bed spans " .. spread(even) .. " studs 100 studs from the middle")
+		local zoned = spread(sizedLake({ radius = 400 }))
+		t.ok(zoned > 8, "without bedY it spans " .. zoned .. " studs")
 	end,
 
 	["a River passing close to itself leaves no crest between its two stretches"] = function(t)

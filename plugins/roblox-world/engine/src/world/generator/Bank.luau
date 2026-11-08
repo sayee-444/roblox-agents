@@ -97,13 +97,26 @@ function Bank.rise(out: number, edgeSlope: number, height: number): number
 	return height * (1 - math.exp(-edgeSlope * out / height))
 end
 
+local function poolWave(seed: number, u: number, v: number): number
+	return wave(u / DEPTH_SCALE, v / DEPTH_SCALE, seed + 3)
+end
+
 -- A depth moved by `vary`, a fraction of itself, into pools and shallows. `u` and `v` are positions
 -- in units of DEPTH_SCALE's noise: along the line for a River, across the water for a Lake.
 function Bank.pools(depth: number, vary: number?, seed: number, u: number, v: number): number
 	if not vary then
 		return depth
 	end
-	return depth * (1 + vary * wave(u / DEPTH_SCALE, v / DEPTH_SCALE, seed + 3))
+	return depth * (1 + vary * poolWave(seed, u, v))
+end
+
+-- The same pools and shallows reaching down to `depth` at most, so it stays the deepest: it is a ceiling,
+-- and a ceiling that pools lower in their shallows lets them show on ground steep enough to reach it.
+function Bank.poolsUpTo(depth: number, vary: number?, seed: number, u: number, v: number): number
+	if not vary then
+		return depth
+	end
+	return depth * (1 - vary * (1 - poolWave(seed, u, v)) / 2)
 end
 
 return Bank

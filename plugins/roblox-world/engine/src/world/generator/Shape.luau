@@ -21,6 +21,13 @@ local PASS_FADE = 40 -- studs over which another pass of a River fades out at th
 local PASS_SPREAD = 0.5 -- further studs of that fade per stud from the nearest pass, so away from the water it is gentle
 local RING = 32 -- spots on the ground around a Lake where its slope is measured
 local GENTLEST = 0.02 -- the gentlest ground that comes down to a Lake, rise over run
+-- How deep a Lake with no `bedY` may get, from its size. lab's Lake, of radius 425, reached 110 studs, about
+-- a quarter of its radius, and the developer chose that as the measure, growing as the natural log past it,
+-- up to twice that Lake's depth.
+local DEPTH_SHARE = 0.25 -- of the radius, up to DEPTH_BEND
+local DEPTH_BEND = 425 -- radius past which the depth grows as its natural log, with no break in its growth
+local DEPTH_CAP = 220 -- studs, the most it may reach unless the World Plan gives `depthCap`
+local DEPTH_VARY = 0.4 -- its pools and shallows unless the World Plan gives `depthVary`, as lab's Lake
 local BAR_GAIN = 2 -- how far a bend moves the deepest line out, as a fraction of the half width, per unit of half width over radius
 local BAR_MOST = 0.45 -- the furthest a bend moves the deepest line out, as a fraction of the half width
 local BAR_SAND = 2 -- studs of sand a Point Bar adds beside the water, per stud the deepest line moved
@@ -375,6 +382,21 @@ local function lakeSlope(P, plan, def): number
 	return math.max(GENTLEST, (total / RING - def.waterLevel) / def.shore)
 end
 
+-- How deep under its water a Lake may get: from `bedY`, or else from its radius, up to its `depthCap`.
+-- Then whether the depth came from its size, and whether its cap cut it.
+function Shape.lakeDepth(def): (number, boolean, boolean)
+	if def.bedY ~= nil then
+		return def.waterLevel - def.bedY, false, false
+	end
+	local r = def.radius
+	local depth = if r <= DEPTH_BEND then r * DEPTH_SHARE else DEPTH_BEND * DEPTH_SHARE * (1 + math.log(r / DEPTH_BEND))
+	local cap = if def.depthCap == nil then DEPTH_CAP else def.depthCap
+	if cap and depth > cap then
+		return cap, true, true
+	end
+	return depth, true, false
+end
+
 -- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
 -- distance to the nearest River's sand band centre line or lake water, and the water level over this column (0 = dry).
 function Shape.height(plan, x: number, z: number): (number, number, number, number)
@@ -394,21 +416,25 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 			local d = math.sqrt((along / stretch) ^ 2 + (across * stretch) ^ 2)
 			d += math.clamp(Noise.fbm(x / 240, z / 240, def.seed, 2) * 2, -1, 1) * def.warp
 			if d < outer then
-				local bed = def.waterLevel - Bank.pools(def.waterLevel - def.bedY, def.depthVary, def.seed, x, z)
+				local asked, fromSize = Shape.lakeDepth(def)
+				local vary = if def.depthVary == nil and fromSize then DEPTH_VARY else def.depthVary
+				local bed = def.waterLevel - Bank.pools(asked, vary, def.seed, x, z)
 				if def.bedRough then
 					bed += def.bedRough * math.clamp(Noise.perlin(x / BED_SCALE, z / BED_SCALE, def.seed + 2) * 2, -1, 1)
 				end
 				local target
 				if def.banks then
-					-- The ground keeps the slope it comes down with under the water, and `bedY` is the deepest it may reach.
-					-- How deep it gets comes from the mean slope, and `vary` changes only the slope along the shore,
-					-- fading out towards the middle, so it gives steeper and gentler stretches of shore and no hills.
+					-- The ground keeps the slope it comes down with under the water, and the depth asked is the deepest
+					-- it may reach. How deep it gets comes from the mean slope, and `vary` changes only the slope along
+					-- the shore, fading out towards the middle, so it gives steeper and gentler stretches of shore and no hills.
 					local slopes = P.lakeSlopes
 					slopes[def] = slopes[def] or lakeSlope(P, plan, def)
 					local slope = slopes[def]
 					local edge = slope * shoreVaried(def, dx, dz)
-					local asked = def.waterLevel - def.bedY
-					local deepest = Bank.deepest(slope, def.radius, asked, (def.waterLevel - bed) / asked)
+					-- On steep ground the whole bed reaches its ceiling and comes out even, so a depth from its size
+					-- also lets its pools lower that ceiling. With `bedY` the ceiling stays as it was.
+					local ceiling = if fromSize then Bank.poolsUpTo(asked, vary, def.seed, x, z) else asked
+					local deepest = Bank.deepest(slope, def.radius, ceiling, (def.waterLevel - bed) / asked)
 					local inside = def.radius - d
 					if inside > 0 then
 						local mean = Bank.power(slope, def.radius, deepest)
