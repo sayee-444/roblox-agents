@@ -1,5 +1,17 @@
 # World history
 
+## 2026-11-08: Ocean `ocean` depthCap 220 to 400
+
+- **Why:** the developer asked to see an Ocean 400 studs deep.
+- **Implementation:** #69
+- **Chunks written:** all 576 (-11,-11 to 12,12)
+- **Result:** bed at -380, depth 400, `generate` 58.8 s (53.00 s writing Chunks).
+- **Restore:** set `depthCap = 220` in the `ocean` block of the World Plan, and generate all Chunks again.
+
+```luau
+{ id = "ocean", seed = 8001, chunks = { { -11, -11, 12, 12 } }, depthCap = 220 },
+```
+
 ## 2026-11-08: Ocean `ocean` depthCap 40 to 220
 
 - **Why:** the developer asked to see an Ocean 220 studs deep and decide.
