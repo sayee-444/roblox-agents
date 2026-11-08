@@ -164,7 +164,7 @@ return {
 		},
 	},
 	lakes = {
-		{ id = "lake", seed = 7006, center = { 744, 1044 }, radius = 340, shore = 40, warp = 40, elongate = 1.2, angle = 30, bedY = -90, bedRough = 10, depthVary = 0.4, banks = { rough = 6, vary = 0.6 }, waterLevel = 20 },
+		{ id = "lake", seed = 7006, center = { 744, 1044 }, radius = 425, shore = 40, warp = 40, elongate = 1.2, angle = 30, bedY = -90, bedRough = 10, depthVary = 0.4, banks = { rough = 6, vary = 0.6 }, waterLevel = 20 },
 	},
 	sites = {},
 	worldLimit = nil, -- not requested yet

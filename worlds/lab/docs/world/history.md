@@ -1,3 +1,11 @@
+## 2026-11-08: Lake 25% larger
+
+- **Why:** the developer approved the map and wanted the Lake a bit bigger. Its `radius` went from 340 to 425; center, `elongate`, `angle`, `warp`, `shore` and `bedY` are unchanged.
+- **Implementation:** #62
+- **Chunks written:** 0,1 1,1 2,1 3,1 0,2 1,2 2,2 3,2 0,3 1,3 2,3 3,3 (the Lake now also reaches column 3).
+- **Result, from `heights`:** lake depth asked 110, reached 110 before and after (bed -90 at its center, read with `height 744 1044`). river and fork still end inside the Lake: river bed -22.2 at (644,744), fork -23.7 at (584,1264), before -2.2. oxbowB is about 911 studs from the Lake's center, so the Lake does not reach it. Because the Lake covers more of their ends, the deepest `reached` figure of river went from 77.5 to 52.1 and of fork from 26.6 to 12.4. Their asked depths were not touched.
+- **Restore:** set `radius = 340` on the Lake in the World Plan and generate the same Chunks again.
+
 ## 2026-11-08: Kept this map as the result of #62
 
 - **Why:** the developer approved how it looks and wants it kept, with the World Plan of commit 28c24e8 written on the engine of commit 0fec6be. The overview in `docs/captures/run/01-overview.jpg` shows it.
