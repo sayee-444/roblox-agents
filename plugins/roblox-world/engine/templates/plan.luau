@@ -85,8 +85,10 @@ return {
 	},
 	lakes = {},
 	-- For a lake, with any River ending in it holding the same waterLevel:
-	-- lakes = { { id = "lake", seed = {{regionSeed}}, center = { <x>, <z> }, radius = 170, shore = 120, warp = 20, elongate = 1.2, angle = <degrees>, bedY = -20, depthVary = 0.4, banks = { rough = 4, vary = 0.5 }, waterLevel = 20 } },
-	-- With banks, its bed follows the slope of the ground around it, and bedY is the deepest it may get.
+	-- lakes = { { id = "lake", seed = {{regionSeed}}, center = { <x>, <z> }, radius = 170, shore = 120, warp = 20, elongate = 1.2, angle = <degrees>, banks = { rough = 4, vary = 0.5 }, waterLevel = 20 } },
+	-- With banks, its bed follows the slope of the ground around it, down to a deepest from its size: a quarter
+	-- of its radius, growing as the natural log past radius 425, up to depthCap = 220 (false for no cap), with
+	-- depthVary = 0.4 for its pools and shallows. bedY = <y> sets that deepest instead, and without banks it is needed.
 	sites = {},
 	worldLimit = nil, -- not requested yet
 

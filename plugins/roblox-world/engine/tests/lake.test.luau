@@ -170,6 +170,13 @@ return {
 		t.ok(#errors >= 2, "errors found: " .. #errors)
 	end,
 
+	["a lake without banks needs bedY, since its depth cannot follow the ground"] = function(t)
+		local errors = table.concat(Describe.validate(lakePlan(function(p)
+			p.lakes[1].bedY = nil
+		end)), "; ")
+		t.ok(errors:find("bedY", 1, true) ~= nil, errors)
+	end,
+
 	["a River ending in a lake must share its water level"] = function(t)
 		local errors = Describe.validate(lakePlan(function(p)
 			p.lakes[1].waterLevel = 24

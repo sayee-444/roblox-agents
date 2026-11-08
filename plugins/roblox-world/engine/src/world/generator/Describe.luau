@@ -279,10 +279,23 @@ function Describe.validate(plan): { string }
 		end
 		if not isNum(lk.waterLevel) or lk.waterLevel % 4 ~= 0 then
 			table.insert(e, label .. ": waterLevel must be a multiple of 4")
+		elseif lk.bedY ~= nil and not isNum(lk.bedY) then
+			table.insert(e, label .. ": bedY must be a number")
 		elseif isNum(lk.bedY) and lk.bedY >= lk.waterLevel then
 			table.insert(e, label .. ": bedY must be below waterLevel")
 		end
-		if lk.bedRough ~= nil and not (isNum(lk.bedRough) and lk.bedRough >= 0 and isNum(lk.bedY) and isNum(lk.waterLevel) and lk.bedRough < lk.waterLevel - lk.bedY) then
+		-- With no bedY, a Lake's depth comes from its size, and only banks can follow the ground to it.
+		if lk.bedY == nil and lk.banks == nil then
+			table.insert(e, label .. ": needs bedY, or banks to take its depth from its size")
+		end
+		local capSound = lk.depthCap == nil or lk.depthCap == false or (isNum(lk.depthCap) and lk.depthCap > 0)
+		if lk.depthCap ~= nil and lk.bedY ~= nil then
+			table.insert(e, label .. ": depthCap limits only a depth from its size, so leave it out or leave out bedY")
+		elseif not capSound then
+			table.insert(e, label .. ": depthCap must be above 0, or false for no cap")
+		end
+		local depth = if isNum(lk.waterLevel) and (isNum(lk.bedY) or (lk.bedY == nil and capSound and isNum(lk.radius) and lk.radius > 0)) then Shape.lakeDepth(lk) else nil
+		if lk.bedRough ~= nil and not (isNum(lk.bedRough) and lk.bedRough >= 0 and depth and lk.bedRough < depth) then
 			table.insert(e, label .. ": bedRough must be from 0 to below the lake's depth")
 		end
 		-- Still water holds one level, so a River ending in a lake must meet it.
@@ -566,7 +579,9 @@ function Describe.heights(plan): string
 				end
 			end
 		end
-		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d, depth %g asked, %.1f reached", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel, lk.waterLevel - lk.bedY, deepest))
+		local asked, fromSize, capped = Shape.lakeDepth(lk)
+		local depth = if not fromSize then string.format("depth %g asked", asked) elseif capped then string.format("depth %.1f from its size, cut to depthCap", asked) else string.format("depth %.1f from its size", asked)
+		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d, %s, %.1f reached", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel, depth, deepest))
 	end
 	return table.concat(lines, "\n")
 end

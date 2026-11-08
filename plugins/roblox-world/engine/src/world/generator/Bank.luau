@@ -106,4 +106,13 @@ function Bank.pools(depth: number, vary: number?, seed: number, u: number, v: nu
 	return depth * (1 + vary * wave(u / DEPTH_SCALE, v / DEPTH_SCALE, seed + 3))
 end
 
+-- `depth` made shallower by up to `vary` of it, in the places Bank.pools makes its shallows. Where Bank.pools
+-- makes its deepest pools this keeps all of `depth`, so `depth` stays the deepest.
+function Bank.shallows(depth: number, vary: number?, seed: number, u: number, v: number): number
+	if not vary then
+		return depth
+	end
+	return depth * (1 - vary * (1 - wave(u / DEPTH_SCALE, v / DEPTH_SCALE, seed + 3)) / 2)
+end
+
 return Bank
