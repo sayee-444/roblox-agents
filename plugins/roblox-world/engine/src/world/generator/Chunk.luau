@@ -41,7 +41,7 @@ function Chunk.columns(plan, ci: number, cj: number, breathe: (() -> ())?)
 		local level = plan.seaLevel
 		local bed = level - Shape.oceanDepth(ocean)
 		local bottom = Shape.bottom(plan, x0 + plan.chunkSize / 2, z0 + plan.chunkSize / 2, bed)
-		local ny = (level + 8 - bottom) // V
+		local ny = (level + 8 - bottom) // V -- 8 studs of air over the water, as a Chunk of land keeps over its top
 		return {
 			ci = ci,
 			cj = cj,

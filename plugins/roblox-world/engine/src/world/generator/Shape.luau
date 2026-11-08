@@ -397,8 +397,6 @@ function Shape.lakeDepth(def): (number, boolean, boolean)
 	return depth, true, false
 end
 
--- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
--- distance to the nearest River's sand band centre line or lake water, and the water level over this column (0 = dry).
 -- The Ocean holding (x, z), or nil. An Ocean holds whole Chunks, each rectangle { i0, j0, i1, j1 } of
 -- Chunk indices, inclusive.
 function Shape.oceanAt(plan, x: number, z: number)
@@ -423,6 +421,8 @@ function Shape.oceanDepth(def): number
 	return def.depthCap or DEPTH_CAP
 end
 
+-- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
+-- distance to the nearest River's sand band centre line, lake or ocean water, and the water level over this column (0 = dry).
 function Shape.height(plan, x: number, z: number): (number, number, number, number)
 	local P = prepare(plan)
 	local ocean = Shape.oceanAt(plan, x, z)
