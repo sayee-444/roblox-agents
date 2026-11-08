@@ -39,7 +39,7 @@ local function prepare(plan)
 	if P then
 		return P
 	end
-	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {}, lakeSlopes = {} }
+	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {}, lakeSlopes = {}, oceans = plan.oceans or {} }
 	for _, rv in ipairs(plan.rivers) do
 		local route = Route.points(rv)
 		P.rivers[rv.id] = { def = rv, route = route, poly = Geo.polyline2(route), width = Route.width(rv), depth = Route.depth(rv), bend = if rv.banks then Route.bend(rv) else nil }
@@ -399,8 +399,36 @@ end
 
 -- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
 -- distance to the nearest River's sand band centre line or lake water, and the water level over this column (0 = dry).
+-- The Ocean holding (x, z), or nil. An Ocean holds whole Chunks, each rectangle { i0, j0, i1, j1 } of
+-- Chunk indices, inclusive.
+function Shape.oceanAt(plan, x: number, z: number)
+	local oceans = prepare(plan).oceans
+	if #oceans == 0 then
+		return nil
+	end
+	local s = plan.chunkSize
+	local ci, cj = math.floor((x + s / 2) / s), math.floor((z + s / 2) / s)
+	for _, def in ipairs(oceans) do
+		for _, r in ipairs(def.chunks) do
+			if ci >= r[1] and ci <= r[3] and cj >= r[2] and cj <= r[4] then
+				return def
+			end
+		end
+	end
+	return nil
+end
+
+-- How deep an Ocean is under the sea level. With no coast yet (#70), all of it is open Ocean at its cap.
+function Shape.oceanDepth(def): number
+	return def.depthCap or DEPTH_CAP
+end
+
 function Shape.height(plan, x: number, z: number): (number, number, number, number)
 	local P = prepare(plan)
+	local ocean = Shape.oceanAt(plan, x, z)
+	if ocean then
+		return plan.seaLevel - Shape.oceanDepth(ocean), 0, 0, plan.seaLevel
+	end
 	local h, mesaP, riverD, waterLevel = land(P, plan, x, z)
 
 	-- Lakes come last and only lower the ground, so a River's bed stays open where it enters and

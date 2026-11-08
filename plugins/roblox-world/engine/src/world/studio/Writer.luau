@@ -64,6 +64,29 @@ function Writer.writeChunk(terrain: Terrain, plan, Gen, ci: number, cj: number, 
 		task.wait()
 	end
 
+	local flat = cols.flat
+	if flat then
+		-- Three blocks, the same voxels Chunk.slab gives for this Chunk, with no voxel arrays built.
+		local w0 = os.clock()
+		local s = plan.chunkSize
+		local function fill(y0, y1, material)
+			if y1 > y0 then
+				terrain:FillBlock(CFrame.new(cols.x0 + s / 2, (y0 + y1) / 2, cols.z0 + s / 2), Vector3.new(s, y1 - y0, s), material)
+			end
+		end
+		local skinFrom = math.max(flat.bottom, flat.bed - flat.skin)
+		fill(flat.bottom, skinFrom, lookup[flat.body])
+		fill(skinFrom, flat.bed, lookup[flat.surface])
+		fill(flat.bed, flat.level, Enum.Material.Water)
+		stats.write = os.clock() - w0
+		stats.slabs = 1
+		task.wait()
+		stats.cpuTotal = os.clock() - t0
+		stats.wall = (DateTime.now().UnixTimestampMillis - wall0) / 1000
+		stats.voxels = cols.n * cols.n * cols.ny
+		return stats
+	end
+
 	for i0 = 0, cols.n - 1, slabWidth do
 		local i1 = math.min(i0 + slabWidth - 1, cols.n - 1)
 		local g0 = os.clock()
