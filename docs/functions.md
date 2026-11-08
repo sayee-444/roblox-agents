@@ -26,6 +26,7 @@ Everything the `world` agent can do today, grouped by the job it serves, so that
 | Set up a project with no world context | `world-project-setup` | Measured |
 | The whole cycle again | `run`: `sync`, `test`, `describe`, `generate`, `verify`, `heights` | Measured, also on the 144 Chunks of `lab` in one call: 3 of 3 |
 | The same world at another size | `scale <factor>`, then `run`. It multiplies the extent, positions, lengths and heights and keeps the seeds. Writes no terrain | Measured: `scale 2` gave the 160 lines of a double written by hand, apart from one field that double added, and `run` passed after `scale 2` and `scale 0.5` on the test map |
+| An open Ocean | `oceans` in the World Plan, each a list of rectangles of whole Chunks with `depthCap`, under one `seaLevel`, then `run`. Each Ocean Chunk is a flat bed written as three plain blocks | Measured on `lab-ocean`: 576 Chunks in 29 s on an empty place, saved under 0.1 MB, and the agent changed `depthCap` and rewrote them in 2 of 2. See `docs/benchmark.md` |
 | Keep a new world off terrain it did not write | `run` and `generate` stop before any step when the world has written nothing and the place holds terrain. `--over-terrain` writes over it, on the developer's word. A world that has written Chunks is not checked, since the terrain may be its own | Measured: asked for a world with no word about the terrain, the agent stopped and asked in 3 of 3, in 7 s, with the place's cells unchanged. Told the terrain may go, `create` and `create-fork` passed 3 of 3 with no extra request |
 
 ## Edit
@@ -115,6 +116,7 @@ The transcript of a session is the record. A skill that loaded and an engine com
 - Detecting hand edits: the developer says which Chunks they touched. Designed in #30.
 - Routes that follow the relief: a River curves through points placed by hand and holds one water level.
 - Sites and the World Limit: the World Plan has fields for them, and no code generates them.
+- An Ocean's coast: an Ocean Chunk beside land is a wall as deep as its bed, and its depth does not grow from the coast. Designed in #70 and #71. `remove` does not take an Ocean out, and `status` does not list one.
 - Composing a Lake: `new --landforms` does not place one, so a Lake is written into the World Plan.
 - Biomes, Decoration, Structures, Gates, Themes, Zones, Seasons, weather and Graphics Profiles: designed only, in `docs/designs/world-systems.md`, which also holds their terms.
 
@@ -122,7 +124,7 @@ The transcript of a session is the record. A skill that loaded and an engine com
 
 Nothing has gone into deep water in Play or walked a Shore. Nothing has walked or dug on ground with `floorY` at 0, or seen the underside of a map from below. Streaming, play mode and phones. What the render rebuild does to a place with scripts, since Play runs them. A character walking a cave. The tests under Lute. Any system other than Windows. The guard's approval window in an interactive session. Opening a World Snapshot from a command.
 
-Valley Sides are measured by the tests alone. Where two valleys with different `sides` meet, as at a fork, the ground meets in a crease, which no one has looked at. A Point Bar's sand was measured on one half circle of a test, and a Lake's slope only on a round Lake among even hills. That a Lake's `vary` raises fewer hills on its bed was counted on `lab`, 33 against 10, and its stretches of steeper and gentler shore have not been looked at. A Lake's depth from its size, with its pools and shallows, is measured by the tests alone, on round Lakes among even hills.
+Valley Sides are measured by the tests alone. Where two valleys with different `sides` meet, as at a fork, the ground meets in a crease, which no one has looked at. A Point Bar's sand was measured on one half circle of a test, and a Lake's slope only on a round Lake among even hills. That a Lake's `vary` raises fewer hills on its bed was counted on `lab`, 33 against 10, and its stretches of steeper and gentler shore have not been looked at. A Lake's depth from its size, with its pools and shallows, is measured by the tests alone, on round Lakes among even hills. That an Ocean's plain blocks hold the voxels `borders` expects was checked only by the tests, through `Chunk.slab`, and not in Studio. No saved `lab-ocean` was opened again.
 
 `remove` when Studio fails partway has run only against the fake Studio of the tests. `scale` followed by `run` has run on the test map, and not on `lab`. A session's `effort` was measured on `edit` and `create-fork`, and not on a plan the model composes or on debugging.
 

@@ -7,6 +7,7 @@ Each folder holds a World Plan and generation state in `src/world/`, and rules a
 | World | What it tries |
 |---|---|
 | `lab` | The Test World under current work, meant whenever no name is given: curved Rivers with widths, a near-closed loop, a ring with an island, a third branch and oxbow lakes. Called `test-map-x2` until 2026-11-07 |
+| `lab-ocean` | Oceans, Seas and channels, 24 x 24 Chunks centred on the origin. Started on 2026-11-08 as a pure Ocean, to measure what one costs |
 | `exam-4` | A world composed by `new --landforms`, later extended with Rivers ending in a Lake |
 | `exam-1`, `exam-2`, `exam-3` | Benchmark runs by a clean agent session |
 | `place3`, `place4` | Early tests, and the `create-fork` benchmark |
