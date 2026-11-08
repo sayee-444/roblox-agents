@@ -24,6 +24,7 @@ Terrain generation runs in Studio. Whatever must run while people play, such as 
 
 - Declare Biomes as data, so that adding one touches no Generator logic. One Biome can cover meadow and forest through tree density.
 - A snow Biome can write ice instead of water.
+- Pending, asked by the developer on 2026-11-08: a Biome sets by default how rough and peaked the beds of its water are, through a River's or Lake's `bedRough`, `banks.rough` and `banks.vary`, so a mountain Biome's beds have more peaks and a plain's fewer. The World Plan can still set them.
 - Decoration comes from Biome parameters. A per-Chunk override can swap one model for another at the same positions, leaving hand-placed objects untouched.
 - Decoration is static and collides, except bushes and the like, which can be walked through.
 - Take models from an approved catalog, checked for hidden scripts. A catalog entry can keep the prompt used to generate the model, once the generator's commercial terms have been checked.
