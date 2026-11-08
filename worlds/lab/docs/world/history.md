@@ -1,3 +1,26 @@
+## 2026-11-08: Deeper water below the floor in fork, branch, oxbowA, oxbowB and river
+
+- **Why:** the developer wanted to test zones where the bed goes below `floorY` = 0 (more than 20 studs of water, as the water is at 20), with `rockUnder` and `floorY` untouched. Each valley's `sides` now go per point: steep at the deep point and gentle elsewhere. `depths` and `widths` went up where the slope alone was not enough.
+- **Implementation:** #62
+- **Chunks written:** -1,-1 -1,-2 -1,0 -1,1 -1,2 -1,3 -1,4 -1,5 -2,-1 -2,-2 -2,0 -2,1 -2,2 -2,3 -2,4 -2,5 -3,-1 -3,-2 -3,0 -3,1 -3,2 -3,3 -3,4 -3,5 -4,-1 -4,-2 -4,0 -4,1 -4,2 -4,3 -4,4 -4,5 -5,-1 -5,-2 -5,0 -5,1 -5,2 -5,3 -5,4 -5,5 0,-1 0,-2 0,0 0,1 0,2 0,3 0,4 1,-1 1,-2 1,0 1,1 1,2 1,3 1,4 2,-1 2,-2 2,0 2,1 2,2 2,3 2,4 3,-1 3,-2 3,0 3,1 3,2 3,3
+- **Result (bed y at the deep point, water depth = 20 - bed; before -> after):** river point 4 (-556,-156), asked 60: 5.7 -> 26.0. river last point asked 90: 42.2 -> 42.2 (unchanged, 77.5 max reached). fork point 5 (584,1264), asked 70 -> 90: 1.8 -> 22.2. branch point 3 (-1856,1144), asked 40 -> 60: 1.9 -> 23.1. oxbowA point 3 (-1448,-574), asked 40 -> 60: 1.4 -> 21.4. oxbowB point 3 (-186,1774), asked 30 -> 50: 1.0 -> 21.5. Lake untouched.
+- **Rock under:** voxel column read at each of those points: water, then 12 to 16 studs of solid (Sand or Ground), with air only below that wall.
+- **Restore:** put these lines back in the World Plan and generate those Chunks again.
+
+```luau
+-- valley sides
+sides = { 0.12, 0.12, 0.15, 0.2, 0.7, 1.2 }, -- valley
+sides = 0.12, -- forkValley
+sides = 0.1, -- oxbowValleyA
+sides = 0.1, -- oxbowValleyB
+sides = 0.12, -- branchValley
+-- depths and widths
+fork depths = { 8, 24, 12, 44, 70 }
+branch depths = { 8, 18, 40, 14, 22 }
+oxbowA depths = { 6, 22, 40, 22, 6 }
+oxbowB widths = { 14, 22, 30, 22, 14 }, depths = { 6, 18, 30, 18, 6 }
+```
+
 ## 2026-11-07: Lake shore shortened so the ground falls steeper into the water
 
 - **Why:** with `shore = 240` the lake reached 63.6 of the 110 studs asked, because its bed follows the slope of the ground around it. A shorter `shore` brings that slope down over fewer studs. A `shore` of 110 reached 66.5, since the ground nearer the Lake is lower.
