@@ -1,3 +1,11 @@
+## 2026-11-08: Regenerated with water at least 8 studs deep, and fewer hills in the Lake
+
+- **Why:** the developer saw wide sand where the gentle valleys' water was 1 stud deep and did not show, and too many peaks on the Lake's bed. The engine now leaves at least 8 studs of water at a River's deepest line, unless the World Plan asks less, and a Lake's `vary` changes its slope only along its shore. The World Plan did not change.
+- **Implementation:** #62
+- **Chunks written:** all 144.
+- **Result:** depth reached, from `heights`: river 8.0 to 77.5, fork 7.8 to 26.6, branch 7.9 to 39.9, oxbowA and oxbowB 6.0 at their ends, as asked, to 29.2 and 26.5, lake 110. Hills on the Lake's bed standing 15 studs or more over the ground within 48 studs: 33, the tallest 79 studs, before, and 10, the tallest 29, after.
+- **Restore:** generate every Chunk again on the engine of the commit before this entry.
+
 ## 2026-11-08: Deeper water below the floor in fork, branch, oxbowA, oxbowB and river
 
 - **Why:** the developer wanted to test zones where the bed goes below `floorY` = 0 (more than 20 studs of water, as the water is at 20), with `rockUnder` and `floorY` untouched. Each valley's `sides` now go per point: steep at the deep point and gentle elsewhere. `depths` and `widths` went up where the slope alone was not enough.
