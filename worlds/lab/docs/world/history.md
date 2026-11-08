@@ -1,3 +1,15 @@
+## 2026-11-08: Lake `lake` takes its default depth
+
+- **Why:** the engine now derives a Lake's depth from its size when `bedY` is left out (issue #64), with `depthVary` 0.4 by default, so the plan stops declaring both.
+- **Implementation:** #64
+- **Depth (from `heights`):** before, bed -90.0, depth 110 asked, 110.0 reached. After, bed -85.6, depth 106.2 from its size, 105.6 reached.
+- **Chunks written:** 0,1 1,1 2,1 3,1 0,2 1,2 2,2 3,2 0,3 1,3 2,3 3,3
+- **Restore:** replace the `lake` block in `lakes` in the World Plan with the one below, and generate those Chunks again.
+
+```luau
+{ id = "lake", seed = 7006, center = { 744, 1044 }, radius = 425, shore = 40, warp = 40, elongate = 1.2, angle = 30, bedY = -90, bedRough = 10, depthVary = 0.4, banks = { rough = 6, vary = 0.6 }, waterLevel = 20 },
+```
+
 ## 2026-11-08: This map is the default for tests
 
 - **Why:** the developer wants the next Implementations tested and compared on this state, the result of #62 with the larger Lake, in place of the result of #43.
