@@ -11,6 +11,9 @@ local Chunk = require("./Chunk")
 local Describe = {}
 
 local KINDS = { mountain = true, mesa = true, valley = true, cave = true }
+local REACHED_STEP = 24 -- studs along a River between the places where `heights` measures its depth
+local REACHED_ACROSS = 3 -- spots on each side of the line where it measures, out to 0.6 of the half width
+local REACHED_GRID = 8 -- spots on each side of a Lake's centre where it measures
 
 local function isNum(v)
 	return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
@@ -54,14 +57,20 @@ end
 
 local BANK_FIELDS = {
 	shore = { 1, math.huge },
-	shallows = { 0, math.huge },
-	shallowDepth = { 0, math.huge },
-	bedFlat = { 0, 0.9 },
-	steep = { 0.1, 10 },
 	rough = { 0, math.huge },
 	vary = { 0, 0.9 },
 	smooth = { 0, 100 },
 }
+
+-- Fields of the wall that the slope of the ground replaced on plugin 0.40.0, with what replaces each.
+local REMOVED_BANK_FIELDS = {
+	shallows = "the Shallows come from a gentle slope by themselves",
+	shallowDepth = "the Shallows come from a gentle slope by themselves",
+	bedFlat = "the bed curves into its deepest line",
+	steep = "the ground keeps its slope under the water",
+}
+
+local SIDES = { 0.02, 1.5 } -- rise over run at the water's edge, from a near plain to about 56 degrees
 
 local function checkBanks(errors, label, def, isLake)
 	if def.depthVary ~= nil and not (isNum(def.depthVary) and def.depthVary >= 0 and def.depthVary <= 0.9) then
@@ -77,7 +86,11 @@ local function checkBanks(errors, label, def, isLake)
 	end
 	for field, value in pairs(banks) do
 		local range = BANK_FIELDS[field]
-		if not range then
+		local removed = REMOVED_BANK_FIELDS[field]
+		if removed then
+			local slope = if isLake then "the slope of the ground around it" else "the sides of its valley"
+			table.insert(errors, string.format("%s: banks.%s was removed, since %s: how steep and deep the water gets comes from %s", label, field, removed, slope))
+		elseif not range then
 			table.insert(errors, label .. ": banks has no field " .. tostring(field))
 		elseif not (isNum(value) and value >= range[1] and value <= range[2]) then
 			table.insert(errors, label .. ": banks." .. field .. " must be from " .. range[1] .. " to " .. range[2])
@@ -85,6 +98,28 @@ local function checkBanks(errors, label, def, isLake)
 	end
 	if isLake and banks.shore ~= nil then
 		table.insert(errors, label .. ": a Lake's shore is its own field, not part of banks")
+	end
+end
+
+-- How steep a valley's Valley Sides are: one number, or one per point of its River.
+local function checkSides(errors, label, sides, rv)
+	local range = string.format(" from %s to %s, as rise over run at the water's edge", SIDES[1], SIDES[2])
+	if rv and rv.banks == nil then
+		table.insert(errors, label .. ": sides shape only a River with banks, so give river " .. tostring(rv.id) .. " banks or leave sides out")
+	end
+	if type(sides) == "table" then
+		if not rv or type(rv.points) ~= "table" or #sides ~= #rv.points then
+			table.insert(errors, label .. ": sides needs one per point of its River, or one number")
+			return
+		end
+		for i, value in ipairs(sides) do
+			if not (isNum(value) and value >= SIDES[1] and value <= SIDES[2]) then
+				table.insert(errors, label .. ": sides " .. i .. " must be" .. range)
+				return
+			end
+		end
+	elseif not (isNum(sides) and sides >= SIDES[1] and sides <= SIDES[2]) then
+		table.insert(errors, label .. ": sides must be" .. range)
 	end
 end
 
@@ -296,6 +331,9 @@ function Describe.validate(plan): { string }
 			elseif isNum(r.floorY) and r.floorY <= rv.waterLevel + 1 then
 				table.insert(e, label .. ": floorY must be above the water level")
 			end
+			if r.sides ~= nil then
+				checkSides(e, label, r.sides, rv)
+			end
 		elseif r.kind == "cave" then
 			checkPoints(e, label, r.points, 3)
 			if not (isNum(r.radius) and r.radius >= 4) then
@@ -478,18 +516,57 @@ function Describe.heights(plan): string
 			table.insert(lines, string.format("%s: ground %.1f at the mouth, axis y %d", r.id, ground(mouth[1], mouth[3]), mouth[2]))
 		end
 	end
+	-- How deep the water over (x, z) is, 0 where it is dry or in a Lake.
+	local function water(x, z)
+		for _, lk in ipairs(plan.lakes or {}) do
+			if math.sqrt((x - lk.center[1]) ^ 2 + (z - lk.center[2]) ^ 2) < lk.radius * (lk.elongate or 1) + lk.warp then
+				return 0
+			end
+		end
+		local h, _, _, level = Shape.height(plan, x, z)
+		return if level > 0 then math.max(0, level - h) else 0
+	end
 	for _, rv in ipairs(plan.rivers) do
 		local a, b = rv.points[1], rv.points[#rv.points]
-		local route = Geo.polyline2(Route.points(rv)).length
+		local poly = Geo.polyline2(Route.points(rv))
 		local width = Route.width(rv)
 		local depth = Route.depth(rv)
 		local deepRange = if depth.shallowest == depth.deepest then tostring(depth.deepest) else depth.shallowest .. " to " .. depth.deepest
 		local narrowest, widest = math.round(width.narrowest), math.round(width.widest)
 		local span = if narrowest == widest then tostring(widest) else narrowest .. " to " .. widest
-		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d, route %d studs, curve %s, meander %d, depth %s, width %s%s", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2], route, tostring(rv.curve or 0), rv.meander or 0, deepRange, span, if rv.loops and #rv.loops > 0 then ", loops " .. #rv.loops else ""))
+		-- The slope decides how deep the water gets, so the depth reached is measured across the water,
+		-- every REACHED_STEP studs along its line, outside any Lake.
+		local shallowest, deepest = math.huge, 0
+		for _, seg in ipairs(poly.segs) do
+			for u = 0, seg[6] - 1, REACHED_STEP do
+				local px, pz = seg[1] + seg[3] * u / seg[6], seg[2] + seg[4] * u / seg[6]
+				local nx, nz = -seg[4] / seg[6], seg[3] / seg[6]
+				local hw = width.at(seg[7] + u)
+				local here = 0
+				for k = -REACHED_ACROSS, REACHED_ACROSS do
+					local off = hw * 0.6 * k / REACHED_ACROSS
+					here = math.max(here, water(px + nx * off, pz + nz * off))
+				end
+				if here > 0 then
+					shallowest, deepest = math.min(shallowest, here), math.max(deepest, here)
+				end
+			end
+		end
+		local reached = if deepest > 0 then string.format("reached %.1f to %.1f", shallowest, deepest) else "reached none"
+		table.insert(lines, string.format("%s: bed %.1f at %d %d, %.1f at %d %d, route %d studs, curve %s, meander %d, depth %s asked, %s, width %s%s", rv.id, ground(a[1], a[2]), a[1], a[2], ground(b[1], b[2]), b[1], b[2], poly.length, tostring(rv.curve or 0), rv.meander or 0, deepRange, reached, span, if rv.loops and #rv.loops > 0 then ", loops " .. #rv.loops else ""))
 	end
 	for _, lk in ipairs(plan.lakes or {}) do
-		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel))
+		local deepest = 0
+		local reach = lk.radius * (lk.elongate or 1)
+		for i = -REACHED_GRID, REACHED_GRID do
+			for j = -REACHED_GRID, REACHED_GRID do
+				local h, _, _, level = Shape.height(plan, lk.center[1] + reach * i / REACHED_GRID, lk.center[2] + reach * j / REACHED_GRID)
+				if level > 0 then
+					deepest = math.max(deepest, level - h)
+				end
+			end
+		end
+		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d, depth %g asked, %.1f reached", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel, lk.waterLevel - lk.bedY, deepest))
 	end
 	return table.concat(lines, "\n")
 end

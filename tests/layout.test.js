@@ -160,6 +160,15 @@ test('new --landforms writes a whole World Plan and records its layout', () => {
   });
 });
 
+test('new --landforms gives each valley medium sides and banks without the fields Valley Sides replaced', () => {
+  inTemp((dir) => {
+    assert.strictEqual(world('new', dir, '--place', 'P', '--seed', '555', '--landforms', 'fork').status, 0);
+    const plan = fs.readFileSync(path.join(dir, 'src/world/plan.luau'), 'utf8');
+    assert.strictEqual(plan.match(/kind = "valley"[^\n]*sides = 0\.3 \}/g).length, 2, 'both valleys');
+    for (const removed of ['shallows', 'shallowDepth', 'bedFlat', 'steep =']) assert.ok(!plan.slice(0, plan.indexOf('materials =')).includes(removed), removed);
+  });
+});
+
 test('new --landforms leaves out what was not asked for', () => {
   inTemp((dir) => {
     assert.strictEqual(world('new', dir, '--place', 'P', '--landforms', 'mesa').status, 0);

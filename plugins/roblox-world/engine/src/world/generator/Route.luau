@@ -9,7 +9,7 @@ local Route = {}
 
 local STEP = 24 -- studs between points, which keeps a bend round next to a 4-stud voxel
 local MEANDER_SCALE = 90 -- studs along the line for one swing of the meander
-local BEND_STEP = 8 -- studs between the places where a bend's tightness is measured
+local BEND_STEP = 8 -- studs between the places where a bend is measured
 local BEND_REACH = 60 -- studs looked at on each side of a place, to measure the turn there
 local TIGHTEST = math.pi / 2 -- a turn this sharp within that reach gets all of bendWiden
 local LOOP_STEP = 50 -- largest degrees of a loop between two of its nodes, which keeps it round
@@ -152,21 +152,31 @@ local function pointAt(points, arcs, s)
 	return mix(points[i], points[i + 1], (s - arcs[i]) / (arcs[i + 1] - arcs[i]))
 end
 
--- How much the line turns around each place, every BEND_STEP studs: 0 straight, 1 at TIGHTEST or more.
-local function tightness(points, arcs)
+-- How the line turns around each place, every BEND_STEP studs: the angle it turns within BEND_REACH on
+-- each side, positive towards its left, the side Geo.dist2 calls 1, and the studs that angle spans.
+local function turns(points, arcs)
 	local length = arcs[#arcs]
 	local out = {}
 	for k = 0, math.ceil(length / BEND_STEP) do
 		local s = math.min(k * BEND_STEP, length)
+		local s0, s1 = math.max(s - BEND_REACH, 0), math.min(s + BEND_REACH, length)
 		local here = pointAt(points, arcs, s)
-		local from = pointAt(points, arcs, math.max(s - BEND_REACH, 0))
-		local to = pointAt(points, arcs, math.min(s + BEND_REACH, length))
+		local from = pointAt(points, arcs, s0)
+		local to = pointAt(points, arcs, s1)
 		local ax, az = here[1] - from[1], here[2] - from[2]
 		local bx, bz = to[1] - here[1], to[2] - here[2]
-		local turn = math.abs(math.atan2(ax * bz - az * bx, ax * bx + az * bz))
-		out[k + 1] = math.min(turn / TIGHTEST, 1)
+		out[k + 1] = { math.atan2(ax * bz - az * bx, ax * bx + az * bz), s1 - s0 }
 	end
 	return out
+end
+
+-- A value measured every BEND_STEP studs along a line `length` long, at `s` along it, eased between.
+local function between(samples, length: number, s: number): number
+	local place = s / BEND_STEP
+	local k = math.min(math.floor(place), #samples - 2)
+	-- The last gap ends at the route's end, so it can be shorter than a step.
+	local gap = math.min(k + 1, length / BEND_STEP) - k
+	return samples[k + 1] + (samples[k + 2] - samples[k + 1]) * (place - k) / gap
 end
 
 -- Values declared per point, as a function of the distance along the line: each holds at its point
@@ -206,6 +216,30 @@ function Route.depth(rv)
 	}
 end
 
+-- Values declared one per point of a River, as a function of the distance along its line, each
+-- holding at its point and easing into the next, as `widths` do.
+function Route.along(rv, values)
+	local points, nodeAt = trace(rv)
+	return eased(values, arcsOf(points), nodeAt)
+end
+
+-- How sharply a River's line curves along it, in radians per stud: positive where it turns towards the
+-- side Geo.dist2 calls 1, which is then the inside of the bend. `at(s)` takes the distance along the line.
+function Route.bend(rv)
+	local points = trace(rv)
+	local arcs = arcsOf(points)
+	local length = arcs[#arcs]
+	local bends = {}
+	for k, turn in ipairs(turns(points, arcs)) do
+		bends[k] = turn[1] / turn[2]
+	end
+	return {
+		at = function(s)
+			return between(bends, length, math.clamp(s, 0, length))
+		end,
+	}
+end
+
 -- A River's half width along its line. `at(s)` takes the distance along the line that Geo.dist2
 -- reports. `narrowest` and `widest` count the widening at bends and not the Shape's noise.
 function Route.width(rv)
@@ -213,7 +247,14 @@ function Route.width(rv)
 	local arcs = arcsOf(points)
 	local length = arcs[#arcs]
 	local bendWiden = rv.bendWiden or 0
-	local bends = if bendWiden > 0 then tightness(points, arcs) else nil
+	-- How much the line turns around each place: 0 straight, 1 at TIGHTEST or more.
+	local bends
+	if bendWiden > 0 then
+		bends = {}
+		for k, turn in ipairs(turns(points, arcs)) do
+			bends[k] = math.min(math.abs(turn[1]) / TIGHTEST, 1)
+		end
+	end
 
 	local declared = if rv.widths then eased(rv.widths, arcs, nodeAt) else function() return rv.halfWidth end
 
@@ -222,12 +263,7 @@ function Route.width(rv)
 		if not bends then
 			return declared(s)
 		end
-		local place = s / BEND_STEP
-		local k = math.min(math.floor(place), #bends - 2)
-		-- The last gap ends at the route's end, so it can be shorter than a step.
-		local gap = math.min(k + 1, length / BEND_STEP) - k
-		local tight = bends[k + 1] + (bends[k + 2] - bends[k + 1]) * (place - k) / gap
-		return declared(s) * (1 + bendWiden * tight)
+		return declared(s) * (1 + bendWiden * between(bends, length, s))
 	end
 
 	local narrowest, widest = math.huge, 0

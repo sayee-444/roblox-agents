@@ -1,12 +1,27 @@
 local plan = require("../src/world/plan")
 local Shape = require("../src/world/generator/Shape")
 local Geo = require("../src/world/generator/Geo")
+local Describe = require("../src/world/generator/Describe")
+local noBanks = require("./noBanks")
 
 local function H(x, z)
 	return (Shape.height(plan, x, z))
 end
 
 return {
+	["a world without banks keeps the heights it had before Valley Sides"] = function(t)
+		local old = noBanks.plan()
+		t.eq(#Describe.validate(old), 0, table.concat(Describe.validate(old), "; "))
+		for _, sample in ipairs(noBanks.samples) do
+			local h, mesaP, riverD, water = Shape.height(old, sample[1], sample[2])
+			local at = " at " .. sample[1] .. ", " .. sample[2]
+			t.eq(h, sample[3], "height" .. at)
+			t.eq(mesaP, sample[4], "mesa" .. at)
+			t.eq(riverD, sample[5], "sand distance" .. at)
+			t.eq(water, sample[6], "water" .. at)
+		end
+	end,
+
 	["height is deterministic"] = function(t)
 		for i = 1, 100 do
 			local x, z = i * 13.7 - 600, i * 9.1 - 400

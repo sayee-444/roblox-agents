@@ -512,8 +512,8 @@ return {
 
 	["heights report the range of a River's depth"] = function(t)
 		local p = straightPlan({ widths = { 20, 20, 20 }, depths = { 8, 30, 12 } })
-		t.ok(Describe.heights(p):find("depth 8 to 30", 1, true) ~= nil, Describe.heights(p))
-		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20 }, bedY = 10 })):find("depth 10,", 1, true) ~= nil, "one depth")
+		t.ok(Describe.heights(p):find("depth 8 to 30 asked", 1, true) ~= nil, Describe.heights(p))
+		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20 }, bedY = 10 })):find("depth 10 asked,", 1, true) ~= nil, "one depth")
 	end,
 
 	["heights report the range of a River's width"] = function(t)

@@ -48,6 +48,7 @@ return {
 			riverId = "river",
 			halfWidth = 700,
 			floorY = 28,
+			sides = { 0.12, 0.12, 0.15, 0.9, 0.7, 1.2 },
 		},
 		{
 			id = "forkValley",
@@ -56,6 +57,7 @@ return {
 			riverId = "fork",
 			halfWidth = 500,
 			floorY = 28,
+			sides = { 0.12, 0.12, 0.12, 0.3, 1.5 },
 		},
 		{
 			id = "oxbowValleyA",
@@ -64,6 +66,7 @@ return {
 			riverId = "oxbowA",
 			halfWidth = 300,
 			floorY = 28,
+			sides = { 0.1, 0.1, 1.5, 0.1, 0.1 },
 		},
 		{
 			id = "oxbowValleyB",
@@ -72,6 +75,7 @@ return {
 			riverId = "oxbowB",
 			halfWidth = 300,
 			floorY = 28,
+			sides = { 0.1, 0.1, 1.5, 0.1, 0.1 },
 		},
 		{
 			id = "branchValley",
@@ -80,6 +84,7 @@ return {
 			riverId = "branch",
 			halfWidth = 500,
 			floorY = 28,
+			sides = { 0.12, 0.12, 1.5, 0.12, 0.12 },
 		},
 		{
 			-- Cave in the south-east, where the mesa stood before it moved.
@@ -102,7 +107,7 @@ return {
 			bendWiden = 0.5,
 			depths = { 12, 34, 18, 60, 30, 90 }, -- below the water
 			depthVary = 0.5,
-			banks = { shore = 50, shallows = 30, shallowDepth = 4, bedFlat = 0.2, steep = 1.6, rough = 3, vary = 0.6, smooth = 48 },
+			banks = { shore = 50, rough = 3, vary = 0.6, smooth = 48 },
 			bedRough = 6,
 			waterLevel = 20,
 		},
@@ -115,9 +120,9 @@ return {
 			meander = 60,
 			widths = { 15, 25, 30, 35, 50 }, -- starts thin where it leaves the River
 			bendWiden = 0.5,
-			depths = { 8, 24, 12, 44, 70 }, -- below the water
+			depths = { 8, 24, 12, 44, 90 }, -- below the water
 			depthVary = 0.5,
-			banks = { shore = 36, shallows = 20, shallowDepth = 3, bedFlat = 0.2, steep = 1.4, rough = 2.5, vary = 0.6, smooth = 40 },
+			banks = { shore = 36, rough = 2.5, vary = 0.6, smooth = 40 },
 			bedRough = 3,
 			waterLevel = 20,
 		},
@@ -129,9 +134,9 @@ return {
 			meander = 60,
 			widths = { 15, 25, 30, 35, 35 },
 			bendWiden = 0.5,
-			depths = { 8, 18, 40, 14, 22 }, -- below the water
+			depths = { 8, 18, 60, 14, 22 }, -- below the water
 			depthVary = 0.5,
-			banks = { shore = 30, shallows = 12, shallowDepth = 2, bedFlat = 0.3, steep = 2, rough = 3, vary = 0.5, smooth = 40 },
+			banks = { shore = 30, rough = 3, vary = 0.5, smooth = 40 },
 			bedRough = 3,
 			waterLevel = 20,
 		},
@@ -141,8 +146,8 @@ return {
 			points = { { -1722, -436 }, { -1618, -568 }, { -1448, -574 }, { -1336, -448 }, { -1360, -280 } },
 			curve = 1,
 			widths = { 14, 30, 40, 30, 14 },
-			depths = { 6, 22, 40, 22, 6 }, -- below the water
-			banks = { shore = 30, shallows = 16, shallowDepth = 3, bedFlat = 0.4, steep = 1.3, rough = 2, vary = 0.5 },
+			depths = { 6, 22, 60, 22, 6 }, -- below the water
+			banks = { shore = 30, rough = 2, vary = 0.5 },
 			bedRough = 2,
 			waterLevel = 20,
 		},
@@ -151,15 +156,15 @@ return {
 			id = "oxbowB",
 			points = { { -268, 1510 }, { -304, 1666 }, { -186, 1774 }, { -34, 1728 }, { 2, 1572 } },
 			curve = 1,
-			widths = { 14, 22, 30, 22, 14 },
-			depths = { 6, 18, 30, 18, 6 }, -- below the water
-			banks = { shore = 30, shallows = 16, shallowDepth = 3, bedFlat = 0.3, steep = 1.3, rough = 2, vary = 0.5 },
+			widths = { 14, 26, 40, 26, 14 },
+			depths = { 6, 18, 50, 18, 6 }, -- below the water
+			banks = { shore = 30, rough = 2, vary = 0.5 },
 			bedRough = 2,
 			waterLevel = 20,
 		},
 	},
 	lakes = {
-		{ id = "lake", seed = 7006, center = { 744, 1044 }, radius = 340, shore = 240, warp = 40, elongate = 1.2, angle = 30, bedY = -90, bedRough = 10, depthVary = 0.4, banks = { shallows = 50, shallowDepth = 6, bedFlat = 0.25, steep = 1.3, rough = 6, vary = 0.6 }, waterLevel = 20 },
+		{ id = "lake", seed = 7006, center = { 744, 1044 }, radius = 425, shore = 40, warp = 40, elongate = 1.2, angle = 30, bedY = -90, bedRough = 10, depthVary = 0.4, banks = { rough = 6, vary = 0.6 }, waterLevel = 20 },
 	},
 	sites = {},
 	worldLimit = nil, -- not requested yet

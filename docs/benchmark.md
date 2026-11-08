@@ -104,6 +104,7 @@ What the next run is compared against. `agent create-fork`, 3 runs each, medians
 | 0.33.0 | | 0 of 1: `Target is not reachable` at `generate` |
 | 0.36.0: a yield every 0.25 s of work | 168 | 3 of 3 |
 | 0.37.0: a height does its costly part only near water | 121 | 3 of 3 |
+| 0.40.0: Valley Sides, with every pass of a River shaping its whole valley | 140 | 3 of 3 |
 
 The map stayed the same on 0.37.0, measured two ways on `lab`. Every value `Shape.height` returns over the 144 Chunks gave the same fingerprint as on 0.36.0. The 49 Chunks with water, written by the engine of 0.33.0, passed `verify` on 0.37.0 with `identical=true` on all 49. The fingerprint also held against the engine of 0.33.0 on the test map, whose River has no banks, which `lab` cannot cover, and on a composed world with a fork. The worst Chunk's heights went from 4.88 s to 2.06 s.
 
@@ -120,6 +121,8 @@ At the end of #53, on 0.37.1, 3 runs each, all passed: `start` 1 s and 16,348 to
 On 0.39.0, with no memory and with the guard for a new world, 3 runs each, all passed: `recover` 5 s and 25,369 tokens, `create` 21 s and 25,856, `create-fork` 21 s and 26,109, `edit` 12 s and 38,954. `start` on 0.38.0: 1 s and 12,189. `engine` 11.05 s, against 10.8 s on 0.38.0, a run that skips the guard. `cost`: 462 tokens always on, 11,200 on invoke.
 
 On 0.39.0, the `world` agent regenerated the whole of `lab` in a place emptied by the developer's order, asked in Spanish as the developer would: 133 s from start to end, of which `run` 114 s and `generate` 106 s, in 4 requests, 67,652 tokens sent and 1,115 output. On 0.33.0 that `run` failed, since Studio stopped answering.
+
+On 0.40.0, with Valley Sides from #62, measured on 2026-11-07. `run` on the whole of `lab`, over its own terrain, took 137.0, 140.5 and 140.5 s, of which `generate` 127.9 to 131.3 s and `heights` 0.9 s, against 121 s on 0.37.0 and 114 s in the one run of 0.39.0. 40,000 heights over `lab` timed in Studio, writing no terrain, took 1.39 and 1.40 s on 0.39.0 and 1.62 and 1.63 s on 0.40.0. Of that rise, about 0.12 s came from the new cross-section and about 0.11 s from letting every pass of a River within reach shape the ground of its whole valley, so that it has no step halfway between two passes. Narrowing that fade to a fixed 40 studs saved 0.07 s and left a ramp of 6 studs in 16. The `world` agent updated `lab`'s plan and regenerated all 144 Chunks in 3.2 min, with `run` 138.7 s, in 12 requests, 363,211 tokens sent and 6,580 output. Asked to keep the Lake's depth, it shortened the Lake's `shore` and rewrote its 12 Chunks in 1.5 min. `cost`: 462 tokens always on, 11,500 on invoke.
 
 All of these ran on `sonnet`, whose default `effort` is `medium` and which reasoned for almost nothing: 74 tokens in the median `edit`. So they say little about a session on another model or a higher `effort`.
 
