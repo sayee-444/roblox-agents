@@ -1,5 +1,15 @@
 # World history
 
+## 2026-11-09: Two Landmasses carved out of the Ocean, and its depthCap removed
+
+- **Why:** the developer wanted land in `lab-ocean`: a large Landmass at Chunks i -6..1, j -4..4 and a smaller one at i 3..6, j -2..2, with a one-Chunk Ocean channel at i = 2, and the Ocean taking its default depth from the coast instead of the cap of 400.
+- **Chunks written:** all 576 except Locked 1,0, which lies inside the large Landmass and was not overwritten.
+- **Restore:** replace the `ocean` entry in `oceans` with the block below, and write every unlocked Chunk again.
+
+```luau
+{ id = "ocean", seed = 8001, chunks = { { -11, -11, 12, 12 } }, depthCap = 400 },
+```
+
 ## 2026-11-09: Chunk 1,0 emptied by hand and Locked
 
 - **Why:** the developer wanted a hole beside the spawn to fall into the void and see the Destroy Height of -4,000 work. They fell from the bed at -380 and were removed after more than 5 s, timed by eye, and chose to keep the hole.
