@@ -518,9 +518,10 @@ return {
 
 	["heights report the range of a River's width"] = function(t)
 		t.ok(Describe.heights(straightPlan({ widths = { 14, 20, 32 } })):find("width 14 to 32", 1, true) ~= nil, "a range")
-		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20 } })):find("width 20$") ~= nil, "one width")
-		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 29.6 } })):find("width 20 to 30$") ~= nil, "rounded, not cut")
-		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20.3 } })):find("width 20$") ~= nil, "one width once rounded")
+		-- A River's line ends where the next line begins.
+		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20 } })):find("width 20\n", 1, true) ~= nil, "one width")
+		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 29.6 } })):find("width 20 to 30\n", 1, true) ~= nil, "rounded, not cut")
+		t.ok(Describe.heights(straightPlan({ widths = { 20, 20, 20.3 } })):find("width 20\n", 1, true) ~= nil, "one width once rounded")
 	end,
 
 	["heights say how a River is shaped, so a run knows without reading the plan"] = function(t)

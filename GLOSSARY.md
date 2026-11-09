@@ -86,6 +86,10 @@ _Avoid_: frozen chunk, manual chunk
 How many Chunks a world spans along each side, as the World Plan declares.
 _Avoid_: dimensions, map size
 
+**Depth Limit**:
+The lowest height any bed, cave floor or other ground a character can reach may take in a world, as the World Plan declares.
+_Avoid_: max depth, floor
+
 **Generate**:
 To calculate Chunks from the World Plan and the seeds and write them to a place, whether they exist there already or not.
 _Avoid_: regenerate, rebuild
@@ -99,6 +103,10 @@ _Avoid_: sandbox
 **Game Place**:
 The place players join, which holds only Chunks approved for release.
 _Avoid_: live map, production map
+
+**Destroy Height**:
+The height below which Roblox removes anything that falls in a place, a setting of each place that lies below the Depth Limit of every world it holds.
+_Avoid_: kill height, void level
 
 ### Working on the agent
 

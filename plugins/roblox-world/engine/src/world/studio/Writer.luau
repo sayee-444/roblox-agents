@@ -58,8 +58,11 @@ function Writer.writeChunk(terrain: Terrain, plan, Gen, ci: number, cj: number, 
 	local lookup = Writer.materialLookup(Gen.Materials)
 	if opts.clear ~= false then
 		local c0 = os.clock()
-		-- Well below this Chunk's own lowest ground, which an earlier plan may have taken deeper.
-		Writer.clear(terrain, plan, Gen, ci, cj, math.min(cols.ymin, plan.clearBottom or -256), math.max(cols.ymax, plan.clearTop or 1024))
+		-- Down to the Depth Limit, the deepest an earlier plan may have taken this Chunk, so none of its old bed or
+		-- water stays hidden under the new one. Clearing empty space costs nothing measurable, and 3,200 studs of
+		-- rock under one Chunk took 0.14 s, measured on 2026-11-08.
+		local bottom = math.min(cols.ymin, Gen.Shape.depthLimit(plan), plan.clearBottom or math.huge)
+		Writer.clear(terrain, plan, Gen, ci, cj, bottom, math.max(cols.ymax, plan.clearTop or 1024))
 		stats.clear = os.clock() - c0
 		task.wait()
 	end

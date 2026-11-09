@@ -12,6 +12,7 @@ local suites = {
 	{ "route", require("./route.test") },
 	{ "bank", require("./bank.test") },
 	{ "ocean", require("./ocean.test") },
+	{ "depth", require("./depth.test") },
 }
 
 local T = {}
