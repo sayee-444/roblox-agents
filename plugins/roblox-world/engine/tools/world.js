@@ -506,7 +506,8 @@ async function studioLine() {
     for (const { id, name } of studios) {
       studio.id = id;
       const cells = Number(await studio.luau('return workspace.Terrain:CountCells()'));
-      open.push(`${name} open, ${cells.toLocaleString('en-US')} terrain cells`);
+      const destroy = Number(await studio.luau('return workspace.FallenPartsDestroyHeight'));
+      open.push(`${name} open, ${cells.toLocaleString('en-US')} terrain cells, Destroy Height ${destroy.toLocaleString('en-US')}`);
     }
     return `Studio: ${open.join('; ')}`;
   };
@@ -645,6 +646,30 @@ async function refuseOtherTerrain(studio, ctx) {
   if (cells > 0) throw new Error(`${ctx.flags.place} already holds ${cells.toLocaleString('en-US')} terrain cells that this world did not write, so nothing was written. It may be another world or a game's map. Tell the developer, and only on their word run this again with --over-terrain, which replaces the terrain in this world's Chunks and leaves the rest.`);
 }
 
+// Roblox removes what falls below a place's Destroy Height, so a write first makes sure a character on the deepest
+// bed survives. The plan's value is set in the place. With none declared, the place's own value stays, and a world
+// that goes deeper writes nothing. Runs after sync, which writes no terrain, since the depths come from the plan.
+async function guardDestroyHeight(studio, ctx) {
+  const facts = JSON.parse(await studio.luau(`return ${OPS}.depthFacts()`));
+  const place = ctx.flags.place;
+  const n = (value) => Number(value).toLocaleString('en-US');
+  if (facts.invalid) {
+    ctx.failed = true;
+    return `the World Plan is invalid, so nothing was written and the Destroy Height of ${place} stays ${n(facts.place)}:\n${facts.invalid.join('\n')}`;
+  }
+  if (typeof facts.destroyHeight === 'number') {
+    if (facts.destroyHeight === facts.place) return `Destroy Height of ${place} is ${n(facts.place)}, as the World Plan declares`;
+    const now = Number(await studio.luau(`return ${OPS}.setDestroyHeight(${facts.destroyHeight})`));
+    if (now !== facts.destroyHeight) throw new Error(`Nothing was written: Studio did not take the Destroy Height ${n(facts.destroyHeight)} for ${place} and holds ${n(now)}. Ask the developer to set Workspace.FallenPartsDestroyHeight in Studio's Properties window.`);
+    return `Destroy Height of ${place} set from ${n(facts.place)} to ${n(now)}, as the World Plan declares. It lasts once the developer saves the place`;
+  }
+  const deep = facts.deepest;
+  if (!deep) return `Destroy Height of ${place} left at ${n(facts.place)}, since the World Plan declares none and nothing in it goes below the ground`;
+  const where = `${n(deep.y)} in ${deep.kind} ${deep.id}`;
+  if (deep.y > facts.place) return `Destroy Height of ${place} left at ${n(facts.place)}, since the World Plan declares none, and the deepest bed, ${where}, lies above it`;
+  throw new Error(`Nothing was written: the deepest bed of this world, ${where}, is not above ${place}'s Destroy Height ${n(facts.place)}, below which Roblox removes what falls, so a character there would be removed. Either declare destroyHeight in the World Plan, below its Depth Limit ${n(facts.depthLimit)}, and run this again so the engine sets it in the place, or set Workspace.FallenPartsDestroyHeight in Studio's Properties window.`);
+}
+
 async function main() {
   const { flags, positional } = parseArgs(process.argv.slice(2));
   const [command, ...args] = positional;
@@ -682,12 +707,14 @@ async function main() {
     await studio.connect(flags.place);
     if (['run', 'generate'].includes(command)) await refuseOtherTerrain(studio, ctx);
     const started = Date.now();
+    const guards = { 'destroy height': guardDestroyHeight };
+    if (['run', 'generate'].includes(command)) order.splice(order.indexOf('sync') + 1, 0, 'destroy height');
     for (const name of [...new Set(order)]) {
       if (ctx.failed && ['generate', 'borders', 'verify', 'heights', 'capture'].includes(name)) {
         console.log(`${name}: skipped after a failure`);
       } else {
         const t0 = Date.now();
-        const text = await steps[name](studio, ctx, name === command ? args : []);
+        const text = await (steps[name] || guards[name])(studio, ctx, name === command ? args : []);
         console.log(`${name} (${((Date.now() - t0) / 1000).toFixed(1)} s): ${text}`);
       }
     }

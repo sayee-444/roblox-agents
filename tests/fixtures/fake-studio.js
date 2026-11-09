@@ -8,6 +8,8 @@
 //   FAKE_STUDIO_IMPACT=<json>    what a change to a Landform would rewrite
 //   FAKE_STUDIO_INVALID=true     the plan fails validation
 //   FAKE_STUDIO_UNREACHABLE=<s>  Luau holding this text fails as Studio fails when it is too busy to answer
+//   FAKE_STUDIO_DESTROY=<n>      the place's Destroy Height, -500 when not set, as in a new place
+//   FAKE_STUDIO_DEPTH=<json>     what depthFacts answers: the place's Destroy Height, the plan's limits and its deepest bed
 const fs = require('fs');
 const readline = require('readline');
 
@@ -27,6 +29,10 @@ function luau(code) {
   if (code.includes('shared.World.add(')) log('paste');
   const impact = code.match(/\.impact\((.*)\)/);
   if (impact) { log(`impact ${impact[1]}`); return process.env.FAKE_STUDIO_IMPACT; }
+  const setHeight = code.match(/\.setDestroyHeight\((.*?)\)/);
+  if (setHeight) { log(`set destroy height ${setHeight[1]}`); return setHeight[1]; }
+  if (code.includes('.depthFacts()')) return process.env.FAKE_STUDIO_DEPTH || JSON.stringify({ place: -500, depthLimit: -3500, deepest: { id: 'ocean', kind: 'ocean', y: -80 } });
+  if (code.includes('FallenPartsDestroyHeight')) return process.env.FAKE_STUDIO_DESTROY || '-500';
   const generate = code.match(/\.generate\((.*?)\);/);
   if (generate) { log(`generate ${generate[1]}`); return 'generated'; }
   if (code.includes('.stateSource()')) return 'return {\n\tchunks = {},\n}';

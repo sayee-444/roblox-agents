@@ -547,7 +547,7 @@ test('status writes nothing, in the world or in Studio', () => {
 test('status names every place open, since several open means asking the developer', () => {
   withPlan({}, (dir) => {
     const { stdout } = inStudio(dir, { FAKE_STUDIO_PLACES: 'A,B', FAKE_STUDIO_CELLS: '5' }, 'status', '--project', dir);
-    assert.match(stdout, /A open, 5 terrain cells; B open, 5 terrain cells/);
+    assert.match(stdout, /A open, 5 terrain cells[^;]*; B open, 5 terrain cells/);
   });
 });
 
@@ -786,4 +786,93 @@ test('a new world writes at once on a place with no terrain', () => {
     assert.strictEqual(status, 0);
     assert.ok(calls.some((call) => call.startsWith('generate')), calls.join(' | '));
   });
+});
+
+// The Destroy Height: where Roblox removes what falls in the place. The fake Studio's place holds -500, as a new place does.
+const DEPTH = (facts) => JSON.stringify({ place: -500, depthLimit: -3500, deepest: { id: 'ocean', kind: 'ocean', y: -80 }, ...facts });
+
+test('generate sets the Destroy Height the World Plan declares before writing, and says from what to what', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_DEPTH: DEPTH({ destroyHeight: -4000 }) }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(calls.includes('set destroy height -4000'), calls.join(' | '));
+    assert.match(stdout, /Destroy Height of P set from -500 to -4,000, as the World Plan declares/);
+    assert.match(stdout, /save/i);
+    assert.ok(calls.indexOf('set destroy height -4000') < calls.findIndex((call) => call.startsWith('generate')), 'set before any write');
+  });
+});
+
+test('generate leaves a Destroy Height alone when the place already holds the declared one', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_DEPTH: DEPTH({ place: -4000, destroyHeight: -4000 }) }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(!calls.some((call) => call.startsWith('set destroy height')), calls.join(' | '));
+    assert.match(stdout, /Destroy Height of P is -4,000, as the World Plan declares/);
+  });
+});
+
+test('a world that declares no Destroy Height and goes deeper than the place allows stops before writing, naming both heights and the ways out', () => {
+  withPlan({}, (dir) => {
+    const facts = DEPTH({ deepest: { id: 'ocean', kind: 'ocean', y: -580 } });
+    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_DEPTH: facts }, 'run', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /Nothing was written/);
+    assert.match(stderr, /-580 in ocean ocean/);
+    assert.match(stderr, /P's Destroy Height -500/);
+    assert.match(stderr, /destroyHeight/, 'declare it in the World Plan');
+    assert.match(stderr, /Properties/, 'or set it in Studio');
+    assert.ok(!calls.some((call) => call.startsWith('generate') || call.startsWith('set destroy height')), calls.join(' | '));
+  });
+});
+
+test('a world above the place\'s Destroy Height writes as before and leaves the setting alone', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_DEPTH: DEPTH({}) }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.ok(!calls.some((call) => call.startsWith('set destroy height')), calls.join(' | '));
+    assert.match(stdout, /Destroy Height of P left at -500, since the World Plan declares none, and the deepest bed, -80 in ocean ocean, lies above it/);
+  });
+});
+
+test('an invalid plan writes nothing and touches no setting, since its depths cannot be trusted', () => {
+  withPlan({}, (dir) => {
+    const facts = DEPTH({ destroyHeight: -4000, invalid: ['ocean ocean: reaches -3580, 80 below the Depth Limit -3500'] });
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_DEPTH: facts }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stdout, /80 below the Depth Limit/);
+    assert.ok(!calls.some((call) => call.startsWith('generate') || call.startsWith('set destroy height')), calls.join(' | '));
+  });
+});
+
+test('status shows each open place\'s Destroy Height beside its terrain cells', () => {
+  withPlan({}, (dir) => {
+    const { stdout } = inStudio(dir, { FAKE_STUDIO_PLACES: 'A,B', FAKE_STUDIO_CELLS: '5', FAKE_STUDIO_DESTROY: '-4000' }, 'status', '--project', dir);
+    assert.match(stdout, /A open, 5 terrain cells, Destroy Height -4,000; B open, 5 terrain cells, Destroy Height -4,000/);
+  });
+});
+
+test('scale leaves the Depth Limit and the Destroy Height as they are, since they belong to the place', () => {
+  const plan = SMALL_PLAN.replace('\tfloorY = 0, -- ground stops here\n', '\tfloorY = 0, -- ground stops here\n\tdepthLimit = -3500,\n\tdestroyHeight = -4000,\n');
+  withPlan({ plan }, (dir, read) => {
+    assert.strictEqual(world('scale', '2', '--project', dir).status, 0);
+    assert.match(read('src/world/plan.luau'), /\tdepthLimit = -3500,\n\tdestroyHeight = -4000,\n/);
+  });
+});
+
+test('a new world starts with the Depth Limit at -3,500 and the Destroy Height at -4,000', () => {
+  const dir = tempDir();
+  const composed = tempDir();
+  try {
+    const { stdout } = world('new', dir, '--place', 'P', '--seed', '555');
+    assert.match(stdout, /depthLimit = -3500, --/);
+    assert.match(stdout, /destroyHeight = -4000, --/);
+    assert.strictEqual(world('new', composed, '--place', 'P', '--seed', '555', '--landforms', 'range,river').status, 0);
+    const plan = fs.readFileSync(path.join(composed, 'src/world/plan.luau'), 'utf8');
+    assert.match(plan, /depthLimit = -3500,/);
+    assert.match(plan, /destroyHeight = -4000,/);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+    fs.rmSync(composed, { recursive: true, force: true });
+  }
 });

@@ -62,6 +62,31 @@ function Ops.describe()
 	return Gen.Describe.format(Gen.Describe.report(plan, state))
 end
 
+-- What a write must know about falling, as JSON: the place's Destroy Height, the plan's Depth Limit and
+-- Destroy Height, and its deepest bed or Cave floor, or the plan's errors when it is invalid. Writes nothing.
+function Ops.depthFacts()
+	local facts = {
+		place = workspace.FallenPartsDestroyHeight,
+		depthLimit = Gen.Shape.depthLimit(plan),
+		destroyHeight = plan.destroyHeight,
+	}
+	local errors = Gen.Describe.validate(plan)
+	if #errors > 0 then
+		facts.invalid = errors
+	else
+		local _, deepest = Gen.Describe.depthLine(plan)
+		facts.deepest = deepest
+	end
+	return game:GetService("HttpService"):JSONEncode(facts)
+end
+
+-- Sets the place's Destroy Height and returns it as read back. Roblox lets plugins and the command bar set
+-- it, which is how code from Studio's MCP server runs, measured on 2026-11-08, and no running game can.
+function Ops.setDestroyHeight(height)
+	workspace.FallenPartsDestroyHeight = height
+	return workspace.FallenPartsDestroyHeight
+end
+
 -- What a change would rewrite and which Locked Chunks it reaches, as JSON. Writes nothing.
 function Ops.impact(change)
 	local impact = Gen.Describe.impact(plan, state, change)
