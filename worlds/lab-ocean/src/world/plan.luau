@@ -19,7 +19,21 @@ return {
 	seaLevel = 20, -- one level for every Ocean, a multiple of 4
 	-- An Ocean holds whole Chunks, as rectangles { i0, j0, i1, j1 } of Chunk indices, inclusive.
 	oceans = {
-		{ id = "ocean", seed = 8001, chunks = { { -11, -11, 12, 12 } }, depthCap = 400 },
+		-- Everything except two Landmasses: A at i -6..1, j -4..4 and B at i 3..6, j -2..2.
+		-- The channel at i = 2 is part of the Ocean.
+		{
+			id = "ocean",
+			seed = 8001,
+			chunks = {
+				{ -11, -11, -7, 12 }, -- west of A
+				{ 7, -11, 12, 12 }, -- east of B
+				{ -6, -11, 6, -5 }, -- north strip
+				{ -6, 5, 6, 12 }, -- south strip
+				{ 2, -4, 2, 4 }, -- channel between A and B
+				{ 3, -4, 6, -3 }, -- beside B, one side
+				{ 3, 3, 6, 4 }, -- beside B, other side
+			},
+		},
 	},
 
 	regions = {},
