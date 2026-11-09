@@ -1,5 +1,12 @@
 # World history
 
+## 2026-11-09: Trenches adapted to the new Generator (ramp walls, default roughness)
+
+- **Why:** the Generator changed: a Trench's walls leave the Ocean's bed as a ramp over its rim, roughness defaults to a fifth of the half width, and the deep bed has new materials. The plan no longer validated, so `abyss` lost `rough = 0` (its Region Seed now bends its outline) and both got a wider half width, keeping routes and floors.
+- **Plan:** `abyss` halfWidth 1000 to 1024; `western` halfWidth 700 to 980.
+- **Chunks written:** 575, every unlocked Chunk; Locked 1,0 left alone. `generate` 389 s. Deepest: abyss -2934.0 at x 128 z 4608 (floor -3000), western -3390.4 at x -4503 z 3957 (floor -3393.5).
+- **Restore:** set `abyss` to `halfWidth = 1000, walls = 4, rough = 0` and `western` to `halfWidth = 700`, then write every unlocked Chunk again (valid only with the previous Generator).
+
 ## 2026-11-09: Added Trench `western` to the Ocean
 
 - **Why:** the developer wanted a long Trench in the Ocean west of the large Landmass, running north to south through x -4600 z -4000, x -4800 z 0 and x -4500 z 4000, its floor at -2000, -2800 and -3400. Default roughness; validation asked for a half width of at least 625 with walls at their maximum of 5, so it has 700.
