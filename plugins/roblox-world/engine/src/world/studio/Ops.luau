@@ -63,10 +63,10 @@ function Ops.describe()
 end
 
 -- What a write must know about falling, as JSON: the place's Destroy Height, the plan's Depth Limit and
--- Destroy Height, and its deepest bed or Cave floor, or the plan's errors when it is invalid. Writes nothing.
+-- Destroy Height, and its deepest bed or cave floor, or the plan's errors when it is invalid. Writes nothing.
 function Ops.depthFacts()
 	local facts = {
-		place = workspace.FallenPartsDestroyHeight,
+		placeHeight = workspace.FallenPartsDestroyHeight,
 		depthLimit = Gen.Shape.depthLimit(plan),
 		destroyHeight = plan.destroyHeight,
 	}

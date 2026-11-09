@@ -197,11 +197,13 @@ function Describe.validate(plan): { string }
 	if plan.depthLimit ~= nil and not (isNum(plan.depthLimit) and plan.depthLimit % 4 == 0) then
 		table.insert(e, "depthLimit must be a multiple of 4, so a bed at it meets a voxel boundary")
 	end
-	-- Roblox clamps the Destroy Height to this range, since parts far from the origin do not simulate or render properly.
-	if plan.destroyHeight ~= nil and not (isNum(plan.destroyHeight) and plan.destroyHeight >= -50000 and plan.destroyHeight <= 50000) then
-		table.insert(e, "destroyHeight must be a number from -50000 to 50000, the range Roblox keeps it in")
-	elseif isNum(plan.destroyHeight) and isNum(Shape.depthLimit(plan)) and Shape.depthLimit(plan) <= plan.destroyHeight then
-		table.insert(e, string.format("depthLimit %g must lie above destroyHeight %g, or a character on the deepest bed is removed", Shape.depthLimit(plan), plan.destroyHeight))
+	-- Roblox clamps the Destroy Height to this range, since parts far from the origin do not simulate or render
+	-- properly. A whole number reads back from the place as it was set, so a write can check it took.
+	local limit, destroy = Shape.depthLimit(plan), plan.destroyHeight
+	if destroy ~= nil and not (isNum(destroy) and destroy % 1 == 0 and destroy >= -50000 and destroy <= 50000) then
+		table.insert(e, "destroyHeight must be a whole number from -50000 to 50000, the range Roblox keeps it in")
+	elseif isNum(destroy) and isNum(limit) and limit <= destroy then
+		table.insert(e, string.format("depthLimit %g must lie above destroyHeight %g, or a character on the deepest bed or cave floor is removed", limit, destroy))
 	end
 	local x = plan.extent
 	if type(x) ~= "table" or not (isNum(x.minX) and isNum(x.maxX) and isNum(x.minZ) and isNum(x.maxZ)) then
@@ -400,8 +402,7 @@ function Describe.validate(plan): { string }
 	end
 	-- The depths come from fields checked above, so they are measured only on a plan sound otherwise.
 	if #e == 0 then
-		local limit = Shape.depthLimit(plan)
-		for _, low in ipairs(Shape.lowest(plan)) do
+		for _, low in ipairs(Shape.lowestSurfaces(plan)) do
 			if low.y < limit then
 				table.insert(e, string.format("%s %s: reaches %g, %g below the Depth Limit %g", low.kind, tostring(low.id), low.y, limit - low.y, limit))
 			end
@@ -667,11 +668,11 @@ function Describe.heights(plan): string
 	return table.concat(lines, "\n")
 end
 
--- The deepest bed or Cave floor and what holds it, with how much room is left over the Depth Limit, and
+-- The deepest bed or cave floor and what holds it, with how much room is left over the Depth Limit, and
 -- the Destroy Height the plan declares. Returns the line, then the deepest as { id, kind, y }, or nil.
-function Describe.depthLine(plan): (string, { id: string, kind: string, y: number }?)
+function Describe.depthLine(plan): (string, Shape.Surface?)
 	local deepest
-	for _, low in ipairs(Shape.lowest(plan)) do
+	for _, low in ipairs(Shape.lowestSurfaces(plan)) do
 		if not deepest or low.y < deepest.y then
 			deepest = low
 		end
@@ -679,7 +680,7 @@ function Describe.depthLine(plan): (string, { id: string, kind: string, y: numbe
 	local limit = Shape.depthLimit(plan)
 	local destroy = if plan.destroyHeight ~= nil then string.format("Destroy Height %g", plan.destroyHeight) else "Destroy Height not declared"
 	if not deepest then
-		return string.format("depth: no bed or Cave floor, Depth Limit %g, %s", limit, destroy), nil
+		return string.format("depth: no bed or cave floor, Depth Limit %g, %s", limit, destroy), nil
 	end
 	return string.format("depth: deepest %g in %s %s, %g above the Depth Limit %g, %s", deepest.y, deepest.kind, tostring(deepest.id), deepest.y - limit, limit, destroy), deepest
 end

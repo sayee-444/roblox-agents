@@ -789,7 +789,7 @@ test('a new world writes at once on a place with no terrain', () => {
 });
 
 // The Destroy Height: where Roblox removes what falls in the place. The fake Studio's place holds -500, as a new place does.
-const DEPTH = (facts) => JSON.stringify({ place: -500, depthLimit: -3500, deepest: { id: 'ocean', kind: 'ocean', y: -80 }, ...facts });
+const DEPTH = (facts) => JSON.stringify({ placeHeight: -500, depthLimit: -3500, deepest: { id: 'ocean', kind: 'ocean', y: -80 }, ...facts });
 
 test('generate sets the Destroy Height the World Plan declares before writing, and says from what to what', () => {
   withPlan({}, (dir) => {
@@ -804,7 +804,7 @@ test('generate sets the Destroy Height the World Plan declares before writing, a
 
 test('generate leaves a Destroy Height alone when the place already holds the declared one', () => {
   withPlan({}, (dir) => {
-    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_DEPTH: DEPTH({ place: -4000, destroyHeight: -4000 }) }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_DEPTH: DEPTH({ placeHeight: -4000, destroyHeight: -4000 }) }, 'generate', '0', '0', '--place', 'P', '--project', dir);
     assert.strictEqual(status, 0, stdout);
     assert.ok(!calls.some((call) => call.startsWith('set destroy height')), calls.join(' | '));
     assert.match(stdout, /Destroy Height of P is -4,000, as the World Plan declares/);
@@ -831,7 +831,7 @@ test('a world above the place\'s Destroy Height writes as before and leaves the 
     assert.strictEqual(status, 0, stdout);
     assert.ok(calls.some((call) => call.startsWith('generate')), calls.join(' | '));
     assert.ok(!calls.some((call) => call.startsWith('set destroy height')), calls.join(' | '));
-    assert.match(stdout, /Destroy Height of P left at -500, since the World Plan declares none, and the deepest bed, -80 in ocean ocean, lies above it/);
+    assert.match(stdout, /Destroy Height of P left at -500, since the World Plan declares none, and its deepest bed or cave floor, -80 in ocean ocean, lies above it/);
   });
 });
 

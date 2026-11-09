@@ -87,7 +87,7 @@ How many Chunks a world spans along each side, as the World Plan declares.
 _Avoid_: dimensions, map size
 
 **Depth Limit**:
-The lowest height any bed, Cave floor or other ground a character can reach may take in a world, as the World Plan declares.
+The lowest height any bed, cave floor or other ground a character can reach may take in a world, as the World Plan declares.
 _Avoid_: max depth, floor
 
 **Generate**:

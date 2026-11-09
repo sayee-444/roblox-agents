@@ -9,8 +9,8 @@ return {
 	voxel = 4,
 	extent = { minX = -11, maxX = 12, minZ = -11, maxZ = 12 }, -- inclusive Chunk indices
 	floorY = 0, -- ground stops here, and goes lower only under deep water or a cave
-	depthLimit = -3500, -- no bed or Cave floor may lie below this, a multiple of 4
-	destroyHeight = -4000, -- Roblox removes what falls below this; run sets it in the place, below depthLimit
+	depthLimit = -3500, -- no bed or cave floor may lie below this, a multiple of 4
+	destroyHeight = -4000, -- Roblox removes what falls below this; run and generate set it in the place, below depthLimit
 	rockUnder = 8, -- a thin wall of rock under a deep bed
 
 	-- Gentle hills everywhere: mean height, amplitude, feature size and domain warp.

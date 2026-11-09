@@ -1,5 +1,5 @@
 -- The Depth Limit and the Destroy Height, through what the pure Generator refuses or reports.
--- The Depth Limit is the lowest height any bed or Cave floor may take. The Destroy Height is where
+-- The Depth Limit is the lowest height any bed or cave floor may take. The Destroy Height is where
 -- Roblox removes what falls in the place, and the World Plan may declare it.
 
 local shipped = require("../src/world/plan")
@@ -60,6 +60,16 @@ return {
 		end), "lake lake: reaches -3604, 104 below the Depth Limit -3500")
 	end,
 
+	["a Lake's depth from its size is its deepest, since its pools only make shallows there (ADR 0011)"] = function(t)
+		-- Radius 425 gives a quarter of it, 106.25, under water at 20, with 2 of roughness.
+		local text = Describe.heights(deepPlan(function(p)
+			p.oceans = {}
+			p.regions[4].points = { { 312, 69, 440 }, { 350, 69, 440 } }
+			p.lakes = { { id = "lake", seed = 22, center = { -300, 300 }, radius = 425, shore = 60, warp = 10, bedRough = 2, banks = {}, waterLevel = 20 } }
+		end))
+		t.ok(string.find(text, "depth: deepest -88.25 in lake lake", 1, true) ~= nil, text)
+	end,
+
 	["a River's deepest asked depth counts against the limit"] = function(t)
 		refused(t, deepPlan(function(p)
 			p.rivers[1].bedY = nil
@@ -92,8 +102,9 @@ return {
 		local cases = {
 			{ "depthLimit must be a multiple of 4", function(p) p.depthLimit = -3502 end },
 			{ "depthLimit must be a multiple of 4", function(p) p.depthLimit = "deep" end },
-			{ "destroyHeight must be a number from -50000 to 50000", function(p) p.destroyHeight = -60000 end },
-			{ "destroyHeight must be a number from -50000 to 50000", function(p) p.destroyHeight = "low" end },
+			{ "destroyHeight must be a whole number from -50000 to 50000", function(p) p.destroyHeight = -60000 end },
+			{ "destroyHeight must be a whole number from -50000 to 50000", function(p) p.destroyHeight = "low" end },
+			{ "destroyHeight must be a whole number from -50000 to 50000", function(p) p.destroyHeight = -4000.5 end },
 			{ "depthLimit -3500 must lie above destroyHeight -3500", function(p) p.destroyHeight = -3500 end },
 			{ "depthLimit -4000 must lie above destroyHeight -3600", function(p)
 				p.depthLimit = -4000

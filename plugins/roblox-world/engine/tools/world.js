@@ -647,27 +647,27 @@ async function refuseOtherTerrain(studio, ctx) {
 }
 
 // Roblox removes what falls below a place's Destroy Height, so a write first makes sure a character on the deepest
-// bed survives. The plan's value is set in the place. With none declared, the place's own value stays, and a world
+// bed or cave floor survives. The plan's value is set in the place. With none declared, the place's own value stays, and a world
 // that goes deeper writes nothing. Runs after sync, which writes no terrain, since the depths come from the plan.
 async function guardDestroyHeight(studio, ctx) {
   const facts = JSON.parse(await studio.luau(`return ${OPS}.depthFacts()`));
-  const place = ctx.flags.place;
-  const n = (value) => Number(value).toLocaleString('en-US');
+  const placeName = ctx.flags.place;
+  const studs = (value) => Number(value).toLocaleString('en-US');
   if (facts.invalid) {
     ctx.failed = true;
-    return `the World Plan is invalid, so nothing was written and the Destroy Height of ${place} stays ${n(facts.place)}:\n${facts.invalid.join('\n')}`;
+    return `the World Plan is invalid, so nothing was written and the Destroy Height of ${placeName} stays ${studs(facts.placeHeight)}:\n${facts.invalid.join('\n')}`;
   }
   if (typeof facts.destroyHeight === 'number') {
-    if (facts.destroyHeight === facts.place) return `Destroy Height of ${place} is ${n(facts.place)}, as the World Plan declares`;
+    if (facts.destroyHeight === facts.placeHeight) return `Destroy Height of ${placeName} is ${studs(facts.placeHeight)}, as the World Plan declares`;
     const now = Number(await studio.luau(`return ${OPS}.setDestroyHeight(${facts.destroyHeight})`));
-    if (now !== facts.destroyHeight) throw new Error(`Nothing was written: Studio did not take the Destroy Height ${n(facts.destroyHeight)} for ${place} and holds ${n(now)}. Ask the developer to set Workspace.FallenPartsDestroyHeight in Studio's Properties window.`);
-    return `Destroy Height of ${place} set from ${n(facts.place)} to ${n(now)}, as the World Plan declares. It lasts once the developer saves the place`;
+    if (now !== facts.destroyHeight) throw new Error(`Nothing was written: Studio did not take the Destroy Height ${studs(facts.destroyHeight)} for ${placeName} and holds ${studs(now)}. Ask the developer to set Workspace.FallenPartsDestroyHeight in Studio's Properties window.`);
+    return `Destroy Height of ${placeName} set from ${studs(facts.placeHeight)} to ${studs(now)}, as the World Plan declares. It lasts once the developer saves the place`;
   }
   const deep = facts.deepest;
-  if (!deep) return `Destroy Height of ${place} left at ${n(facts.place)}, since the World Plan declares none and nothing in it goes below the ground`;
-  const where = `${n(deep.y)} in ${deep.kind} ${deep.id}`;
-  if (deep.y > facts.place) return `Destroy Height of ${place} left at ${n(facts.place)}, since the World Plan declares none, and the deepest bed, ${where}, lies above it`;
-  throw new Error(`Nothing was written: the deepest bed of this world, ${where}, is not above ${place}'s Destroy Height ${n(facts.place)}, below which Roblox removes what falls, so a character there would be removed. Either declare destroyHeight in the World Plan, below its Depth Limit ${n(facts.depthLimit)}, and run this again so the engine sets it in the place, or set Workspace.FallenPartsDestroyHeight in Studio's Properties window.`);
+  if (!deep) return `Destroy Height of ${placeName} left at ${studs(facts.placeHeight)}, since the World Plan declares none and it declares no bed or cave floor`;
+  const where = `${studs(deep.y)} in ${deep.kind} ${deep.id}`;
+  if (deep.y > facts.placeHeight) return `Destroy Height of ${placeName} left at ${studs(facts.placeHeight)}, since the World Plan declares none, and its deepest bed or cave floor, ${where}, lies above it`;
+  throw new Error(`Nothing was written: the deepest bed or cave floor of this world, ${where}, is not above ${placeName}'s Destroy Height ${studs(facts.placeHeight)}, below which Roblox removes what falls, so a character there would be removed. Either declare destroyHeight in the World Plan, below its Depth Limit ${studs(facts.depthLimit)}, and run this again so the engine sets it in the place, or set Workspace.FallenPartsDestroyHeight in Studio's Properties window.`);
 }
 
 async function main() {
@@ -707,14 +707,13 @@ async function main() {
     await studio.connect(flags.place);
     if (['run', 'generate'].includes(command)) await refuseOtherTerrain(studio, ctx);
     const started = Date.now();
-    const guards = { 'destroy height': guardDestroyHeight };
     if (['run', 'generate'].includes(command)) order.splice(order.indexOf('sync') + 1, 0, 'destroy height');
     for (const name of [...new Set(order)]) {
       if (ctx.failed && ['generate', 'borders', 'verify', 'heights', 'capture'].includes(name)) {
         console.log(`${name}: skipped after a failure`);
       } else {
         const t0 = Date.now();
-        const text = await (steps[name] || guards[name])(studio, ctx, name === command ? args : []);
+        const text = await (name === 'destroy height' ? guardDestroyHeight : steps[name])(studio, ctx, name === command ? args : []);
         console.log(`${name} (${((Date.now() - t0) / 1000).toFixed(1)} s): ${text}`);
       }
     }

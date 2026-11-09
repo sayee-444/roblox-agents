@@ -6,7 +6,7 @@
 - **Implementation:** #77
 - **Chunks written:** all 576 (-11,-11 to 12,12), over the one test Chunk at 0,0 from the development session. `generate` 29.4 s, `run` 36.8 s in total.
 - **Destroy Height:** Place1 went from -500 to -4000.
-- **Restore:** delete `depthLimit` and `destroyHeight` from the World Plan. The terrain does not change.
+- **Restore:** delete `depthLimit` and `destroyHeight` from the World Plan, and set Place1's `Workspace.FallenPartsDestroyHeight` back to -500 in Studio's Properties window. The terrain does not change.
 
 ## 2026-11-08: Ocean `ocean` depthCap 40 to 400, kept as the result of #69
 

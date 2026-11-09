@@ -31,7 +31,7 @@ local DEPTH_VARY = 0.4 -- its pools and shallows unless the World Plan gives `de
 local BAR_GAIN = 2 -- how far a bend moves the deepest line out, as a fraction of the half width, per unit of half width over radius
 local BAR_MOST = 0.45 -- the furthest a bend moves the deepest line out, as a fraction of the half width
 local BAR_SAND = 2 -- studs of sand a Point Bar adds beside the water, per stud the deepest line moved
--- The lowest height any bed or Cave floor may take unless the World Plan gives `depthLimit`: the developer's
+-- The lowest height any bed or cave floor may take unless the World Plan gives `depthLimit`: the developer's
 -- standard, 500 studs above the Destroy Height of -4,000 they chose for their places.
 local DEPTH_LIMIT = -3500
 local CAVE_SWELL = 0.15 -- how far a cave's radius swells along it, as a fraction of the radius
@@ -407,23 +407,27 @@ function Shape.lakeVary(def): number?
 	return if def.depthVary == nil and fromSize then DEPTH_VARY else def.depthVary
 end
 
--- The lowest height any bed or Cave floor of this world may take.
+-- The lowest height any bed or cave floor of this world may take.
 function Shape.depthLimit(plan): number
 	return plan.depthLimit or DEPTH_LIMIT
 end
 
--- The lowest surface each declared thing may reach, from the plan alone, as { id, kind, y }: every asked
--- depth taken as a ceiling, as the slope decides how much of it is reached, deepened by the most its pools
--- and roughness can add. The rock kept under a bed is left out, since nothing stands on it. Only for a plan
--- that passes validation otherwise.
-function Shape.lowest(plan): { { id: string, kind: string, y: number } }
+-- The lowest surface one declared thing may reach: its id, its kind ("ocean", "lake", "river" or "cave") and the height.
+export type Surface = { id: string, kind: string, y: number }
+
+-- The lowest surface each declared thing may reach, from the plan alone: every asked depth taken as a ceiling,
+-- as the slope decides how much of it is reached, deepened by the most its pools and roughness can add. A Lake's
+-- depth from its size stays its deepest, since its pools only make shallows there (ADR 0011). The rock kept
+-- under a bed is left out, since nothing stands on it. Only for a plan that passes validation otherwise.
+function Shape.lowestSurfaces(plan): { Surface }
 	local out = {}
 	for _, oc in ipairs(plan.oceans or {}) do
 		table.insert(out, { id = oc.id, kind = "ocean", y = plan.seaLevel - Shape.oceanDepth(oc) })
 	end
 	for _, lk in ipairs(plan.lakes or {}) do
-		local depth = Shape.lakeDepth(lk) * (1 + (Shape.lakeVary(lk) or 0)) + (lk.bedRough or 0)
-		table.insert(out, { id = lk.id, kind = "lake", y = lk.waterLevel - depth })
+		local asked, fromSize = Shape.lakeDepth(lk)
+		local vary = if fromSize then 0 else Shape.lakeVary(lk) or 0
+		table.insert(out, { id = lk.id, kind = "lake", y = lk.waterLevel - asked * (1 + vary) - (lk.bedRough or 0) })
 	end
 	for _, rv in ipairs(plan.rivers or {}) do
 		local depth = Route.depth(rv).deepest * (1 + (rv.depthVary or 0)) + (rv.bedRough or 0)

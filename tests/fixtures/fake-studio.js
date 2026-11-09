@@ -31,7 +31,7 @@ function luau(code) {
   if (impact) { log(`impact ${impact[1]}`); return process.env.FAKE_STUDIO_IMPACT; }
   const setHeight = code.match(/\.setDestroyHeight\((.*?)\)/);
   if (setHeight) { log(`set destroy height ${setHeight[1]}`); return setHeight[1]; }
-  if (code.includes('.depthFacts()')) return process.env.FAKE_STUDIO_DEPTH || JSON.stringify({ place: -500, depthLimit: -3500, deepest: { id: 'ocean', kind: 'ocean', y: -80 } });
+  if (code.includes('.depthFacts()')) return process.env.FAKE_STUDIO_DEPTH || JSON.stringify({ placeHeight: -500, depthLimit: -3500, deepest: { id: 'ocean', kind: 'ocean', y: -80 } });
   if (code.includes('FallenPartsDestroyHeight')) return process.env.FAKE_STUDIO_DESTROY || '-500';
   const generate = code.match(/\.generate\((.*?)\);/);
   if (generate) { log(`generate ${generate[1]}`); return 'generated'; }
