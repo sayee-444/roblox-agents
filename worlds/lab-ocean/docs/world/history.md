@@ -1,5 +1,10 @@
 # World history
 
+## 2026-11-09: Added Trench `abyss` to the Ocean
+
+- **Why:** the developer wanted an abyss in the open Ocean south of the large Landmass: a Trench with a short route at x 0, z 4608, floor at -3000 and walls of 4.
+- **Chunks written:** -1,7 0,7 1,7 -2,8 -1,8 0,8 1,8 2,8 -2,9 -1,9 0,9 1,9 2,9 -2,10 -1,10 0,10 1,10 2,10 -1,11 0,11 1,11
+
 ## 2026-11-09: Two Landmasses carved out of the Ocean, and its depthCap removed
 
 - **Why:** the developer wanted land in `lab-ocean`: a large Landmass at Chunks i -6..1, j -4..4 and a smaller one at i 3..6, j -2..2, with a one-Chunk Ocean channel at i = 2, and the Ocean taking its default depth from the coast instead of the cap of 400.

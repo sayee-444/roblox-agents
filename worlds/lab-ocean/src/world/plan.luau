@@ -36,7 +36,10 @@ return {
 		},
 	},
 
-	regions = {},
+	-- An abyss in the open Ocean south of Landmass A: a short route makes a round pit.
+	regions = {
+		{ id = "abyss", kind = "trench", seed = 9101, points = { { 0, 4608 }, { 0, 4612 } }, floors = { -3000, -3000 }, halfWidth = 1000, walls = 4, rough = 0 },
+	},
 	rivers = {},
 	lakes = {},
 	sites = {},
