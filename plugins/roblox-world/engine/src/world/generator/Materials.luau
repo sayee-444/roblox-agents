@@ -46,10 +46,15 @@ end
 
 -- Surface material of one column. `g` is the slope (rise over run), `mesaP` the mesa
 -- parameter (0 outside, 1 on top) and `riverD` the distance to a River route, moved out where the River is wide, or to lake water,
--- and `waterLevel` the level of the water over the column (0 or nil when dry).
-function Materials.surface(plan, x: number, z: number, h: number, g: number, mesaP: number, riverD: number, waterLevel: number?): number
+-- `waterLevel` the level of the water over the column (0 or nil when dry), and `trench` whether a Trench lowers it.
+function Materials.surface(plan, x: number, z: number, h: number, g: number, mesaP: number, riverD: number, waterLevel: number?, trench: boolean?): number
 	local M = plan.materials
 	local n = Noise.perlin(x / 18, z / 18, plan.worldSeed + 77)
+
+	-- A Trench is deep rock: slate on its walls, and rock with patches of slate on its floor.
+	if trench then
+		return if g > 0.6 or Noise.perlin(x / 40, z / 40, plan.worldSeed + 82) + n * 0.15 > 0.2 then id.Slate else id.Rock
+	end
 
 	if waterLevel and waterLevel > 0 and h < waterLevel then
 		return bed(plan, x, z, waterLevel - h, n)

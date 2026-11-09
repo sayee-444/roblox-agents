@@ -1018,3 +1018,39 @@ test('a write Studio never finishes answering stops after waiting, and says what
     assert.match(stderr, /generate 0 0/);
   });
 });
+
+// A Trench in the small plan, whose floors are heights that scale multiplies like any other.
+const TRENCH_PLAN = SMALL_PLAN.replace('\tregions = {\n', '\tregions = {\n\t\t{ id = "trench", kind = "trench", seed = 7009, points = { { 2344, 1544 }, { 2344, 2044 } }, floors = { -900, -1300 }, halfWidth = 500, walls = 1.5, rough = 30 },\n');
+
+test('remove takes a Trench out of the plan, writes only the Chunks it reached and records it', () => {
+  withPlan({ plan: TRENCH_PLAN }, (dir, read) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT }, 'remove', 'trench', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.strictEqual(read('src/world/plan.luau'), SMALL_PLAN);
+    assert.ok(calls.includes('impact { removedIds = { "trench" } }'), calls.join(' | '));
+    assert.ok(calls.includes('generate { { -1, 0 }, { 0, 0 } }'), calls.join(' | '));
+    const history = read('docs/world/history.md');
+    assert.match(history.split('\n')[0], /^## \d{4}-\d{2}-\d{2}: Removed Trench `trench`$/);
+    assert.ok(history.includes('floors = { -900, -1300 }'), 'the block as it stood');
+  });
+});
+
+test('scale multiplies a Trench\'s route, half width, floors and rough, and keeps its walls', () => {
+  withPlan({ plan: TRENCH_PLAN }, (dir, read) => {
+    const { status, stdout } = world('scale', '2', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(read('src/world/plan.luau').includes('{ id = "trench", kind = "trench", seed = 7009, points = { { 4432, 2832 }, { 4432, 3832 } }, floors = { -1800, -2600 }, halfWidth = 1000, walls = 1.5, rough = 60 }'), read('src/world/plan.luau'));
+  });
+});
+
+test('scale refuses to take a Trench\'s floor below the Depth Limit, and changes nothing', () => {
+  withPlan({ plan: TRENCH_PLAN }, (dir, read) => {
+    const { status, stderr } = world('scale', '3', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /trench/);
+    assert.match(stderr, /-3900/);
+    assert.match(stderr, /Depth Limit -3500/);
+    assert.strictEqual(read('src/world/plan.luau'), TRENCH_PLAN);
+    assert.ok(!fs.existsSync(path.join(dir, 'docs/world/history.md')), 'nothing recorded');
+  });
+});

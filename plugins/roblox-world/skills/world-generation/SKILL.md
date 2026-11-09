@@ -20,6 +20,7 @@ The map is the output of one pure function: terrain at a world position comes fr
 | River | Water declared in the World Plan, following a straight or curved route through its points, with `halfWidth` or `widths` per point, `bendWiden` to open its bends, `loops` for bends close to a circle, `bedY` or `depths` per point with `bedRough` and `depthVary` for its bed, and `banks` for how it meets the land, at the slope of its valley's `sides`. A fork is a River that leaves a point, and a point can take any number of them |
 | Lake | Still water declared in the World Plan, where Rivers end at the same water level |
 | Ocean | Still water declared in the World Plan as the Chunks it holds, under the world's one `seaLevel`, deepening with the distance to the coast. Land is every Chunk no Ocean holds |
+| Trench | A Landform Region of `kind = "trench"` only an Ocean holds: `points`, the height of its floor at each point in `floors`, `halfWidth` with its walls, `walls` as rise over run and `rough` in studs. Floors are heights, so a change to the Ocean never moves them. An abyss is a Trench with a short route. Validation names the half width or walls needed to reach a floor, and refuses a Trench reaching land or the edge of the extent |
 
 ## Layout
 
@@ -50,7 +51,7 @@ The Generator validates the World Plan and answers these questions, so planning 
 3. Write only those Chunks with `generate <i> <j> ...`.
 4. Ask the developer how it looks in Studio.
 
-To take a Landform, River, Lake or Ocean off the map, run `remove <id>`, which covers these steps. To resize a world, run `scale <factor> --project <dir>`, then `run`. To change a shape, change the World Plan or a Region Seed. A Region Seed change alters that Landform Region and its blend margin.
+To take a Landform, Trench, River, Lake or Ocean off the map, run `remove <id>`, which covers these steps. To resize a world, run `scale <factor> --project <dir>`, then `run`. To change a shape, change the World Plan or a Region Seed. A Region Seed change alters that Landform Region and its blend margin.
 
 ## Design decisions
 

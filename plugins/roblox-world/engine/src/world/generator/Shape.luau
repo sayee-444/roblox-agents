@@ -41,6 +41,12 @@ local OCEAN_SLOPE = 0.25 -- rise over run of the bed from the coast, unless the 
 local OCEAN_BEND = 2400 -- studs from the coast past which it grows as the natural log, unless the World Plan gives `bend`
 local OCEAN_CAP = 1200 -- studs, the most it may reach unless the World Plan gives `depthCap`
 local CAVE_SWELL = 0.15 -- how far a cave's radius swells along it, as a fraction of the radius
+-- A Trench's defaults, for the fields its World Plan leaves out. Not yet judged by the developer in Studio.
+local TRENCH_HALF_WIDTH = 800 -- studs from its route to the top of its walls
+local TRENCH_WALLS = 1.5 -- rise over run of its walls, about 56 degrees
+local TRENCH_ROUGH = 40 -- studs its Region Seed narrows its walls and raises its floor, at most
+local WALL_SCALE = 160 -- studs for one swell of a Trench's walls
+local FLOOR_SCALE = 90 -- studs for one swell of a Trench's floor
 
 local prepared = setmetatable({}, { __mode = "k" })
 
@@ -49,7 +55,7 @@ local function prepare(plan)
 	if P then
 		return P
 	end
-	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {}, lakeSlopes = {}, oceans = plan.oceans or {}, oceanChunks = {}, coastsNear = {} }
+	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, trenches = {}, rivers = {}, lakes = plan.lakes or {}, lakeSlopes = {}, oceans = plan.oceans or {}, oceanChunks = {}, coastsNear = {}, trenchesIn = {} }
 	-- Which Ocean holds each Chunk, and the Chunks of land the coast runs along: those of the extent beside an Ocean
 	-- Chunk, diagonals included. The nearest land to any spot of an Ocean lies on one of them.
 	local e = plan.extent
@@ -136,6 +142,20 @@ local function prepare(plan)
 				poly = Geo.polyline3(r.points),
 				offset = rng:next() * 100,
 				box = { x0, x1, y0, y1, z0, z1 },
+			})
+		elseif r.kind == "trench" then
+			local hw = Shape.trenchHalfWidth(r)
+			local x0, z0, x1, z1 = math.huge, math.huge, -math.huge, -math.huge
+			for _, p in ipairs(r.points) do
+				x0, z0, x1, z1 = math.min(x0, p[1] - hw), math.min(z0, p[2] - hw), math.max(x1, p[1] + hw), math.max(z1, p[2] + hw)
+			end
+			table.insert(P.trenches, {
+				def = r,
+				poly = Geo.polyline2(r.points),
+				halfWidth = hw,
+				walls = Shape.trenchWalls(r),
+				rough = Shape.trenchRough(r),
+				box = { x0, z0, x1, z1 },
 			})
 		end
 	end
@@ -447,7 +467,7 @@ function Shape.depthLimit(plan): number
 	return plan.depthLimit or DEPTH_LIMIT
 end
 
--- The lowest surface one declared thing may reach: its id, its kind ("ocean", "lake", "river" or "cave") and the height.
+-- The lowest surface one declared thing may reach: its id, its kind ("ocean", "lake", "river", "cave" or "trench") and the height.
 export type Surface = { id: string, kind: string, y: number }
 
 -- The lowest surface each declared thing may reach, from the plan alone: every asked depth taken as a ceiling,
@@ -475,6 +495,9 @@ function Shape.lowestSurfaces(plan): { Surface }
 				low = math.min(low, p[2])
 			end
 			table.insert(out, { id = r.id, kind = "cave", y = low - r.radius * (1 + CAVE_SWELL) })
+		elseif r.kind == "trench" then
+			-- Its floor eases in a straight line between its points, and its Region Seed only raises it.
+			table.insert(out, { id = r.id, kind = "trench", y = math.min(table.unpack(r.floors)) })
 		end
 	end
 	return out
@@ -594,14 +617,129 @@ function Shape.oceanOpen(plan, ci: number, cj: number): boolean
 	return def ~= nil and Shape.oceanCap(def) ~= nil and coastsNear(P, plan, ci, cj).nearest >= Shape.oceanReach(def)
 end
 
+-- The Ocean's bed at (x, z), in an Ocean, before any Trench lowers it.
+function Shape.oceanBed(plan, x: number, z: number): number
+	local ocean = Shape.oceanAt(plan, x, z)
+	return plan.seaLevel - (Shape.oceanDepth(ocean, Shape.coastDistance(plan, x, z)))
+end
+
+-- A Trench's half width, its walls included.
+function Shape.trenchHalfWidth(def): number
+	return def.halfWidth or TRENCH_HALF_WIDTH
+end
+
+-- A Trench's walls, as rise over run.
+function Shape.trenchWalls(def): number
+	return def.walls or TRENCH_WALLS
+end
+
+-- The most a Trench's Region Seed narrows its walls and raises its floor, in studs.
+function Shape.trenchRough(def): number
+	return def.rough or TRENCH_ROUGH
+end
+
+-- A Trench's floor `s` studs along its route, eased in a straight line between the floors of its points.
+function Shape.trenchFloor(def, s: number): number
+	local segs = Geo.polyline2(def.points).segs
+	for k, seg in ipairs(segs) do
+		if s <= seg[7] + seg[6] or k == #segs then
+			local f = math.clamp((s - seg[7]) / seg[6], 0, 1)
+			return def.floors[k] + (def.floors[k + 1] - def.floors[k]) * f
+		end
+	end
+	return def.floors[1]
+end
+
+-- The lowest ground the Trenches give at (x, z) over an Ocean's bed `bed`, and the id of the one that gives it, or nil.
+-- Within its half width a Trench's walls fall from the bed at its steepness to its floor. Its Region Seed only
+-- narrows its walls and raises its floor, each by up to its rough, so nothing beyond its half width changes and
+-- no ground lies below its floor.
+local function trenchGround(P, x: number, z: number, bed: number): (number, string?)
+	local low, by = bed, nil
+	for _, tr in ipairs(P.trenches) do
+		local b = tr.box
+		if x > b[1] and x < b[3] and z > b[2] and z < b[4] then
+			local d, s = Geo.dist2(tr.poly, x, z, tr.halfWidth)
+			if d < tr.halfWidth then
+				local seed = tr.def.seed
+				local wobble = 0.5 + 0.5 * math.clamp(Noise.fbm(x / WALL_SCALE, z / WALL_SCALE, seed, 3) * 2, -1, 1)
+				local reach = tr.halfWidth - d - tr.rough * wobble
+				if reach > 0 then
+					local bump = 0.5 + 0.5 * math.clamp(Noise.fbm(x / FLOOR_SCALE, z / FLOOR_SCALE, seed + 3, 2) * 2, -1, 1)
+					local ground = math.max(Shape.trenchFloor(tr.def, s) + tr.rough * bump, bed - tr.walls * reach)
+					if ground < low then
+						low, by = ground, tr.def.id
+					end
+				end
+			end
+		end
+	end
+	return low, by
+end
+
+-- Studs from the segment (ax, az) to (bx, bz) to the spot (px, pz).
+local function pointToSegment(px: number, pz: number, ax: number, az: number, bx: number, bz: number): number
+	local ex, ez = bx - ax, bz - az
+	local t = math.clamp(((px - ax) * ex + (pz - az) * ez) / (ex * ex + ez * ez), 0, 1)
+	local qx, qz = px - ax - t * ex, pz - az - t * ez
+	return math.sqrt(qx * qx + qz * qz)
+end
+
+-- Whether the segments a-b and c-d cross.
+local function crosses(a, b, c, d): boolean
+	local function turn(p, q, r)
+		return (q[1] - p[1]) * (r[2] - p[2]) - (q[2] - p[2]) * (r[1] - p[1])
+	end
+	return turn(a, b, c) * turn(a, b, d) < 0 and turn(c, d, a) * turn(c, d, b) < 0
+end
+
+-- Studs from a polyline's points to a box { x0, z0, x1, z1 }, 0 where it enters the box. Between two convex shapes
+-- apart, the nearest pair has a corner of one, and a line whose ends both lie outside the box crosses one of its diagonals.
+local function routeToBox(points, b): number
+	local corners = { { b[1], b[2] }, { b[3], b[2] }, { b[3], b[4] }, { b[1], b[4] } }
+	local best = math.huge
+	for k = 1, #points - 1 do
+		local p, q = points[k], points[k + 1]
+		best = math.min(best, boxDistance(b, p[1], p[2]), boxDistance(b, q[1], q[2]))
+		if crosses(p, q, corners[1], corners[3]) or crosses(p, q, corners[2], corners[4]) then
+			return 0
+		end
+		for _, c in ipairs(corners) do
+			best = math.min(best, pointToSegment(c[1], c[2], p[1], p[2], q[1], q[2]))
+		end
+	end
+	return best
+end
+
+-- Whether the Trench `def`, of a plan, reaches Chunk (ci, cj): whether any of its half width lies on it.
+function Shape.trenchReaches(plan, def, ci: number, cj: number): boolean
+	local s = plan.chunkSize
+	return routeToBox(def.points, { ci * s - s / 2, cj * s - s / 2, ci * s + s / 2, cj * s + s / 2 }) < Shape.trenchHalfWidth(def)
+end
+
+-- Whether any Trench reaches Chunk (ci, cj).
+function Shape.trenched(plan, ci: number, cj: number): boolean
+	local P = prepare(plan)
+	local key = ci .. "," .. cj
+	if P.trenchesIn[key] == nil then
+		local found = false
+		for _, tr in ipairs(P.trenches) do
+			found = found or Shape.trenchReaches(plan, tr.def, ci, cj)
+		end
+		P.trenchesIn[key] = found
+	end
+	return P.trenchesIn[key]
+end
+
 -- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
 -- distance to the nearest River's sand band centre line, lake or ocean water, the water level over this column (0 = dry),
--- and the id of the Water Body, a Lake or an Ocean, whose water covers it, or nil.
-function Shape.height(plan, x: number, z: number): (number, number, number, number, string?)
+-- the id of the Water Body, a Lake or an Ocean, whose water covers it, or nil, and the id of the Trench that lowers it, or nil.
+function Shape.height(plan, x: number, z: number): (number, number, number, number, string?, string?)
 	local P = prepare(plan)
 	local ocean = Shape.oceanAt(plan, x, z)
 	if ocean then
-		return plan.seaLevel - (Shape.oceanDepth(ocean, Shape.coastDistance(plan, x, z))), 0, 0, plan.seaLevel, ocean.id
+		local ground, trench = trenchGround(P, x, z, Shape.oceanBed(plan, x, z))
+		return ground, 0, 0, plan.seaLevel, ocean.id, trench
 	end
 	local h, mesaP, riverD, waterLevel = land(P, plan, x, z)
 	local body = nil
@@ -726,6 +864,11 @@ function Shape.bounds(plan, id: string)
 	for _, c in ipairs(P.caves) do
 		if c.def.id == id then
 			return ofPoints(c.def.points, c.def.radius * 1.4 + 10, 3)
+		end
+	end
+	for _, tr in ipairs(P.trenches) do
+		if tr.def.id == id then
+			return table.clone(tr.box)
 		end
 	end
 	for _, def in ipairs(P.lakes) do
