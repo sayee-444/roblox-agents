@@ -264,6 +264,18 @@ return {
 		end
 	end,
 
+	["removing a Trench rewrites only the written Chunks it reached"] = function(t)
+		local state = { chunks = {} }
+		for _, key in ipairs({ "4,0", "5,0", "6,0", "7,0", "6,1" }) do
+			state.chunks[key] = { generated = true, locked = key == "6,1" }
+		end
+		local impact = Describe.impact(trenchPlan(), state, { removedIds = { "trench" } })
+		t.eq(table.concat(impact.rewrite, " "), "5,0 6,0", "rewritten")
+		t.eq(table.concat(impact.lockedReached, " "), "6,1", "Locked, reported")
+		local b = Shape.bounds(trenchPlan(), "trench")
+		t.eq(table.concat(b, " "), "2700 -700 3300 700", "its box: the route and its half width")
+	end,
+
 	["describe names exactly the Chunks a Trench reaches"] = function(t)
 		local report = Describe.report(trenchPlan(), { chunks = {} })
 		t.eq(report.regions.trench.kind, "trench", "kind")

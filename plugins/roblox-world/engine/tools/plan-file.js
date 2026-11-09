@@ -221,7 +221,7 @@ function belowDepthLimit(text, limit) {
   for (const entry of range ? entries(code, range) : []) {
     const floors = new RegExp(`${FIELD_START}floors\\s*=\\s*\\{([^}]*)\\}`).exec(entry.source);
     const lowest = floors ? Math.min(...(floors[1].match(NUMBER) || []).map(Number)) : Infinity;
-    if (lowest < limit) throw new Error(`scale would take trench ${textField(entry.source, 'id')}'s floor to ${lowest}, below the Depth Limit ${limit}. Nothing was changed`);
+    if (lowest < limit) throw new Error(`scale would take Trench ${textField(entry.source, 'id')}'s floor to ${lowest}, below the Depth Limit ${limit}. Nothing was changed`);
   }
 }
 

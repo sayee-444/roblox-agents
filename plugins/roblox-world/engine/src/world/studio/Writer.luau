@@ -152,7 +152,7 @@ function Writer.checksum(terrain: Terrain, plan, Gen, ci: number, cj: number, y0
 			end
 		end
 	end
-	return { s1 = s1, s2 = s2, solid = solid, liquid = liquid, size = Vector3.new(s, y1 - y0, s) }
+	return { s1 = s1, s2 = s2, solid = solid, liquid = liquid, size = Vector3.new(s, y1 - y0, s) / V }
 end
 
 local function surfaceOf(occ, ix, iz, ny, ymin)

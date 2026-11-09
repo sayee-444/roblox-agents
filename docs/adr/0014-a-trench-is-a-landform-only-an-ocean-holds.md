@@ -12,4 +12,4 @@ Its floors are heights, not depths below the Ocean's bed, so a change to the Oce
 
 ## Consequences
 
-A Chunk a Trench reaches is written column by column, and the open Ocean around it stays plain blocks. Under a deep Trench a column holds hundreds of voxels, most of them water, so such a Chunk takes far longer to write than one beside a Coast. Adding land near a Trench is refused until the Trench moves or goes, which keeps what was built around it from being cut in half.
+A Chunk a Trench reaches is written column by column, and the open Ocean around it stays plain blocks. Under a Trench 3,000 deep a column holds some 750 voxels, most of them water, and such a Chunk still wrote in about 1 s: 21 Chunks of an abyss in 21.1 s and 68 of a Trench in 86.8 s, the slowest 12.01 s, measured on `lab-ocean` on 2026-11-09. So the writer keeps writing the water with the ground, voxel by voxel, rather than as a block of its own. One read of such a Chunk is too large for Roblox, so `verify` reads it in strips. Adding land near a Trench is refused until the Trench moves or goes, which keeps what was built around it from being cut in half.

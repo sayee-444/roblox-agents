@@ -12,7 +12,7 @@ local Describe = {}
 
 local KINDS = { mountain = true, mesa = true, valley = true, cave = true, trench = true }
 local TRENCH_FIELDS = { id = true, kind = true, seed = true, points = true, floors = true, halfWidth = true, walls = true, rough = true }
-local TRENCH_WALLS = { 0.1, 5 } -- rise over run of a Trench's walls, from a long slope to a cliff of about 79 degrees
+local WALL_RANGE = { 0.1, 5 } -- rise over run of a Trench's walls, from a long slope to a cliff of about 79 degrees
 local TRENCH_STEP = 32 -- studs along a Trench's route between the spots where validation and `heights` measure it
 local TRENCH_ACROSS = 4 -- spots on each side of its route where `heights` looks for its deepest point, out to a quarter of its half width
 local REACHED_STEP = 24 -- studs along a River between the places where `heights` measures its depth
@@ -218,8 +218,8 @@ local function checkTrench(errors, label, r)
 	elseif not (isNum(Shape.trenchHalfWidth(r)) and Shape.trenchHalfWidth(r) > rough) then
 		table.insert(errors, label .. ": halfWidth must be above its rough, in studs from its route to the top of its walls")
 	end
-	if r.walls ~= nil and not (isNum(r.walls) and r.walls >= TRENCH_WALLS[1] and r.walls <= TRENCH_WALLS[2]) then
-		table.insert(errors, string.format("%s: walls must be from %s to %s, as rise over run", label, TRENCH_WALLS[1], TRENCH_WALLS[2]))
+	if r.walls ~= nil and not (isNum(r.walls) and r.walls >= WALL_RANGE[1] and r.walls <= WALL_RANGE[2]) then
+		table.insert(errors, string.format("%s: walls must be from %s to %s, as rise over run", label, WALL_RANGE[1], WALL_RANGE[2]))
 	end
 end
 
@@ -251,13 +251,13 @@ local function checkTrenchInOcean(errors, plan, r)
 			local outside = ci < x.minX or ci > x.maxX or cj < x.minZ or cj > x.maxZ
 			local x0, z0 = Chunk.origin(plan, ci, cj)
 			if (outside or not Shape.oceanAt(plan, x0 + s / 2, z0 + s / 2)) and Shape.trenchReaches(plan, r, ci, cj) then
-				local why = if outside then "outside the extent" else "which no Ocean holds, and a Trench lies only in an Ocean or a Sea"
+				local why = if outside then "outside the extent" else "which no Ocean holds, and a Trench lies only in an Ocean"
 				table.insert(errors, string.format("%s: its half width reaches Chunk %d,%d, %s", label, ci, cj, why))
 				return
 			end
 		end
 	end
-	local reach = Shape.trenchWalls(r) * (hw - Shape.trenchRough(r))
+	local drop = Shape.trenchWalls(r) * (hw - Shape.trenchRough(r)) -- the most its walls fall below the bed
 	local worst
 	for _, spot in ipairs(trenchSpots(r)) do
 		local bed = Shape.oceanBed(plan, spot[1], spot[2])
@@ -266,14 +266,14 @@ local function checkTrenchInOcean(errors, plan, r)
 			table.insert(errors, string.format("%s: its floor %g at point %d is not below the Ocean's bed %.1f there, and a Trench only goes down", label, floor, spot[4], bed))
 			return
 		end
-		local short = bed - reach - floor
+		local short = bed - drop - floor
 		if short > 0 and (not worst or short > worst.short) then
 			worst = { short = short, bed = bed, floor = floor, x = spot[1], z = spot[2] }
 		end
 	end
 	if worst then
 		local need = worst.bed - worst.floor
-		table.insert(errors, string.format("%s: its walls reach only %g below the Ocean's bed at %d %d, short of its floor %g by %g: give it a halfWidth of at least %d, or walls of at least %.2f", label, reach, math.round(worst.x), math.round(worst.z), worst.floor, worst.short, math.ceil(need / Shape.trenchWalls(r) + Shape.trenchRough(r)), math.ceil(need / (hw - Shape.trenchRough(r)) * 100) / 100))
+		table.insert(errors, string.format("%s: its walls reach only %g below the Ocean's bed at %d %d, short of its floor %g by %g: give it a halfWidth of at least %d, or walls of at least %.2f", label, drop, math.round(worst.x), math.round(worst.z), worst.floor, worst.short, math.ceil(need / Shape.trenchWalls(r) + Shape.trenchRough(r)), math.ceil(need / (hw - Shape.trenchRough(r)) * 100) / 100))
 	end
 end
 
@@ -561,6 +561,8 @@ function Describe.validate(plan): { string }
 			end
 		end
 	end
+	-- A Trench is measured against its Ocean's bed, so only once every Ocean is bounded.
+	local bounded = #e == 0
 	if #e == 0 then
 		for _, low in ipairs(Shape.lowestSurfaces(plan)) do
 			if low.y < limit then
@@ -568,7 +570,7 @@ function Describe.validate(plan): { string }
 			end
 		end
 	end
-	if sound then
+	if bounded then
 		for _, r in ipairs(plan.regions or {}) do
 			if r.kind == "trench" then
 				checkTrenchInOcean(e, plan, r)
@@ -824,13 +826,13 @@ function Describe.heights(plan): string
 		elseif r.kind == "trench" then
 			-- Its deepest point, along its route and across the floor beside it, the route first at each spot.
 			local poly = Geo.polyline2(r.points)
-			local reach = Shape.trenchHalfWidth(r) / 4
+			local across = Shape.trenchHalfWidth(r) / 4
 			local deepest, dx, dz, floor = math.huge, 0, 0, 0
 			for _, spot in ipairs(trenchSpots(r)) do
 				local seg = spot[5]
 				local nx, nz = -seg[4] / seg[6], seg[3] / seg[6]
 				for _, a in ipairs({ 0, 1, -1, 2, -2, 3, -3, 4, -4 }) do
-					local off = reach * a / TRENCH_ACROSS
+					local off = across * a / TRENCH_ACROSS
 					local x, z = spot[1] + nx * off, spot[2] + nz * off
 					local h = ground(x, z)
 					if h < deepest then
