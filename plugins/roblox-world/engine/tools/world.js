@@ -297,17 +297,35 @@ const steps = {
   },
 
   // Writes the Chunks given, or every Chunk of the extent row by row, BATCH at a time, and records the state
-  // after each batch, so that a batch Studio does not finish leaves the earlier ones recorded.
+  // after each batch, so that a batch Studio does not finish leaves the earlier ones recorded. Studio may stop
+  // answering a batch and go on writing it, as it did on lab-ocean on 2026-11-09 after nine batches of 48: then
+  // this waits until it is done and sends again only the Chunks it left unwritten.
   async generate(studio, ctx, args) {
     const remove = ctx.flags['remove-baseplate'] === true;
     const keys = args.length ? chunkPairs(args) : extentChunks(readModule(path.join(ctx.project, `${PLAN}.luau`)));
     const seconds = [];
     const skipped = [];
+    const notes = [];
+    const listOf = (batch) => chunkList(batch.flatMap((key) => key.split(',')));
+    const write = async (batch) => JSON.parse(await studio.luau(`local O = ${OPS}; local g = O.generate(${listOf(batch)}); return g`));
     for (let at = 0; at < keys.length; at += BATCH) {
-      const list = chunkList(keys.slice(at, at + BATCH).flatMap((key) => key.split(',')));
-      const done = JSON.parse(await studio.luau(`local O = ${OPS}; local g = O.generate(${list}); return g`));
+      const batch = keys.slice(at, at + BATCH);
+      const t0 = Date.now();
+      let done;
+      try {
+        done = await write(batch);
+      } catch (error) {
+        if (!error.message.includes('may still be running')) throw error;
+        await waitForWriting(studio, keys.slice(at));
+        const left = JSON.parse(await studio.luau(`return ${OPS}.unwritten(${listOf(batch)})`));
+        notes.push(`Studio stopped answering during a batch and went on writing it: ${left.seconds.length} of its Chunks were written meanwhile, and ${left.unwritten.length} ${left.unwritten.length === 1 ? 'was' : 'were'} sent again`);
+        seconds.push(...left.seconds);
+        skipped.push(...left.skipped);
+        done = left.unwritten.length ? await write(left.unwritten) : { seconds: [], skipped: [] };
+      }
       seconds.push(...done.seconds);
       skipped.push(...done.skipped);
+      if (keys.length > BATCH) console.log(`  batch ${at / BATCH + 1} of ${Math.ceil(keys.length / BATCH)}: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
       if (ctx.project !== ENGINE) {
         const source = await studio.luau(`return ${OPS}.stateSource()`);
         fs.writeFileSync(path.join(ctx.project, `${STATE}.luau`), `${source.trim()}\n`);
@@ -318,7 +336,7 @@ const steps = {
     const line = seconds.length
       ? `generated ${seconds.length} Chunks in ${total.toFixed(2)} s, per Chunk min ${Math.min(...seconds).toFixed(2)} mean ${(total / seconds.length).toFixed(2)} max ${Math.max(...seconds).toFixed(2)}, skipped Locked: ${locked}`
       : `generated 0 Chunks, skipped Locked: ${locked}`;
-    return `${line}\n${await studio.luau(`return ${OPS}.placeSpawn(${remove})`)}`;
+    return [line, ...notes, await studio.luau(`return ${OPS}.placeSpawn(${remove})`)].join('\n');
   },
 
   // Takes a Landform, River or Lake out of the plan, writes the Chunks it touched and records it, so that
@@ -715,6 +733,23 @@ async function guardFlooding(studio, ctx) {
   if (left.length) notes.push(`Written Chunks whose terrain changes and this write leaves out: ${left.join(' ')}. Write them too, or the borders between them show steps`);
   if (facts.unrecorded) notes.push(`${facts.unrecorded} written Chunks hold no record of what they were written with, so they were not compared until they are written again`);
   return notes.join('. ');
+}
+
+const RECOVER_WAIT_MS = Number(process.env.WORLD_RECOVER_WAIT_MS || 5000);
+const RECOVER_TRIES = Number(process.env.WORLD_RECOVER_TRIES || 120);
+
+// Waits until the batch Studio stopped answering is written, asking every RECOVER_WAIT_MS; a question it does
+// not answer counts as still writing. After RECOVER_TRIES it stops and names the Chunks to write once it is done.
+async function waitForWriting(studio, rest) {
+  for (let n = 0; n < RECOVER_TRIES; n += 1) {
+    await new Promise((resolve) => { setTimeout(resolve, RECOVER_WAIT_MS); });
+    try {
+      if ((await studio.luau(`return ${OPS}.writing()`)).trim() === 'false') return;
+    } catch (error) {
+      if (!error.message.includes('may still be running')) throw error;
+    }
+  }
+  throw new Error(`Studio is still writing a batch it stopped answering, after ${(RECOVER_TRIES * RECOVER_WAIT_MS) / 1000} s. Once its terrain cells stop changing in status, run: generate ${rest.join(' ').replace(/,/g, ' ')}`);
 }
 
 // Every Chunk of a plan's extent, as keys "i,j", row by row as the engine walks it.

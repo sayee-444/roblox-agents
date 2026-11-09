@@ -102,26 +102,59 @@ end
 
 -- Writes the given Chunks, as a list of { i, j }. Skips Locked Chunks, records the rest as generated and
 -- returns, as JSON, the seconds each written Chunk took and the Locked ones skipped. tools/world.js sends
--- the Chunks in batches, since Studio stops answering one call that writes for minutes.
+-- the Chunks in batches. Studio may stop answering a batch and still write it to the end, so the batch keeps
+-- what it has written in shared.World.batch, which Ops.writing and Ops.unwritten read afterwards.
 function Ops.generate(list)
 	local t = workspace.Terrain
-	local seconds, skipped = {}, {}
+	local batch = { writing = true, seconds = {}, skipped = {} }
+	shared.World.batch = batch
+	local ok, problem = pcall(function()
+		for _, c in ipairs(list) do
+			local ci, cj = c[1], c[2]
+			local key = Gen.Chunk.key(ci, cj)
+			if isLocked(ci, cj) then
+				table.insert(batch.skipped, key)
+			else
+				local stats = Writer.writeChunk(t, plan, Gen, ci, cj)
+				shared.World.renderStale = true
+				batch.seconds[key] = stats.wall
+				-- What it was written with, so that a later plan that turns its land into water is caught before writing.
+				local sample = Gen.Chunk.sample(plan, ci, cj)
+				state.chunks[key] = { generated = true, locked = false, water = sample.water, sign = sample.sign }
+				task.wait()
+			end
+		end
+	end)
+	batch.writing = false
+	if not ok then
+		error(problem)
+	end
+	local seconds = {}
 	for _, c in ipairs(list) do
-		local ci, cj = c[1], c[2]
-		local key = Gen.Chunk.key(ci, cj)
-		if isLocked(ci, cj) then
-			table.insert(skipped, key)
-		else
-			local stats = Writer.writeChunk(t, plan, Gen, ci, cj)
-			shared.World.renderStale = true
-			table.insert(seconds, stats.wall)
-			-- What it was written with, so that a later plan that turns its land into water is caught before writing.
-			local sample = Gen.Chunk.sample(plan, ci, cj)
-			state.chunks[key] = { generated = true, locked = false, water = sample.water, sign = sample.sign }
-			task.wait()
+		table.insert(seconds, batch.seconds[Gen.Chunk.key(c[1], c[2])])
+	end
+	return game:GetService("HttpService"):JSONEncode({ seconds = seconds, skipped = batch.skipped })
+end
+
+-- Whether the last batch Ops.generate began is still writing.
+function Ops.writing()
+	return tostring(shared.World.batch ~= nil and shared.World.batch.writing == true)
+end
+
+-- Of the given Chunks, the last batch sent, as JSON: those it left unwritten, the seconds of those it wrote,
+-- and the Locked ones it skipped.
+function Ops.unwritten(list)
+	local batch = shared.World.batch or { seconds = {}, skipped = {} }
+	local unwritten, seconds = {}, {}
+	for _, c in ipairs(list) do
+		local key = Gen.Chunk.key(c[1], c[2])
+		if batch.seconds[key] then
+			table.insert(seconds, batch.seconds[key])
+		elseif not isLocked(c[1], c[2]) then
+			table.insert(unwritten, key)
 		end
 	end
-	return game:GetService("HttpService"):JSONEncode({ seconds = seconds, skipped = skipped })
+	return game:GetService("HttpService"):JSONEncode({ unwritten = unwritten, seconds = seconds, skipped = batch.skipped })
 end
 
 -- Reads voxels on both sides of each border between two generated Chunks and compares them with

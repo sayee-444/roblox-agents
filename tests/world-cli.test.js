@@ -506,7 +506,7 @@ function inStudio(dir, env, ...args) {
     const result = spawnSync(process.execPath, [cli, ...args], {
       encoding: 'utf8',
       timeout: 15000,
-      env: { ...process.env, FAKE_STUDIO_LOG: log, WORLD_FAKE_STUDIO: path.resolve(__dirname, 'fixtures/fake-studio.js'), WORLD_LIST_WAIT_MS: '1', WORLD_STATUS_WAIT_MS: '500', ...env },
+      env: { ...process.env, FAKE_STUDIO_LOG: log, WORLD_FAKE_STUDIO: path.resolve(__dirname, 'fixtures/fake-studio.js'), WORLD_LIST_WAIT_MS: '1', WORLD_STATUS_WAIT_MS: '500', WORLD_RECOVER_WAIT_MS: '1', ...env },
     });
     const calls = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
     return { ...result, calls };
@@ -723,7 +723,7 @@ test('remove puts the plan back and records nothing when Studio fails before any
 
 test('remove keeps the block in the history when the write fails, and names the command that finishes it', () => {
   withPlan({}, (dir, read) => {
-    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_UNREACHABLE: '.generate(' }, 'remove', 'river', '--place', 'P', '--project', dir);
+    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_UNREACHABLE: '.generate(', FAKE_STUDIO_BUSY: 'true', WORLD_RECOVER_TRIES: '2' }, 'remove', 'river', '--place', 'P', '--project', dir);
     assert.strictEqual(status, 1);
     assert.ok(!read('src/world/plan.luau').includes('id = "river"'));
     const history = read('docs/world/history.md');
@@ -736,9 +736,9 @@ test('remove keeps the block in the history when the write fails, and names the 
 
 test('a Luau call Studio does not answer is not sent again, since its code may still be running', () => {
   withPlan({}, (dir) => {
-    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_UNREACHABLE: '.generate(' }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_UNREACHABLE: '.describe(' }, 'describe', '--place', 'P', '--project', dir);
     assert.strictEqual(status, 1);
-    assert.strictEqual(calls.filter((call) => call.startsWith('generate')).length, 1, calls.join(' | '));
+    assert.strictEqual(calls.filter((call) => call === 'describe').length, 1, calls.join(' | '));
     assert.match(stderr, /may still be running/);
     assert.match(stderr, /Target is not reachable/);
   });
@@ -993,5 +993,28 @@ test('remove stops when taking something out would let water cover land already 
     assert.strictEqual(read('src/world/plan.luau'), before);
     assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
     assert.ok(!fs.existsSync(path.join(dir, 'docs/world/history.md')), 'nothing is recorded');
+  });
+});
+
+test('a batch Studio stops answering is waited out, and only the Chunks it left unwritten are sent again', () => {
+  withPlan({}, (dir) => {
+    const env = { FAKE_STUDIO_UNREACHABLE_ONCE: '.generate(', FAKE_STUDIO_UNWRITTEN: '["2,0"]', WORLD_RECOVER_WAIT_MS: '1' };
+    const { status, stdout, calls } = inStudio(dir, env, 'generate', '0', '0', '1', '0', '2', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const writes = calls.filter((call) => call.startsWith('generate'));
+    assert.deepStrictEqual(writes, ['generate { { 0, 0 }, { 1, 0 }, { 2, 0 } }', 'generate { { 2, 0 } }']);
+    assert.ok(calls.indexOf('writing') < calls.indexOf('unwritten'), calls.join(' | '));
+    assert.match(stdout, /Studio stopped answering during a batch and went on writing it: 2 of its Chunks were written meanwhile, and 1 was sent again/);
+  });
+});
+
+test('a write Studio never finishes answering stops after waiting, and says what to run', () => {
+  withPlan({}, (dir) => {
+    const env = { FAKE_STUDIO_UNREACHABLE_ONCE: '.generate(', FAKE_STUDIO_BUSY: 'true', WORLD_RECOVER_WAIT_MS: '1', WORLD_RECOVER_TRIES: '3' };
+    const { status, stderr, calls } = inStudio(dir, env, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.strictEqual(calls.filter((call) => call.startsWith('generate')).length, 1, calls.join(' | '));
+    assert.match(stderr, /still writing/);
+    assert.match(stderr, /generate 0 0/);
   });
 });

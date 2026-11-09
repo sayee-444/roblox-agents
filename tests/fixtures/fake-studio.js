@@ -10,6 +10,9 @@
 //   FAKE_STUDIO_UNREACHABLE=<s>  Luau holding this text fails as Studio fails when it is too busy to answer
 //   FAKE_STUDIO_DESTROY=<n>      the place's Destroy Height, -500 when not set, as in a new place
 //   FAKE_STUDIO_DEPTH=<json>     what depthFacts answers: the place's Destroy Height, the plan's limits and its deepest bed
+//   FAKE_STUDIO_UNREACHABLE_ONCE=<s>  the first Luau call holding this text fails that way, and later ones answer
+//   FAKE_STUDIO_BUSY=true        Studio is still writing a batch whose call it stopped answering
+//   FAKE_STUDIO_UNWRITTEN=<json> the Chunks of a batch left unwritten after Studio stopped answering
 //   FAKE_STUDIO_WATER=<json>     what waterFacts answers: written Chunks whose land turns into water, and which change
 const fs = require('fs');
 const readline = require('readline');
@@ -22,6 +25,7 @@ const VIEWS = [
   { name: 'river-above', camera: [0, 90, 0], look: [1, 0, 0] },
 ];
 let misses = Number(process.env.FAKE_STUDIO_MISSES || 0);
+let failedOnce = false;
 
 function luau(code) {
   const borders = code.match(/\.borders\((.*)\)/);
@@ -32,6 +36,14 @@ function luau(code) {
   if (impact) { log(`impact ${impact[1]}`); return process.env.FAKE_STUDIO_IMPACT; }
   const setHeight = code.match(/\.setDestroyHeight\((.*?)\)/);
   if (setHeight) { log(`set destroy height ${setHeight[1]}`); return setHeight[1]; }
+  if (code.includes('.writing()')) { log('writing'); return process.env.FAKE_STUDIO_BUSY === 'true' ? 'true' : 'false'; }
+  const unwritten = code.match(/\.unwritten\((.*)\)/);
+  if (unwritten) {
+    log('unwritten');
+    const left = JSON.parse(process.env.FAKE_STUDIO_UNWRITTEN || '[]');
+    const sent = (unwritten[1].match(/\{ -?\d+, -?\d+ \}/g) || []).length;
+    return JSON.stringify({ unwritten: left, seconds: Array(sent - left.length).fill(0.5), skipped: [] });
+  }
   if (code.includes('.waterFacts()')) { log('water facts'); return process.env.FAKE_STUDIO_WATER || JSON.stringify({ flooded: [], lockedFlooded: [], changed: [], unrecorded: 0 }); }
   if (code.includes('.depthFacts()')) return process.env.FAKE_STUDIO_DEPTH || JSON.stringify({ placeHeight: -500, depthLimit: -3500, deepest: { id: 'ocean', kind: 'ocean', y: -80 } });
   if (code.includes('FallenPartsDestroyHeight')) return process.env.FAKE_STUDIO_DESTROY || '-500';
@@ -58,6 +70,12 @@ function call(name, args) {
     return text(JSON.stringify({ studios: (process.env.FAKE_STUDIO_PLACES || 'P').split(',').map((name) => ({ id: name, name })) }));
   }
   if (name === 'execute_luau' && process.env.FAKE_STUDIO_UNREACHABLE && args.code.includes(process.env.FAKE_STUDIO_UNREACHABLE)) {
+    luau(args.code);
+    return { isError: true, content: [{ type: 'text', text: 'Network action ExecuteLuau.runCode sent to DMN_ID_EDIT failed - Target is not reachable' }] };
+  }
+  const once = process.env.FAKE_STUDIO_UNREACHABLE_ONCE;
+  if (name === 'execute_luau' && once && !failedOnce && args.code.includes(once)) {
+    failedOnce = true;
     luau(args.code);
     return { isError: true, content: [{ type: 'text', text: 'Network action ExecuteLuau.runCode sent to DMN_ID_EDIT failed - Target is not reachable' }] };
   }
