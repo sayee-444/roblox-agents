@@ -11,7 +11,7 @@ local Chunk = require("./Chunk")
 local Describe = {}
 
 local KINDS = { mountain = true, mesa = true, valley = true, cave = true, trench = true }
-local TRENCH_FIELDS = { id = true, kind = true, seed = true, points = true, floors = true, halfWidth = true, walls = true, rough = true }
+local TRENCH_FIELDS = { id = true, kind = true, seed = true, points = true, floors = true, halfWidth = true, walls = true, rough = true, rim = true }
 local WALL_RANGE = { 0.1, 5 } -- rise over run of a Trench's walls, from a long slope to a cliff of about 79 degrees
 local TRENCH_STEP = 32 -- studs along a Trench's route between the spots where validation and `heights` measure it
 local TRENCH_ACROSS = 4 -- spots on each side of its route where `heights` looks for its deepest point, out to a quarter of its half width
@@ -212,11 +212,15 @@ local function checkTrench(errors, label, r)
 			end
 		end
 	end
-	local rough = if r.rough == nil then Shape.trenchRough(r) else r.rough
+	local hw = Shape.trenchHalfWidth(r)
+	local rough = if isNum(hw) or r.rough ~= nil then Shape.trenchRough(r) else 0
 	if not (isNum(rough) and rough >= 0) then
 		table.insert(errors, label .. ": rough must be 0 or more, in studs")
-	elseif not (isNum(Shape.trenchHalfWidth(r)) and Shape.trenchHalfWidth(r) > rough) then
+	elseif not (isNum(hw) and hw > rough) then
 		table.insert(errors, label .. ": halfWidth must be above its rough, in studs from its route to the top of its walls")
+	end
+	if r.rim ~= nil and not (isNum(r.rim) and r.rim >= 0 and r.rim <= 0.9) then
+		table.insert(errors, label .. ": rim must be from 0 to 0.9, as a share of its half width")
 	end
 	if r.walls ~= nil and not (isNum(r.walls) and r.walls >= WALL_RANGE[1] and r.walls <= WALL_RANGE[2]) then
 		table.insert(errors, string.format("%s: walls must be from %s to %s, as rise over run", label, WALL_RANGE[1], WALL_RANGE[2]))
@@ -257,7 +261,7 @@ local function checkTrenchInOcean(errors, plan, r)
 			end
 		end
 	end
-	local drop = Shape.trenchWalls(r) * (hw - Shape.trenchRough(r)) -- the most its walls fall below the bed
+	local drop = Shape.trenchFall(r) -- the most its walls fall below the bed
 	local worst
 	for _, spot in ipairs(trenchSpots(r)) do
 		local bed = Shape.oceanBed(plan, spot[1], spot[2])
@@ -273,7 +277,20 @@ local function checkTrenchInOcean(errors, plan, r)
 	end
 	if worst then
 		local need = worst.bed - worst.floor
-		table.insert(errors, string.format("%s: its walls reach only %g below the Ocean's bed at %d %d, short of its floor %g by %g: give it a halfWidth of at least %d, or walls of at least %.2f", label, drop, math.round(worst.x), math.round(worst.z), worst.floor, worst.short, math.ceil(need / Shape.trenchWalls(r) + Shape.trenchRough(r)), math.ceil(need / (hw - Shape.trenchRough(r)) * 100) / 100))
+		-- Its fall grows with its half width, so the half width that reaches the floor is found by halving.
+		local low, high = hw, hw
+		while Shape.trenchFall(r, high) < need do
+			low, high = high, high * 2
+		end
+		for _ = 1, 40 do
+			local mid = (low + high) / 2
+			if Shape.trenchFall(r, mid) < need then
+				low = mid
+			else
+				high = mid
+			end
+		end
+		table.insert(errors, string.format("%s: its walls reach only %.1f below the Ocean's bed at %d %d, short of its floor %g by %.1f: give it a halfWidth of at least %d, or walls of at least %.2f", label, drop, math.round(worst.x), math.round(worst.z), worst.floor, worst.short, math.ceil(high - 1e-6), math.ceil(need * Shape.trenchWalls(r) / drop * 100 - 1e-6) / 100))
 	end
 end
 

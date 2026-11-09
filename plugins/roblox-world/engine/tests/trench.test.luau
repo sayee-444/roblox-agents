@@ -20,7 +20,7 @@ end
 
 -- Land in Chunk column -1, so the coast lies at x -256, and an Ocean from column 0 to 14 capped at 100: past 400 studs
 -- from the coast its bed lies flat at -80. A Trench runs north to south at x 3000, 300 studs to each side, falling
--- 1 stud per stud from that bed to a floor at -300, with no roughness, so every height below is worked out by hand.
+-- 1 stud per stud from that bed to a floor at -300, with no roughness and no rim, so every height below is worked out by hand.
 local function trenchPlan(changes)
 	local plan = clone(shipped)
 	plan.floorY = 0
@@ -30,7 +30,7 @@ local function trenchPlan(changes)
 	plan.oceans = { { id = "ocean", seed = 8001, chunks = { { 0, -1, 14, 1 } }, depthCap = 100 } }
 	plan.rivers, plan.lakes = {}, {}
 	plan.regions = {
-		{ id = "trench", kind = "trench", seed = 9001, points = { { 3000, -400 }, { 3000, 400 } }, floors = { -300, -300 }, halfWidth = 300, walls = 1, rough = 0 },
+		{ id = "trench", kind = "trench", seed = 9001, points = { { 3000, -400 }, { 3000, 400 } }, floors = { -300, -300 }, halfWidth = 300, walls = 1, rough = 0, rim = 0 },
 	}
 	if changes then
 		changes(plan, plan.regions[1])
@@ -86,6 +86,39 @@ return {
 		t.near(ground(plan, 2800, -200), -300, 1e-6, "on the first leg")
 		t.near(ground(plan, 2800, 200), -300, 1e-6, "on the second leg")
 		t.near(ground(plan, 3200, 0), -180, 1e-6, "200 beyond the bend")
+	end,
+
+	["its walls leave the Ocean's bed as a ramp that steepens over its rim, with no corner"] = function(t)
+		-- A rim of 0.4 of 300 studs: over its first 120 studs inwards the walls steepen from flat to 1, so they fall
+		-- u * u / 240 there, and u - 60 past it.
+		local plan = trenchPlan(function(_, tr)
+			tr.rim = 0.4
+		end)
+		for _, p in ipairs({ { 3299, -80 - 1 / 240 }, { 3250, -80 - 2500 / 240 }, { 3180, -140 }, { 3100, -220 }, { 3000, -300 } }) do
+			t.near(ground(plan, p[1], 0), p[2], 1e-6, "ground at " .. p[1])
+		end
+		t.ok(ground(plan, 3296, 0) - ground(plan, 3300, 0) > -0.2, "the first 4 studs fall less than a fifth of a stud")
+		t.eq(#Describe.validate(plan), 0, table.concat(Describe.validate(plan), "; "))
+	end,
+
+	["its Region Seed bends a pit's outline, so it is not a circle"] = function(t)
+		local plan = trenchPlan(function(_, tr)
+			tr.points = { { 3000, 0 }, { 3000, 4 } }
+			tr.rough, tr.rim = nil, nil
+		end)
+		-- How far out, in each of 32 directions, the ground first lies a stud below the bed.
+		local nearest, farthest = math.huge, 0
+		for k = 0, 31 do
+			local a = k * math.pi / 16
+			for r = 300, 0, -2 do
+				if ground(plan, 3000 + r * math.cos(a), 2 + r * math.sin(a)) < -81 then
+					nearest, farthest = math.min(nearest, r), math.max(farthest, r)
+					break
+				end
+			end
+		end
+		t.ok(farthest - nearest > 20, "its edge lies from " .. nearest .. " to " .. farthest .. " studs out")
+		t.ok(farthest < 300, "and always inside its half width")
 	end,
 
 	["a short route gives a round pit"] = function(t)
@@ -147,7 +180,7 @@ return {
 
 	["two Trenches that meet take the deeper of them"] = function(t)
 		local plan = trenchPlan(function(p)
-			table.insert(p.regions, { id = "cross", kind = "trench", seed = 9003, points = { { 2600, 0 }, { 3400, 0 } }, floors = { -500, -500 }, halfWidth = 450, walls = 1, rough = 0 })
+			table.insert(p.regions, { id = "cross", kind = "trench", seed = 9003, points = { { 2600, 0 }, { 3400, 0 } }, floors = { -500, -500 }, halfWidth = 450, walls = 1, rough = 0, rim = 0 })
 		end)
 		t.near(ground(plan, 3000, 0), -500, 1e-6, "where they cross")
 		t.near(ground(plan, 3000, 300), -300, 1e-6, "on the shallower one's route, above the deeper one's wall")
@@ -161,12 +194,22 @@ return {
 			p.extent = { minX = -1, maxX = 14, minZ = -3, maxZ = 3 }
 			p.oceans[1].chunks = { { 0, -3, 14, 3 } }
 			tr.points = { { 4000, -300 }, { 4000, 300 } }
-			tr.floors = { -900, -900 }
-			tr.halfWidth, tr.walls, tr.rough = nil, nil, nil
+			-- 800 studs to each side, its rough a fifth of that and its rim two fifths: its walls fall at most
+			-- 1.5 * (800 - 160 - 320 / 2) = 720 below the bed at -80.
+			tr.floors = { -700, -700 }
+			tr.halfWidth, tr.walls, tr.rough, tr.rim = nil, nil, nil, nil
 		end)
 		local found = Describe.validate(defaults)
 		t.eq(#found, 0, table.concat(found, "; "))
-		t.ok(ground(defaults, 4000, 0) < -800, "the defaults reach near its floor")
+		t.ok(ground(defaults, 4000, 0) <= -540, "the defaults reach its floor, raised by at most its rough")
+		local deeper = Describe.validate(trenchPlan(function(p, tr)
+			p.extent = { minX = -1, maxX = 14, minZ = -3, maxZ = 3 }
+			p.oceans[1].chunks = { { 0, -3, 14, 3 } }
+			tr.points = { { 4000, -300 }, { 4000, 300 } }
+			tr.floors = { -900, -900 }
+			tr.halfWidth, tr.walls, tr.rough, tr.rim = nil, nil, nil, nil
+		end))
+		t.ok(string.find(table.concat(deeper, "; "), "its walls reach only 720.0 below the Ocean's bed", 1, true) ~= nil, table.concat(deeper, "; "))
 		local atLimit = Describe.validate(trenchPlan(function(p)
 			p.depthLimit = -300
 		end))
@@ -198,7 +241,7 @@ return {
 			{ "region trench: its floor -50 at point 1 is not below the Ocean's bed -80.0 there", function(_, tr)
 				tr.floors = { -50, -300 }
 			end },
-			{ "region trench: its walls reach only 150 below the Ocean's bed at 3000 -400, short of its floor -300 by 70", function(_, tr)
+			{ "region trench: its walls reach only 150.0 below the Ocean's bed at 3000 -400, short of its floor -300 by 70.0: give it a halfWidth of at least 440, or walls of at least 0.74", function(_, tr)
 				tr.walls = 0.5
 			end },
 			{ "region trench: needs at least 2 route points", function(_, tr)
@@ -231,6 +274,9 @@ return {
 			end },
 			{ "region trench: walls must be from 0.1 to 5, as rise over run", function(_, tr)
 				tr.walls = 6
+			end },
+			{ "region trench: rim must be from 0 to 0.9, as a share of its half width", function(_, tr)
+				tr.rim = 1
 			end },
 			{ "region trench: has no field floor", function(_, tr)
 				tr.floor = -300

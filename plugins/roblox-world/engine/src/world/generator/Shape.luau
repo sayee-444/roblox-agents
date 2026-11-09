@@ -44,9 +44,12 @@ local CAVE_SWELL = 0.15 -- how far a cave's radius swells along it, as a fractio
 -- A Trench's defaults, for the fields its World Plan leaves out. Not yet judged by the developer in Studio.
 local TRENCH_HALF_WIDTH = 800 -- studs from its route to the top of its walls
 local TRENCH_WALLS = 1.5 -- rise over run of its walls, about 56 degrees
-local TRENCH_ROUGH = 40 -- studs its Region Seed narrows its walls and raises its floor, at most
-local WALL_SCALE = 160 -- studs for one swell of a Trench's walls
-local FLOOR_SCALE = 90 -- studs for one swell of a Trench's floor
+-- Shares of a Trench's half width, so that a wide Trench is as irregular as a narrow one. The developer saw an abyss
+-- with no rim and no roughness on 2026-11-09: its walls went from flat to cliff at once around a near circle.
+local ROUGH_SHARE = 0.2 -- how far its Region Seed narrows its walls and raises its floor, at most, unless it gives `rough`
+local RIM_SHARE = 0.4 -- how far in from its edge its walls steepen from flat to their steepness, unless it gives `rim`
+local WALL_SHARE = 0.5 -- one swell of its outline
+local FLOOR_SHARE = 0.25 -- one swell of its floor
 
 local prepared = setmetatable({}, { __mode = "k" })
 
@@ -153,8 +156,9 @@ local function prepare(plan)
 				def = r,
 				poly = Geo.polyline2(r.points),
 				halfWidth = hw,
-				walls = Shape.trenchWalls(r),
 				rough = Shape.trenchRough(r),
+				wallScale = hw * WALL_SHARE,
+				floorScale = hw * FLOOR_SHARE,
 				box = { x0, z0, x1, z1 },
 			})
 		end
@@ -633,9 +637,26 @@ function Shape.trenchWalls(def): number
 	return def.walls or TRENCH_WALLS
 end
 
--- The most a Trench's Region Seed narrows its walls and raises its floor, in studs.
-function Shape.trenchRough(def): number
-	return def.rough or TRENCH_ROUGH
+-- The most a Trench's Region Seed narrows its walls and raises its floor, in studs, for its half width or `hw`.
+function Shape.trenchRough(def, hw: number?): number
+	return def.rough or ROUGH_SHARE * (hw or Shape.trenchHalfWidth(def))
+end
+
+-- How far a Trench's walls fall below the Ocean's bed `u` studs in from their edge, for its half width or `hw`. Over
+-- its rim they steepen evenly from flat to its walls, so the bed turns into them as a ramp with no corner.
+function Shape.trenchDrop(def, u: number, hw: number?): number
+	local rim = (def.rim or RIM_SHARE) * (hw or Shape.trenchHalfWidth(def))
+	local walls = Shape.trenchWalls(def)
+	if u < rim then
+		return walls * u * u / (2 * rim)
+	end
+	return walls * (u - rim / 2)
+end
+
+-- The most a Trench's walls fall below the Ocean's bed, where its Region Seed narrows them most, for its half width or `hw`.
+function Shape.trenchFall(def, hw: number?): number
+	hw = hw or Shape.trenchHalfWidth(def)
+	return Shape.trenchDrop(def, math.max(0, hw - Shape.trenchRough(def, hw)), hw)
 end
 
 -- A Trench's floor `s` studs along its route, eased in a straight line between the floors of its points.
@@ -651,8 +672,8 @@ function Shape.trenchFloor(def, s: number): number
 end
 
 -- The lowest ground the Trenches give at (x, z) over an Ocean's bed `bed`, and the id of the one that gives it, or nil.
--- Within its half width a Trench's walls fall from the bed at its steepness to its floor. Its Region Seed only
--- narrows its walls and raises its floor, each by up to its rough, so nothing beyond its half width changes and
+-- Within its half width a Trench's walls fall from the bed, steepening over its rim, to its floor. Its Region Seed only
+-- bends its outline inwards and raises its floor, each by up to its rough, so nothing beyond its half width changes and
 -- no ground lies below its floor.
 local function trenchGround(P, x: number, z: number, bed: number): (number, string?)
 	local low, by = bed, nil
@@ -662,11 +683,11 @@ local function trenchGround(P, x: number, z: number, bed: number): (number, stri
 			local d, s = Geo.dist2(tr.poly, x, z, tr.halfWidth)
 			if d < tr.halfWidth then
 				local seed = tr.def.seed
-				local wobble = 0.5 + 0.5 * math.clamp(Noise.fbm(x / WALL_SCALE, z / WALL_SCALE, seed, 3) * 2, -1, 1)
-				local reach = tr.halfWidth - d - tr.rough * wobble
-				if reach > 0 then
-					local bump = 0.5 + 0.5 * math.clamp(Noise.fbm(x / FLOOR_SCALE, z / FLOOR_SCALE, seed + 3, 2) * 2, -1, 1)
-					local ground = math.max(Shape.trenchFloor(tr.def, s) + tr.rough * bump, bed - tr.walls * reach)
+				local wobble = 0.5 + 0.5 * math.clamp(Noise.fbm(x / tr.wallScale, z / tr.wallScale, seed, 3) * 2, -1, 1)
+				local inward = tr.halfWidth - d - tr.rough * wobble
+				if inward > 0 then
+					local bump = 0.5 + 0.5 * math.clamp(Noise.fbm(x / tr.floorScale, z / tr.floorScale, seed + 3, 2) * 2, -1, 1)
+					local ground = math.max(Shape.trenchFloor(tr.def, s) + tr.rough * bump, bed - Shape.trenchDrop(tr.def, inward, tr.halfWidth))
 					if ground < low then
 						low, by = ground, tr.def.id
 					end
