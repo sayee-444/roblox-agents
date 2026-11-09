@@ -72,6 +72,7 @@ local REMOVED_BANK_FIELDS = {
 }
 
 local SIDES = { 0.02, 1.5 } -- rise over run at the water's edge, from a near plain to about 56 degrees
+local OCEAN_SLOPES = { 0.02, 1.5 } -- rise over run of an Ocean's bed from its Coast, as gentle and as steep as Valley Sides go
 local OCEAN_FIELDS = { id = true, seed = true, chunks = true, depthCap = true, slope = true, bend = true }
 
 local function checkBanks(errors, label, def, isLake)
@@ -346,8 +347,8 @@ function Describe.validate(plan): { string }
 		if oc.depthCap ~= nil and oc.depthCap ~= false and not (isNum(oc.depthCap) and oc.depthCap > 0 and oc.depthCap % 4 == 0) then
 			table.insert(e, label .. ": depthCap must be a multiple of 4 above 0, or false for no cap, so the open bed meets a voxel boundary")
 		end
-		if oc.slope ~= nil and not (isNum(oc.slope) and oc.slope >= SIDES[1] and oc.slope <= SIDES[2]) then
-			table.insert(e, string.format("%s: slope must be from %s to %s, as rise over run of the bed from the coast", label, SIDES[1], SIDES[2]))
+		if oc.slope ~= nil and not (isNum(oc.slope) and oc.slope >= OCEAN_SLOPES[1] and oc.slope <= OCEAN_SLOPES[2]) then
+			table.insert(e, string.format("%s: slope must be from %s to %s, as rise over run of the bed from the coast", label, OCEAN_SLOPES[1], OCEAN_SLOPES[2]))
 		end
 		if oc.bend ~= nil and not (isNum(oc.bend) and oc.bend > 0) then
 			table.insert(e, label .. ": bend must be above 0, in studs from the coast")

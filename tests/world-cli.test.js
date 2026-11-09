@@ -958,3 +958,40 @@ test('status lists the Oceans a plan holds', () => {
     assert.match(inStudio(dir, {}, 'status', '--project', dir).stdout, /Oceans: sea/);
   });
 });
+
+// Studio stops answering one call that writes for minutes: 576 Chunks of lab-ocean at about 0.9 s each did, on 2026-11-09.
+test('generate writes a long list in batches of at most 48 Chunks, so that Studio keeps answering, and adds them up', () => {
+  withPlan({}, (dir) => {
+    const pairs = [];
+    for (let n = 0; n < 100; n += 1) pairs.push(String(n % 10 - 5), String(Math.floor(n / 10) - 5));
+    const { status, stdout, calls } = inStudio(dir, {}, 'generate', ...pairs, '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const writes = calls.filter((call) => call.startsWith('generate'));
+    assert.deepStrictEqual(writes.map((call) => (call.match(/\{ -?\d+, -?\d+ \}/g) || []).length), [48, 48, 4], writes.join(' | '));
+    assert.match(stdout, /generated 100 Chunks in 50\.00 s, per Chunk min 0\.50 mean 0\.50 max 0\.50, skipped Locked: none/);
+  });
+});
+
+test('generate with no Chunks given writes every Chunk of the extent in batches too, row by row, as run does', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, {}, 'generate', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const writes = calls.filter((call) => call.startsWith('generate'));
+    assert.strictEqual(writes.length, 3, writes.join(' | '));
+    assert.ok(writes[0].startsWith('generate { { -5, -5 }, { -4, -5 },'), writes[0]);
+    assert.match(stdout, /generated 144 Chunks/);
+  });
+});
+
+test('remove stops when taking something out would let water cover land already written, and puts the plan back', () => {
+  withPlan({}, (dir, read) => {
+    const before = read('src/world/plan.luau');
+    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_WATER: WATER({ flooded: ['0,0'], changed: ['0,0'] }) }, 'remove', 'range', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /Nothing was removed/);
+    assert.match(stderr, /Chunks 0,0/);
+    assert.strictEqual(read('src/world/plan.luau'), before);
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.ok(!fs.existsSync(path.join(dir, 'docs/world/history.md')), 'nothing is recorded');
+  });
+});

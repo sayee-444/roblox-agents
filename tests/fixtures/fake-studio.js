@@ -36,7 +36,11 @@ function luau(code) {
   if (code.includes('.depthFacts()')) return process.env.FAKE_STUDIO_DEPTH || JSON.stringify({ placeHeight: -500, depthLimit: -3500, deepest: { id: 'ocean', kind: 'ocean', y: -80 } });
   if (code.includes('FallenPartsDestroyHeight')) return process.env.FAKE_STUDIO_DESTROY || '-500';
   const generate = code.match(/\.generate\((.*?)\);/);
-  if (generate) { log(`generate ${generate[1]}`); return 'generated'; }
+  if (generate) {
+    log(`generate ${generate[1]}`);
+    const count = (generate[1].match(/\{ -?\d+, -?\d+ \}/g) || []).length;
+    return JSON.stringify({ seconds: Array(count).fill(0.5), skipped: [] });
+  }
   if (code.includes('.stateSource()')) return 'return {\n\tchunks = {},\n}';
   if (code.includes('.describe()')) { log('describe'); return process.env.FAKE_STUDIO_INVALID === 'true' ? 'INVALID PLAN\nregion x: unknown river' : 'extent: 9 chunks'; }
   if (code.includes('CountCells')) return process.env.FAKE_STUDIO_CELLS || '0';

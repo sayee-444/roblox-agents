@@ -100,42 +100,28 @@ function Ops.waterFacts()
 	return game:GetService("HttpService"):JSONEncode(change)
 end
 
--- Writes the given Chunks, as a list of { i, j }, or every Chunk of the extent when none is
--- given. Skips Locked Chunks, records the rest as generated and reports seconds per Chunk.
+-- Writes the given Chunks, as a list of { i, j }. Skips Locked Chunks, records the rest as generated and
+-- returns, as JSON, the seconds each written Chunk took and the Locked ones skipped. tools/world.js sends
+-- the Chunks in batches, since Studio stops answering one call that writes for minutes.
 function Ops.generate(list)
 	local t = workspace.Terrain
 	local seconds, skipped = {}, {}
-	local total = 0
-	local function write(ci, cj)
+	for _, c in ipairs(list) do
+		local ci, cj = c[1], c[2]
 		local key = Gen.Chunk.key(ci, cj)
 		if isLocked(ci, cj) then
 			table.insert(skipped, key)
-			return
+		else
+			local stats = Writer.writeChunk(t, plan, Gen, ci, cj)
+			shared.World.renderStale = true
+			table.insert(seconds, stats.wall)
+			-- What it was written with, so that a later plan that turns its land into water is caught before writing.
+			local sample = Gen.Chunk.sample(plan, ci, cj)
+			state.chunks[key] = { generated = true, locked = false, water = sample.water, sign = sample.sign }
+			task.wait()
 		end
-		local stats = Writer.writeChunk(t, plan, Gen, ci, cj)
-		shared.World.renderStale = true
-		table.insert(seconds, stats.wall)
-		total += stats.wall
-		-- What it was written with, so that a later plan that turns its land into water is caught before writing.
-		local sample = Gen.Chunk.sample(plan, ci, cj)
-		state.chunks[key] = { generated = true, locked = false, water = sample.water, sign = sample.sign }
-		task.wait()
 	end
-	if list then
-		for _, c in ipairs(list) do
-			write(c[1], c[2])
-		end
-	else
-		eachChunk(write)
-	end
-	if #seconds == 0 then
-		return "generated 0 Chunks, skipped Locked: " .. table.concat(skipped, " ")
-	end
-	return string.format(
-		"generated %d Chunks in %.2f s, per Chunk min %.2f mean %.2f max %.2f, skipped Locked: %s",
-		#seconds, total, math.min(table.unpack(seconds)), total / #seconds, math.max(table.unpack(seconds)),
-		if #skipped > 0 then table.concat(skipped, " ") else "none"
-	)
+	return game:GetService("HttpService"):JSONEncode({ seconds = seconds, skipped = skipped })
 end
 
 -- Reads voxels on both sides of each border between two generated Chunks and compares them with

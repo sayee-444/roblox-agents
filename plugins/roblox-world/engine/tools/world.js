@@ -73,6 +73,9 @@ const FAR_VIEW_STUDS = 1000;
 // Studio sometimes lists no place for a few seconds while it is connected, which cost runs 20 to 40 s
 // of retries by the model. An empty listing is waited out, and a listing of other places is an answer.
 const LIST_TRIES = 20;
+// Chunks written in one call to Studio. One call of 576 Chunks at about 0.9 s each made Studio stop answering, on
+// lab-ocean on 2026-11-09, while 144 of lab in 131 s passed, so a batch stays near a minute.
+const BATCH = 48;
 const LIST_WAIT_MS = Number(process.env.WORLD_LIST_WAIT_MS || 1000);
 // status answers from the files whatever Studio does, so it waits little for it. A place comes back in
 // the listing on the third or fourth try after any command, measured, so fewer tries report it closed.
@@ -293,15 +296,29 @@ const steps = {
     return `\n${text}`;
   },
 
+  // Writes the Chunks given, or every Chunk of the extent row by row, BATCH at a time, and records the state
+  // after each batch, so that a batch Studio does not finish leaves the earlier ones recorded.
   async generate(studio, ctx, args) {
     const remove = ctx.flags['remove-baseplate'] === true;
-    const list = chunkList(args);
-    const text = await studio.luau(`local O = ${OPS}; local g = O.generate(${list}); return g .. "\\n" .. O.placeSpawn(${remove})`);
-    if (ctx.project !== ENGINE) {
-      const source = await studio.luau(`return ${OPS}.stateSource()`);
-      fs.writeFileSync(path.join(ctx.project, `${STATE}.luau`), `${source.trim()}\n`);
+    const keys = args.length ? chunkPairs(args) : extentChunks(readModule(path.join(ctx.project, `${PLAN}.luau`)));
+    const seconds = [];
+    const skipped = [];
+    for (let at = 0; at < keys.length; at += BATCH) {
+      const list = chunkList(keys.slice(at, at + BATCH).flatMap((key) => key.split(',')));
+      const done = JSON.parse(await studio.luau(`local O = ${OPS}; local g = O.generate(${list}); return g`));
+      seconds.push(...done.seconds);
+      skipped.push(...done.skipped);
+      if (ctx.project !== ENGINE) {
+        const source = await studio.luau(`return ${OPS}.stateSource()`);
+        fs.writeFileSync(path.join(ctx.project, `${STATE}.luau`), `${source.trim()}\n`);
+      }
     }
-    return text;
+    const locked = skipped.join(' ') || 'none';
+    const total = seconds.reduce((sum, value) => sum + value, 0);
+    const line = seconds.length
+      ? `generated ${seconds.length} Chunks in ${total.toFixed(2)} s, per Chunk min ${Math.min(...seconds).toFixed(2)} mean ${(total / seconds.length).toFixed(2)} max ${Math.max(...seconds).toFixed(2)}, skipped Locked: ${locked}`
+      : `generated 0 Chunks, skipped Locked: ${locked}`;
+    return `${line}\n${await studio.luau(`return ${OPS}.placeSpawn(${remove})`)}`;
   },
 
   // Takes a Landform, River or Lake out of the plan, writes the Chunks it touched and records it, so that
@@ -328,6 +345,15 @@ const steps = {
       ctx.failed = true;
       return `Nothing was removed, since the plan would be invalid:\n${described}`;
     }
+    // Taking out a Landform can lower ground under a Lake's water, so the same guard as a write stands here.
+    let flooding;
+    try {
+      flooding = await guardFlooding(studio, { ...ctx, args: rewrite.flatMap((key) => key.split(',')) });
+    } catch (error) {
+      fs.writeFileSync(planFile, before);
+      await steps.sync(studio, ctx);
+      throw new Error(`Nothing was removed, and the plan is as it was. ${error.message}`);
+    }
     const names = taken.map((block) => block.id).join(' and ');
     const lockedNote = lockedReached.length ? `\nLocked Chunks it reached, not written, so tell the developer: ${lockedReached.join(' ')}` : '';
     const record = (written, unwritten) => addHistory(ctx.project, plans.removalEntry({
@@ -345,7 +371,7 @@ const steps = {
       }
     }
     record(rewrite, []);
-    return `Removed ${names}, recorded in docs/world/history.md. Chunks: ${rewrite.join(' ') || 'none'}\n${result}${lockedNote}`;
+    return `Removed ${names}, recorded in docs/world/history.md. Chunks: ${rewrite.join(' ') || 'none'}\nwater: ${flooding}\n${result}${lockedNote}`;
   },
 
   async borders(studio, ctx, args) {
@@ -689,6 +715,14 @@ async function guardFlooding(studio, ctx) {
   if (left.length) notes.push(`Written Chunks whose terrain changes and this write leaves out: ${left.join(' ')}. Write them too, or the borders between them show steps`);
   if (facts.unrecorded) notes.push(`${facts.unrecorded} written Chunks hold no record of what they were written with, so they were not compared until they are written again`);
   return notes.join('. ');
+}
+
+// Every Chunk of a plan's extent, as keys "i,j", row by row as the engine walks it.
+function extentChunks(planText) {
+  const e = plans.facts(planText).extent;
+  const keys = [];
+  for (let j = e.minZ; j <= e.maxZ; j += 1) for (let i = e.minX; i <= e.maxX; i += 1) keys.push(`${i},${j}`);
+  return keys;
 }
 
 // Chunks given as i j i j, as keys "i,j".

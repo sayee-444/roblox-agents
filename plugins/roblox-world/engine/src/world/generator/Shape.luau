@@ -49,7 +49,7 @@ local function prepare(plan)
 	if P then
 		return P
 	end
-	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {}, lakeSlopes = {}, oceans = plan.oceans or {}, oceanChunks = {}, shoresNear = {} }
+	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {}, lakeSlopes = {}, oceans = plan.oceans or {}, oceanChunks = {}, coastsNear = {} }
 	-- Which Ocean holds each Chunk, and the Chunks of land the coast runs along: those of the extent beside an Ocean
 	-- Chunk, diagonals included. The nearest land to any spot of an Ocean lies on one of them.
 	local e = plan.extent
@@ -62,7 +62,7 @@ local function prepare(plan)
 			end
 		end
 	end
-	P.shores = {}
+	P.coastChunks = {}
 	if #P.oceans > 0 then
 		local s = plan.chunkSize
 		for i = e.minX, e.maxX do
@@ -74,7 +74,7 @@ local function prepare(plan)
 					end
 				end
 				if beside and not P.oceanChunks[i .. "," .. j] then
-					table.insert(P.shores, { i * s - s / 2, j * s - s / 2, i * s + s / 2, j * s + s / 2 })
+					table.insert(P.coastChunks, { i * s - s / 2, j * s - s / 2, i * s + s / 2, j * s + s / 2 })
 				end
 			end
 		end
@@ -535,9 +535,9 @@ local function boxesApart(a, b): number
 end
 
 -- The Chunks of land along the coast within reach of the Ocean in Chunk (ci, cj), with the nearest one's distance to the Chunk.
-local function shoresNear(P, plan, ci: number, cj: number)
+local function coastsNear(P, plan, ci: number, cj: number)
 	local key = ci .. "," .. cj
-	local near = P.shoresNear[key]
+	local near = P.coastsNear[key]
 	if near then
 		return near
 	end
@@ -545,14 +545,14 @@ local function shoresNear(P, plan, ci: number, cj: number)
 	local box = { ci * s - s / 2, cj * s - s / 2, ci * s + s / 2, cj * s + s / 2 }
 	local reach = Shape.oceanReach(P.oceanChunks[key])
 	near = { nearest = math.huge }
-	for _, b in ipairs(P.shores) do
+	for _, b in ipairs(P.coastChunks) do
 		local apart = boxesApart(box, b)
 		if apart < reach then
 			table.insert(near, b)
 		end
 		near.nearest = math.min(near.nearest, apart)
 	end
-	P.shoresNear[key] = near
+	P.coastsNear[key] = near
 	return near
 end
 
@@ -562,7 +562,7 @@ function Shape.coastDistance(plan, x: number, z: number): number
 	local P = prepare(plan)
 	local s = plan.chunkSize
 	local best = math.huge
-	for _, b in ipairs(shoresNear(P, plan, math.floor((x + s / 2) / s), math.floor((z + s / 2) / s))) do
+	for _, b in ipairs(coastsNear(P, plan, math.floor((x + s / 2) / s), math.floor((z + s / 2) / s))) do
 		best = math.min(best, boxDistance(b, x, z))
 	end
 	return best
@@ -581,7 +581,7 @@ function Shape.oceanCeiling(plan, def): number
 	for key, of in pairs(P.oceanChunks) do
 		if of == def then
 			local ci, cj = string.match(key, "^(-?%d+),(-?%d+)$")
-			farthest = math.max(farthest, shoresNear(P, plan, tonumber(ci), tonumber(cj)).nearest + s * math.sqrt(2))
+			farthest = math.max(farthest, coastsNear(P, plan, tonumber(ci), tonumber(cj)).nearest + s * math.sqrt(2))
 		end
 	end
 	return (Shape.oceanDepth(def, farthest))
@@ -591,13 +591,13 @@ end
 function Shape.oceanOpen(plan, ci: number, cj: number): boolean
 	local P = prepare(plan)
 	local def = P.oceanChunks[ci .. "," .. cj]
-	return def ~= nil and Shape.oceanCap(def) ~= nil and shoresNear(P, plan, ci, cj).nearest >= Shape.oceanReach(def)
+	return def ~= nil and Shape.oceanCap(def) ~= nil and coastsNear(P, plan, ci, cj).nearest >= Shape.oceanReach(def)
 end
 
 -- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
 -- distance to the nearest River's sand band centre line, lake or ocean water, the water level over this column (0 = dry),
 -- and the id of the Water Body, a Lake or an Ocean, whose water covers it, or nil.
-function Shape.height(plan, x: number, z: number): (number, number, number, number)
+function Shape.height(plan, x: number, z: number): (number, number, number, number, string?)
 	local P = prepare(plan)
 	local ocean = Shape.oceanAt(plan, x, z)
 	if ocean then

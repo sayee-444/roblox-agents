@@ -67,14 +67,14 @@ function Chunk.columns(plan, ci: number, cj: number, breathe: (() -> ())?)
 	-- A flat layer of one material is what saves smallest, and it needs no column worked out. A cave under it
 	-- needs its columns.
 	local ocean = Shape.oceanAt(plan, x0 + plan.chunkSize / 2, z0 + plan.chunkSize / 2)
-	local caveUnder = false
-	for _, r in ipairs(plan.regions) do
+	local open = ocean ~= nil and Shape.oceanOpen(plan, ci, cj)
+	for _, r in ipairs(if open then plan.regions else {}) do
 		if r.kind == "cave" then
 			local b = Shape.bounds(plan, r.id)
-			caveUnder = caveUnder or (b[3] > x0 and b[1] < x0 + plan.chunkSize and b[4] > z0 and b[2] < z0 + plan.chunkSize)
+			open = open and not (b[3] > x0 and b[1] < x0 + plan.chunkSize and b[4] > z0 and b[2] < z0 + plan.chunkSize)
 		end
 	end
-	if ocean and not caveUnder and Shape.oceanOpen(plan, ci, cj) then
+	if open then
 		local level = plan.seaLevel
 		local bed = level - Shape.oceanCap(ocean)
 		local bottom = Shape.bottom(plan, x0 + plan.chunkSize / 2, z0 + plan.chunkSize / 2, bed)
