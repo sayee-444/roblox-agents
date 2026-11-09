@@ -34,6 +34,12 @@ local BAR_SAND = 2 -- studs of sand a Point Bar adds beside the water, per stud 
 -- The lowest height any bed or cave floor may take unless the World Plan gives `depthLimit`: the developer's
 -- standard, 500 studs above the Destroy Height of -4,000 they chose for their places.
 local DEPTH_LIMIT = -3500
+-- An Ocean's depth takes the Lake's shape from the distance to the coast, with its own numbers, which the developer
+-- chose on 2026-11-08 so that a very wide Ocean reaches 800 to 1,200 and a medium one about 400: a quarter of the
+-- distance up to OCEAN_BEND, about 400 at 3 Chunks out, then the natural log, meeting OCEAN_CAP about 13 Chunks out.
+local OCEAN_SLOPE = 0.25 -- rise over run of the bed from the coast, unless the World Plan gives `slope`
+local OCEAN_BEND = 2400 -- studs from the coast past which it grows as the natural log, unless the World Plan gives `bend`
+local OCEAN_CAP = 1200 -- studs, the most it may reach unless the World Plan gives `depthCap`
 local CAVE_SWELL = 0.15 -- how far a cave's radius swells along it, as a fraction of the radius
 
 local prepared = setmetatable({}, { __mode = "k" })
@@ -43,7 +49,36 @@ local function prepare(plan)
 	if P then
 		return P
 	end
-	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {}, lakeSlopes = {}, oceans = plan.oceans or {} }
+	P = { mountains = {}, mesas = {}, valleys = {}, caves = {}, rivers = {}, lakes = plan.lakes or {}, lakeSlopes = {}, oceans = plan.oceans or {}, oceanChunks = {}, shoresNear = {} }
+	-- Which Ocean holds each Chunk, and the Chunks of land the coast runs along: those of the extent beside an Ocean
+	-- Chunk, diagonals included. The nearest land to any spot of an Ocean lies on one of them.
+	local e = plan.extent
+	for _, def in ipairs(P.oceans) do
+		for _, r in ipairs(def.chunks) do
+			for i = math.max(r[1], e.minX), math.min(r[3], e.maxX) do
+				for j = math.max(r[2], e.minZ), math.min(r[4], e.maxZ) do
+					P.oceanChunks[i .. "," .. j] = P.oceanChunks[i .. "," .. j] or def
+				end
+			end
+		end
+	end
+	P.shores = {}
+	if #P.oceans > 0 then
+		local s = plan.chunkSize
+		for i = e.minX, e.maxX do
+			for j = e.minZ, e.maxZ do
+				local beside = false
+				for di = -1, 1 do
+					for dj = -1, 1 do
+						beside = beside or P.oceanChunks[(i + di) .. "," .. (j + dj)] ~= nil
+					end
+				end
+				if beside and not P.oceanChunks[i .. "," .. j] then
+					table.insert(P.shores, { i * s - s / 2, j * s - s / 2, i * s + s / 2, j * s + s / 2 })
+				end
+			end
+		end
+	end
 	for _, rv in ipairs(plan.rivers) do
 		local route = Route.points(rv)
 		P.rivers[rv.id] = { def = rv, route = route, poly = Geo.polyline2(route), width = Route.width(rv), depth = Route.depth(rv), bend = if rv.banks then Route.bend(rv) else nil }
@@ -422,7 +457,7 @@ export type Surface = { id: string, kind: string, y: number }
 function Shape.lowestSurfaces(plan): { Surface }
 	local out = {}
 	for _, oc in ipairs(plan.oceans or {}) do
-		table.insert(out, { id = oc.id, kind = "ocean", y = plan.seaLevel - Shape.oceanDepth(oc) })
+		table.insert(out, { id = oc.id, kind = "ocean", y = plan.seaLevel - Shape.oceanCeiling(plan, oc) })
 	end
 	for _, lk in ipairs(plan.lakes or {}) do
 		local asked, fromSize = Shape.lakeDepth(lk)
@@ -448,25 +483,115 @@ end
 -- The Ocean holding (x, z), or nil. An Ocean holds whole Chunks, each rectangle { i0, j0, i1, j1 } of
 -- Chunk indices, inclusive.
 function Shape.oceanAt(plan, x: number, z: number)
-	local oceans = prepare(plan).oceans
-	if #oceans == 0 then
+	local P = prepare(plan)
+	if #P.oceans == 0 then
 		return nil
 	end
 	local s = plan.chunkSize
-	local ci, cj = math.floor((x + s / 2) / s), math.floor((z + s / 2) / s)
-	for _, def in ipairs(oceans) do
-		for _, r in ipairs(def.chunks) do
-			if ci >= r[1] and ci <= r[3] and cj >= r[2] and cj <= r[4] then
-				return def
-			end
-		end
-	end
-	return nil
+	return P.oceanChunks[math.floor((x + s / 2) / s) .. "," .. math.floor((z + s / 2) / s)]
 end
 
--- How deep an Ocean is under the sea level. With no coast yet (#70), all of it is open Ocean at its cap.
-function Shape.oceanDepth(def): number
-	return def.depthCap or DEPTH_CAP
+-- The most an Ocean may reach under the sea level, or nil when its World Plan removes the cap with `depthCap = false`.
+function Shape.oceanCap(def): number?
+	if def.depthCap == false then
+		return nil
+	end
+	return def.depthCap or OCEAN_CAP
+end
+
+-- How deep an Ocean gets `d` studs from its coast, then whether its cap cut that.
+function Shape.oceanDepth(def, d: number): (number, boolean)
+	local slope, bend = def.slope or OCEAN_SLOPE, def.bend or OCEAN_BEND
+	local depth = if d <= bend then d * slope else bend * slope * (1 + math.log(d / bend))
+	local cap = Shape.oceanCap(def)
+	if cap and depth >= cap then
+		return cap, true
+	end
+	return depth, false
+end
+
+-- How far from its coast an Ocean meets its cap, or math.huge with none.
+function Shape.oceanReach(def): number
+	local cap = Shape.oceanCap(def)
+	if not cap then
+		return math.huge
+	end
+	local slope, bend = def.slope or OCEAN_SLOPE, def.bend or OCEAN_BEND
+	return if cap <= bend * slope then cap / slope else bend * math.exp(cap / (bend * slope) - 1)
+end
+
+-- Studs from a box { x0, z0, x1, z1 } to the spot (x, z), 0 inside it.
+local function boxDistance(b, x: number, z: number): number
+	local dx = math.max(b[1] - x, 0, x - b[3])
+	local dz = math.max(b[2] - z, 0, z - b[4])
+	return math.sqrt(dx * dx + dz * dz)
+end
+
+-- Studs between two boxes.
+local function boxesApart(a, b): number
+	local dx = math.max(a[1] - b[3], 0, b[1] - a[3])
+	local dz = math.max(a[2] - b[4], 0, b[2] - a[4])
+	return math.sqrt(dx * dx + dz * dz)
+end
+
+-- The Chunks of land along the coast within reach of the Ocean in Chunk (ci, cj), with the nearest one's distance to the Chunk.
+local function shoresNear(P, plan, ci: number, cj: number)
+	local key = ci .. "," .. cj
+	local near = P.shoresNear[key]
+	if near then
+		return near
+	end
+	local s = plan.chunkSize
+	local box = { ci * s - s / 2, cj * s - s / 2, ci * s + s / 2, cj * s + s / 2 }
+	local reach = Shape.oceanReach(P.oceanChunks[key])
+	near = { nearest = math.huge }
+	for _, b in ipairs(P.shores) do
+		local apart = boxesApart(box, b)
+		if apart < reach then
+			table.insert(near, b)
+		end
+		near.nearest = math.min(near.nearest, apart)
+	end
+	P.shoresNear[key] = near
+	return near
+end
+
+-- Studs from (x, z), in an Ocean, to its nearest coast: the edge of the nearest Chunk of land in the extent. Past the
+-- extent lies no land, so an Ocean reaches on to the edge of the world. math.huge when no coast is within its reach.
+function Shape.coastDistance(plan, x: number, z: number): number
+	local P = prepare(plan)
+	local s = plan.chunkSize
+	local best = math.huge
+	for _, b in ipairs(shoresNear(P, plan, math.floor((x + s / 2) / s), math.floor((z + s / 2) / s))) do
+		best = math.min(best, boxDistance(b, x, z))
+	end
+	return best
+end
+
+-- The most an Ocean may reach from the plan alone: its cap, or with none, its depth at the farthest any of its Chunks'
+-- spots may lie from the coast, math.huge when the world holds no land.
+function Shape.oceanCeiling(plan, def): number
+	local cap = Shape.oceanCap(def)
+	if cap then
+		return cap
+	end
+	local P = prepare(plan)
+	local s = plan.chunkSize
+	local farthest = 0
+	for key, of in pairs(P.oceanChunks) do
+		if of == def then
+			local ci, cj = string.match(key, "^(-?%d+),(-?%d+)$")
+			farthest = math.max(farthest, shoresNear(P, plan, tonumber(ci), tonumber(cj)).nearest + s * math.sqrt(2))
+		end
+	end
+	return (Shape.oceanDepth(def, farthest))
+end
+
+-- Whether every spot of the Ocean Chunk (ci, cj) lies far enough from the coast to sit at its cap, so that it is a flat bed.
+function Shape.oceanOpen(plan, ci: number, cj: number): boolean
+	local P = prepare(plan)
+	local def = P.oceanChunks[ci .. "," .. cj]
+	return def ~= nil and Shape.oceanCap(def) ~= nil and shoresNear(P, plan, ci, cj).nearest >= Shape.oceanReach(def)
 end
 
 -- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
@@ -475,7 +600,7 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 	local P = prepare(plan)
 	local ocean = Shape.oceanAt(plan, x, z)
 	if ocean then
-		return plan.seaLevel - Shape.oceanDepth(ocean), 0, 0, plan.seaLevel
+		return plan.seaLevel - (Shape.oceanDepth(ocean, Shape.coastDistance(plan, x, z))), 0, 0, plan.seaLevel, ocean.id
 	end
 	local h, mesaP, riverD, waterLevel = land(P, plan, x, z)
 

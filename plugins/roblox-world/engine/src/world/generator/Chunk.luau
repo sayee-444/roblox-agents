@@ -33,13 +33,21 @@ function Chunk.columns(plan, ci: number, cj: number, breathe: (() -> ())?)
 	local n = math.floor(plan.chunkSize / V)
 	local x0, z0 = Chunk.origin(plan, ci, cj)
 
-	-- The open Ocean is the same in every column, so it is written as plain blocks: earth for the top
-	-- FLAT_SKIN studs of its bed, rock under it, and water up to the sea level. A flat layer of one
-	-- material is what saves smallest, and it needs no column worked out.
+	-- The open Ocean, far enough from any coast to sit at its cap, is the same in every column, so it is written
+	-- as plain blocks: earth for the top FLAT_SKIN studs of its bed, rock under it, and water up to the sea level.
+	-- A flat layer of one material is what saves smallest, and it needs no column worked out. A cave under it
+	-- needs its columns.
 	local ocean = Shape.oceanAt(plan, x0 + plan.chunkSize / 2, z0 + plan.chunkSize / 2)
-	if ocean then
+	local caveUnder = false
+	for _, r in ipairs(plan.regions) do
+		if r.kind == "cave" then
+			local b = Shape.bounds(plan, r.id)
+			caveUnder = caveUnder or (b[3] > x0 and b[1] < x0 + plan.chunkSize and b[4] > z0 and b[2] < z0 + plan.chunkSize)
+		end
+	end
+	if ocean and not caveUnder and Shape.oceanOpen(plan, ci, cj) then
 		local level = plan.seaLevel
-		local bed = level - Shape.oceanDepth(ocean)
+		local bed = level - Shape.oceanCap(ocean)
 		local bottom = Shape.bottom(plan, x0 + plan.chunkSize / 2, z0 + plan.chunkSize / 2, bed)
 		local ny = (level + 8 - bottom) // V -- 8 studs of air over the water, as a Chunk of land keeps over its top
 		return {
