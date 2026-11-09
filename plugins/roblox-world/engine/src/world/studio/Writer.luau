@@ -119,34 +119,40 @@ end
 
 -- Order-sensitive checksum of the voxel data of one Chunk's box (8-bit quantised, since
 -- the engine stores occupancy in 8 bits), plus counts, read back from Terrain.
+-- It reads the Chunk in strips of SLAB_READ columns along x, in order, so the checksum is the one a single read gives: one
+-- read of a Chunk under a Trench 3,000 deep, about 12 million voxels, failed with "Region is too large", while
+-- writes of 16 columns, about 1.6 million, passed, seen on lab-ocean on 2026-11-09.
+local SLAB_READ = 16
 function Writer.checksum(terrain: Terrain, plan, Gen, ci: number, cj: number, y0: number, y1: number)
 	local x0, z0 = Gen.Chunk.origin(plan, ci, cj)
 	local s = plan.chunkSize
-	local data = Writer.read(terrain, x0, y0, z0, x0 + s, y1, z0 + s)
 	local M = 4294967296
 	local s1, s2, solid, liquid = 1, 0, 0, 0
-	local mat, occ, liq = data.SolidMaterial, data.SolidOccupancy, data.LiquidOccupancy
 	local breathe = Writer.breather()
-	for ix = 1, #mat do
-		breathe()
-		local mx, ox, lx = mat[ix], occ[ix], liq[ix]
-		for iy = 1, #mx do
-			local my, oy, ly = mx[iy], ox[iy], lx[iy]
-			for iz = 1, #my do
-				local oq = math.floor(oy[iz] * 255 + 0.5)
-				local lq = math.floor(ly[iz] * 255 + 0.5)
-				if oq > 0 then
-					solid += 1
+	for from = 0, s - 1, SLAB_READ * V do
+		local data = Writer.read(terrain, x0 + from, y0, z0, x0 + math.min(s, from + SLAB_READ * V), y1, z0 + s)
+		local mat, occ, liq = data.SolidMaterial, data.SolidOccupancy, data.LiquidOccupancy
+		for ix = 1, #mat do
+			breathe()
+			local mx, ox, lx = mat[ix], occ[ix], liq[ix]
+			for iy = 1, #mx do
+				local my, oy, ly = mx[iy], ox[iy], lx[iy]
+				for iz = 1, #my do
+					local oq = math.floor(oy[iz] * 255 + 0.5)
+					local lq = math.floor(ly[iz] * 255 + 0.5)
+					if oq > 0 then
+						solid += 1
+					end
+					if lq > 0 then
+						liquid += 1
+					end
+					s1 = (s1 + my[iz].Value * 65536 + oq * 256 + lq) % M
+					s2 = (s2 + s1) % M
 				end
-				if lq > 0 then
-					liquid += 1
-				end
-				s1 = (s1 + my[iz].Value * 65536 + oq * 256 + lq) % M
-				s2 = (s2 + s1) % M
 			end
 		end
 	end
-	return { s1 = s1, s2 = s2, solid = solid, liquid = liquid, size = data.Size }
+	return { s1 = s1, s2 = s2, solid = solid, liquid = liquid, size = Vector3.new(s, y1 - y0, s) / V }
 end
 
 local function surfaceOf(occ, ix, iz, ny, ymin)

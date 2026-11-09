@@ -36,7 +36,12 @@ return {
 		},
 	},
 
-	regions = {},
+	-- An abyss in the open Ocean south of Landmass A: a short route makes a round pit.
+	regions = {
+		{ id = "abyss", kind = "trench", seed = 9101, points = { { 0, 4608 }, { 0, 4612 } }, floors = { -3500, -3500 }, halfWidth = 1784, walls = 4 },
+		-- A long Trench west of the large Landmass, running north to south.
+		{ id = "western", kind = "trench", seed = 9102, points = { { -4560, -4800 }, { -4600, -4000 }, { -4800, 0 }, { -4500, 4000 }, { -4402, 5310 } }, floors = { -2100, -2100, -2900, -3500, -3500 }, halfWidth = 1080, walls = 5 },
+	},
 	rivers = {},
 	lakes = {},
 	sites = {},

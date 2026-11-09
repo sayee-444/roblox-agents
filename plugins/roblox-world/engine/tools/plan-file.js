@@ -14,7 +14,8 @@ const LENGTHS = [
   'snowLine', 'snowBlend', 'rockLine', 'bankDist', 'bankHeight', 'bedSand', 'bedDeep',
 ];
 const ON_THE_GRID = ['floorY', 'waterLevel']; // Validation wants these on the voxel grid.
-const LISTS = ['widths', 'depths'];
+const LISTS = ['widths', 'depths', 'floors'];
+const DEPTH_LIMIT = -3500; // The Depth Limit of a plan that declares none, as the Generator's Shape takes it.
 const LIMITS = { smooth: 100 }; // The most validation accepts.
 const VOXEL = 4;
 const NUMBER = /-?\d+(?:\.\d+)?/g;
@@ -134,7 +135,7 @@ function blockAt(text, entry) {
 }
 
 // The words the glossary capitalises.
-const KIND_NAMES = { river: 'River', lake: 'Lake', ocean: 'Ocean' };
+const KIND_NAMES = { river: 'River', lake: 'Lake', ocean: 'Ocean', trench: 'Trench' };
 
 // Takes `id` out of the plan. A River and its valley go together, since only a valley carves a River into
 // the ground, so naming either takes both. Returns the new text and what was taken, `id` first, each with
@@ -212,6 +213,18 @@ function staleComments(text) {
   return edits;
 }
 
+// Throws when a scaled Trench's floor lies below the Depth Limit, which does not scale, since the place's Destroy Height
+// under it does not either.
+function belowDepthLimit(text, limit) {
+  const code = withoutComments(text);
+  const range = sectionRange(code, 'regions');
+  for (const entry of range ? entries(code, range) : []) {
+    const floors = new RegExp(`${FIELD_START}floors\\s*=\\s*\\{([^}]*)\\}`).exec(entry.source);
+    const lowest = floors ? Math.min(...(floors[1].match(NUMBER) || []).map(Number)) : Infinity;
+    if (lowest < limit) throw new Error(`scale would take Trench ${textField(entry.source, 'id')}'s floor to ${lowest}, below the Depth Limit ${limit}. Nothing was changed`);
+  }
+}
+
 // Multiplies a plan by `factor`: where things stand, about the map's centre, how long and how high they
 // are, and the extent that holds them. Seeds stay, so the same noise draws it at the new size.
 function scale(text, factor) {
@@ -272,6 +285,7 @@ function scale(text, factor) {
   });
   let out = text;
   for (const edit of edits) out = out.slice(0, edit.start) + edit.text + out.slice(edit.end);
+  belowDepthLimit(out, numberField(code, 'depthLimit') ?? DEPTH_LIMIT);
   return { text: out, before: extent, extent: { minX: x.min, maxX: x.max, minZ: z.min, maxZ: z.max }, droppedComments };
 }
 

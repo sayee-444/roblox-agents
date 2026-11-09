@@ -1,5 +1,31 @@
 # World history
 
+## 2026-11-09: Trenches enlarged and deepened
+
+- **Why:** the developer wanted both Trenches about twice as large and deeper. Doubling does not fit, so each took the most validation allows: `abyss` stays centred and widens until its half width nearly meets the edge of the extent (z 6400); `western` keeps its line, is lengthened at both ends and widened until its half width nearly meets the west edge (x -5888). Walls unchanged.
+- **Plan:** `abyss` halfWidth 1024 to 1784, floors -3000 to -3500. `western` halfWidth 980 to 1080, route extended along its own line from 3 to 5 points (about 8,000 to 10,200 studs), floors each lowered by 100, new ends at the south floor -3500 and the north floor -2100.
+- **Chunks written:** the 166 the two Trenches reach (abyss 45, western 121); Locked 1,0 untouched. `generate` 189.3 s. Deepest: abyss -3422.4 at x -446 z 4612 (floor -3500), western -3500.0 at x -4445 z 4734.
+- **Implementation:** #78
+- **Snapshot:** `lab-ocean-issue-78.rbxl`, 20,578,431 bytes, saved by the developer, against 13,673,192 for `lab-ocean-issue-70.rbxl` before any Trench and before the Ocean's deep bed lost its spots of sand.
+- **Restore:** set `abyss` to `floors = { -3000, -3000 }, halfWidth = 1024` and `western` to `points = { { -4600, -4000 }, { -4800, 0 }, { -4500, 4000 } }, floors = { -2000, -2800, -3400 }, halfWidth = 980`, then write the Chunks of both Trenches again.
+
+## 2026-11-09: Trenches adapted to the new Generator (ramp walls, default roughness)
+
+- **Why:** the Generator changed: a Trench's walls leave the Ocean's bed as a ramp over its rim, roughness defaults to a fifth of the half width, and the deep bed has new materials. The plan no longer validated, so `abyss` lost `rough = 0` (its Region Seed now bends its outline) and both got a wider half width, keeping routes and floors.
+- **Plan:** `abyss` halfWidth 1000 to 1024; `western` halfWidth 700 to 980.
+- **Chunks written:** 575, every unlocked Chunk; Locked 1,0 left alone. `generate` 389 s. Deepest: abyss -2934.0 at x 128 z 4608 (floor -3000), western -3390.4 at x -4503 z 3957 (floor -3393.5).
+- **Restore:** set `abyss` to `halfWidth = 1000, walls = 4, rough = 0` and `western` to `halfWidth = 700`, then write every unlocked Chunk again (valid only with the previous Generator).
+
+## 2026-11-09: Added Trench `western` to the Ocean
+
+- **Why:** the developer wanted a long Trench in the Ocean west of the large Landmass, running north to south through x -4600 z -4000, x -4800 z 0 and x -4500 z 4000, its floor at -2000, -2800 and -3400. Default roughness; validation asked for a half width of at least 625 with walls at their maximum of 5, so it has 700.
+- **Chunks written:** 68, those `describe` lists for `western` (i -11..-7, j -9..9). Deepest point -3388.5 at x -4456 z 3997.
+
+## 2026-11-09: Added Trench `abyss` to the Ocean
+
+- **Why:** the developer wanted an abyss in the open Ocean south of the large Landmass: a Trench with a short route at x 0, z 4608, floor at -3000 and walls of 4.
+- **Chunks written:** -1,7 0,7 1,7 -2,8 -1,8 0,8 1,8 2,8 -2,9 -1,9 0,9 1,9 2,9 -2,10 -1,10 0,10 1,10 2,10 -1,11 0,11 1,11
+
 ## 2026-11-09: Two Landmasses carved out of the Ocean, and its depthCap removed
 
 - **Why:** the developer wanted land in `lab-ocean`: a large Landmass at Chunks i -6..1, j -4..4 and a smaller one at i 3..6, j -2..2, with a one-Chunk Ocean channel at i = 2, and the Ocean taking its default depth from the coast instead of the cap of 400.

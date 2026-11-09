@@ -135,3 +135,11 @@ _Avoid_: feature, task
 **Landform**:
 The shape of the ground, such as plain, mountain, mesa, valley or mountain range.
 _Avoid_: structure, terrain type, biome
+
+**Trench**:
+A Landform only an Ocean or a Sea holds: a long cut far below its bed, whose floor lies at heights the World Plan gives along its route.
+_Avoid_: rift, canyon, Structure
+
+**Abyss**:
+A round pit far below an Ocean's or a Sea's bed: a Trench with a short route.
+_Avoid_: hole, crater

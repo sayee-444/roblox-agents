@@ -46,6 +46,24 @@ return {
 		t.ok(deep.Ground and deep.Rock and deep.Sand, "at the bottom: earth, rock and a little sand")
 	end,
 
+	["a deep Ocean bed is earth with wide patches of rock, and no white spots of sand"] = function(t)
+		local seen, changes, last = {}, 0, nil
+		for i = 0, 800 do
+			local m = Materials.names[Materials.surface(plan, i * 4, 300, -400, 0.1, 0, 0, 20, "ocean")]
+			seen[m] = true
+			if last and m ~= last then
+				changes += 1
+			end
+			last = m
+		end
+		t.ok(seen.Ground and seen.Rock and not seen.Sand, "earth and rock only")
+		t.ok(changes <= 24, "along 3,200 studs the material changes " .. changes .. " times")
+	end,
+
+	["an Ocean's shallows are still sand, as any beach"] = function(t)
+		t.eq(Materials.names[Materials.surface(plan, 100.5, -40.5, 18, 0.1, 0, 0, 20, "ocean")], "Sand")
+	end,
+
 	["ground below height 0 with no water over it is not a bed"] = function(t)
 		for i = 0, 200 do
 			local m = Materials.names[Materials.surface(plan, i * 7.3, i * 3.1 - 200, -30, 0.1, 0, 999, 0)]

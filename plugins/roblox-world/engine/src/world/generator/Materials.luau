@@ -29,7 +29,9 @@ Materials.sub = {
 
 -- Surface material of a bed, by the depth of the water over it: sand under shallow water, earth
 -- coming through it further down, and earth with patches of rock and a little sand at the bottom.
-local function bed(plan, x: number, z: number, depth: number, n: number): number
+-- An Ocean's deep bed, `seabed`, is earth with wide patches of rock: small patches of sand there,
+-- which renders near-white, read as white spots across it, seen by the developer on 2026-11-09.
+local function bed(plan, x: number, z: number, depth: number, n: number, seabed: boolean): number
 	local M = plan.materials
 	if depth < (M.bedSand or 6) + n * 3 then
 		return id.Sand
@@ -37,6 +39,9 @@ local function bed(plan, x: number, z: number, depth: number, n: number): number
 	local patch = Noise.perlin(x / 30, z / 30, plan.worldSeed + 81) + n * 0.15
 	if depth < (M.bedDeep or 14) + n * 3 then
 		return if patch > -0.05 then id.Ground else id.Sand
+	end
+	if seabed then
+		return if Noise.fbm(x / 160, z / 160, plan.worldSeed + 83, 2) + n * 0.03 > 0.15 then id.Rock else id.Ground
 	end
 	if patch > 0.12 then
 		return id.Rock
@@ -46,13 +51,19 @@ end
 
 -- Surface material of one column. `g` is the slope (rise over run), `mesaP` the mesa
 -- parameter (0 outside, 1 on top) and `riverD` the distance to a River route, moved out where the River is wide, or to lake water,
--- and `waterLevel` the level of the water over the column (0 or nil when dry).
-function Materials.surface(plan, x: number, z: number, h: number, g: number, mesaP: number, riverD: number, waterLevel: number?): number
+-- `waterLevel` the level of the water over the column (0 or nil when dry), and `seabed` "ocean" under an Ocean
+-- and "trench" where a Trench lowers its bed, or nil.
+function Materials.surface(plan, x: number, z: number, h: number, g: number, mesaP: number, riverD: number, waterLevel: number?, seabed: string?): number
 	local M = plan.materials
 	local n = Noise.perlin(x / 18, z / 18, plan.worldSeed + 77)
 
+	-- A Trench is deep rock: slate on its walls, and rock with wide patches of slate on its floor.
+	if seabed == "trench" then
+		return if g > 0.6 or Noise.fbm(x / 160, z / 160, plan.worldSeed + 82, 2) + n * 0.03 > 0.2 then id.Slate else id.Rock
+	end
+
 	if waterLevel and waterLevel > 0 and h < waterLevel then
-		return bed(plan, x, z, waterLevel - h, n)
+		return bed(plan, x, z, waterLevel - h, n, seabed == "ocean")
 	end
 	if riverD < M.bankDist and h < M.bankHeight then
 		return id.Sand

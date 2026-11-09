@@ -10,7 +10,11 @@ local Chunk = require("./Chunk")
 
 local Describe = {}
 
-local KINDS = { mountain = true, mesa = true, valley = true, cave = true }
+local KINDS = { mountain = true, mesa = true, valley = true, cave = true, trench = true }
+local TRENCH_FIELDS = { id = true, kind = true, seed = true, points = true, floors = true, halfWidth = true, walls = true, rough = true, rim = true }
+local WALL_RANGE = { 0.1, 5 } -- rise over run of a Trench's walls, from a long slope to a cliff of about 79 degrees
+local TRENCH_STEP = 32 -- studs along a Trench's route between the spots where validation and `heights` measure it
+local TRENCH_ACROSS = 4 -- spots on each side of its route where `heights` looks for its deepest point, out to a quarter of its half width
 local REACHED_STEP = 24 -- studs along a River between the places where `heights` measures its depth
 local REACHED_ACROSS = 3 -- spots on each side of the line where it measures, out to 0.6 of the half width
 local REACHED_GRID = 8 -- spots on each side of a Lake's centre where it measures
@@ -179,6 +183,114 @@ local function checkLoops(errors, label, rv)
 				table.insert(errors, name .. " has a neck wider than its leg")
 			end
 		end
+	end
+end
+
+-- A Trench's own numbers, before any of them is measured against the Ocean it lies in.
+local function checkTrench(errors, label, r)
+	for field in pairs(r) do
+		if not TRENCH_FIELDS[field] then
+			table.insert(errors, label .. ": has no field " .. tostring(field))
+		end
+	end
+	local before = #errors
+	checkPoints(errors, label, r.points, 2)
+	if #errors == before then
+		for i = 1, #r.points - 1 do
+			local a, b = r.points[i], r.points[i + 1]
+			if a[1] == b[1] and a[2] == b[2] then
+				table.insert(errors, label .. ": points " .. i .. " and " .. (i + 1) .. " are the same")
+			end
+		end
+	end
+	if type(r.floors) ~= "table" or type(r.points) ~= "table" or #r.floors ~= #r.points then
+		table.insert(errors, label .. ": floors needs one height per point")
+	else
+		for i, floor in ipairs(r.floors) do
+			if not isNum(floor) then
+				table.insert(errors, label .. ": floor " .. i .. " must be a number")
+			end
+		end
+	end
+	local hw = Shape.trenchHalfWidth(r)
+	local rough = if isNum(hw) or r.rough ~= nil then Shape.trenchRough(r) else 0
+	if not (isNum(rough) and rough >= 0) then
+		table.insert(errors, label .. ": rough must be 0 or more, in studs")
+	elseif not (isNum(hw) and hw > rough) then
+		table.insert(errors, label .. ": halfWidth must be above its rough, in studs from its route to the top of its walls")
+	end
+	if r.rim ~= nil and not (isNum(r.rim) and r.rim >= 0 and r.rim <= 0.9) then
+		table.insert(errors, label .. ": rim must be from 0 to 0.9, as a share of its half width")
+	end
+	if r.walls ~= nil and not (isNum(r.walls) and r.walls >= WALL_RANGE[1] and r.walls <= WALL_RANGE[2]) then
+		table.insert(errors, string.format("%s: walls must be from %s to %s, as rise over run", label, WALL_RANGE[1], WALL_RANGE[2]))
+	end
+end
+
+-- Spots along a Trench's route, every TRENCH_STEP studs and at each point, as { x, z, s, point, seg }, where `point` is
+-- the index of the route point it stands on, or false, and `seg` the segment of the route it lies on.
+local function trenchSpots(r)
+	local spots = {}
+	local poly = Geo.polyline2(r.points)
+	for k, seg in ipairs(poly.segs) do
+		table.insert(spots, { seg[1], seg[2], seg[7], k, seg })
+		for u = TRENCH_STEP, seg[6] - 1, TRENCH_STEP do
+			table.insert(spots, { seg[1] + seg[3] * u / seg[6], seg[2] + seg[4] * u / seg[6], seg[7] + u, false, seg })
+		end
+	end
+	local last = r.points[#r.points]
+	table.insert(spots, { last[1], last[2], poly.length, #r.points, poly.segs[#poly.segs] })
+	return spots
+end
+
+-- A sound Trench against the Ocean it lies in: all of its half width over Ocean Chunks inside the extent, a floor below
+-- the Ocean's bed at each point, and walls that reach that floor all along its route. Returns at its first error.
+local function checkTrenchInOcean(errors, plan, r)
+	local label = "region " .. tostring(r.id)
+	local x, s = plan.extent, plan.chunkSize
+	local hw = Shape.trenchHalfWidth(r)
+	local b = Shape.bounds(plan, r.id)
+	for cj = math.floor((b[2] + s / 2) / s), math.floor((b[4] + s / 2) / s) do
+		for ci = math.floor((b[1] + s / 2) / s), math.floor((b[3] + s / 2) / s) do
+			local outside = ci < x.minX or ci > x.maxX or cj < x.minZ or cj > x.maxZ
+			local x0, z0 = Chunk.origin(plan, ci, cj)
+			if (outside or not Shape.oceanAt(plan, x0 + s / 2, z0 + s / 2)) and Shape.trenchReaches(plan, r, ci, cj) then
+				local why = if outside then "outside the extent" else "which no Ocean holds, and a Trench lies only in an Ocean"
+				table.insert(errors, string.format("%s: its half width reaches Chunk %d,%d, %s", label, ci, cj, why))
+				return
+			end
+		end
+	end
+	local drop = Shape.trenchFall(r) -- the most its walls fall below the bed
+	local worst
+	for _, spot in ipairs(trenchSpots(r)) do
+		local bed = Shape.oceanBed(plan, spot[1], spot[2])
+		local floor = Shape.trenchFloor(r, spot[3])
+		if spot[4] and floor >= bed then
+			table.insert(errors, string.format("%s: its floor %g at point %d is not below the Ocean's bed %.1f there, and a Trench only goes down", label, floor, spot[4], bed))
+			return
+		end
+		local short = bed - drop - floor
+		if short > 0 and (not worst or short > worst.short) then
+			worst = { short = short, bed = bed, floor = floor, x = spot[1], z = spot[2] }
+		end
+	end
+	if worst then
+		local need = worst.bed - worst.floor
+		-- Its fall grows with its half width, so the half width that reaches the floor is found by halving.
+		local low, high = hw, hw
+		while Shape.trenchFall(r, high) < need do
+			low, high = high, high * 2
+		end
+		for _ = 1, 40 do
+			local mid = (low + high) / 2
+			if Shape.trenchFall(r, mid) < need then
+				low = mid
+			else
+				high = mid
+			end
+		end
+		table.insert(errors, string.format("%s: its walls reach only %.1f below the Ocean's bed at %d %d, short of its floor %g by %.1f: give it a halfWidth of at least %d, or walls of at least %.2f", label, drop, math.round(worst.x), math.round(worst.z), worst.floor, worst.short, math.ceil(high - 1e-6), math.ceil(need * Shape.trenchWalls(r) / drop * 100 - 1e-6) / 100))
 	end
 end
 
@@ -453,20 +565,32 @@ function Describe.validate(plan): { string }
 			if not (isNum(r.radius) and r.radius >= 4) then
 				table.insert(e, label .. ": needs radius >= 4")
 			end
+		elseif r.kind == "trench" then
+			checkTrench(e, label, r)
 		end
 	end
 	-- The depths come from fields checked above, so they are measured only on a plan sound otherwise.
-	if #e == 0 then
+	local sound = #e == 0
+	if sound then
 		for _, oc in ipairs(oceans) do
 			if Shape.oceanCeiling(plan, oc) == math.huge then
 				table.insert(e, "ocean " .. tostring(oc.id) .. ": with no cap and no land in the world, its depth has no bound, so give it a depthCap")
 			end
 		end
 	end
+	-- A Trench is measured against its Ocean's bed, so only once every Ocean is bounded.
+	local bounded = #e == 0
 	if #e == 0 then
 		for _, low in ipairs(Shape.lowestSurfaces(plan)) do
 			if low.y < limit then
 				table.insert(e, string.format("%s %s: reaches %g, %g below the Depth Limit %g", low.kind, tostring(low.id), low.y, limit - low.y, limit))
+			end
+		end
+	end
+	if bounded then
+		for _, r in ipairs(plan.regions or {}) do
+			if r.kind == "trench" then
+				checkTrenchInOcean(e, plan, r)
 			end
 		end
 	end
@@ -509,6 +633,17 @@ local function touching(plan, id)
 			end
 		end
 		return out
+	end
+	-- So does a Trench's box for a diagonal route.
+	for _, r in ipairs(plan.regions or {}) do
+		if r.id == id and r.kind == "trench" then
+			for _, c in ipairs(allChunks(plan)) do
+				if Shape.trenchReaches(plan, r, c.i, c.j) then
+					table.insert(out, c.key)
+				end
+			end
+			return out
+		end
 	end
 	local b = Shape.bounds(plan, id)
 	for _, c in ipairs(allChunks(plan)) do
@@ -705,6 +840,26 @@ function Describe.heights(plan): string
 		elseif r.kind == "cave" then
 			local mouth = r.points[1]
 			table.insert(lines, string.format("%s: ground %.1f at the mouth, axis y %d", r.id, ground(mouth[1], mouth[3]), mouth[2]))
+		elseif r.kind == "trench" then
+			-- Its deepest point, along its route and across the floor beside it, the route first at each spot.
+			local poly = Geo.polyline2(r.points)
+			local across = Shape.trenchHalfWidth(r) / 4
+			local deepest, dx, dz, floor = math.huge, 0, 0, 0
+			for _, spot in ipairs(trenchSpots(r)) do
+				local seg = spot[5]
+				local nx, nz = -seg[4] / seg[6], seg[3] / seg[6]
+				for _, a in ipairs({ 0, 1, -1, 2, -2, 3, -3, 4, -4 }) do
+					local off = across * a / TRENCH_ACROSS
+					local x, z = spot[1] + nx * off, spot[2] + nz * off
+					local h = ground(x, z)
+					if h < deepest then
+						local _, s = Geo.dist2(poly, x, z)
+						deepest, dx, dz, floor = h, x, z, Shape.trenchFloor(r, s)
+					end
+				end
+			end
+			local chunks = touching(plan, r.id)
+			table.insert(lines, string.format("%s: deepest %.1f at %d %d, floor %.1f there, the Ocean's bed %.1f beside it, %d Chunks", r.id, deepest, math.round(dx), math.round(dz), floor, Shape.oceanBed(plan, dx, dz), #chunks))
 		end
 	end
 	-- How deep the water over (x, z) is, 0 where it is dry or in a Lake.

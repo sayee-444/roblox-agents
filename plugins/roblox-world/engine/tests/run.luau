@@ -13,6 +13,7 @@ local suites = {
 	{ "bank", require("./bank.test") },
 	{ "ocean", require("./ocean.test") },
 	{ "depth", require("./depth.test") },
+	{ "trench", require("./trench.test") },
 }
 
 local T = {}

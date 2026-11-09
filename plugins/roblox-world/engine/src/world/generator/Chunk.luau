@@ -67,7 +67,7 @@ function Chunk.columns(plan, ci: number, cj: number, breathe: (() -> ())?)
 	-- A flat layer of one material is what saves smallest, and it needs no column worked out. A cave under it
 	-- needs its columns.
 	local ocean = Shape.oceanAt(plan, x0 + plan.chunkSize / 2, z0 + plan.chunkSize / 2)
-	local open = ocean ~= nil and Shape.oceanOpen(plan, ci, cj)
+	local open = ocean ~= nil and Shape.oceanOpen(plan, ci, cj) and not Shape.trenched(plan, ci, cj)
 	for _, r in ipairs(if open then plan.regions else {}) do
 		if r.kind == "cave" then
 			local b = Shape.bounds(plan, r.id)
@@ -93,7 +93,7 @@ function Chunk.columns(plan, ci: number, cj: number, breathe: (() -> ())?)
 	end
 	local w = n + 2
 	local H = table.create(w * w, 0)
-	local MP, RD, WL = table.create(n * n, 0), table.create(n * n, 0), table.create(n * n, 0)
+	local MP, RD, WL, TR = table.create(n * n, 0), table.create(n * n, 0), table.create(n * n, 0), table.create(n * n, false)
 	local hmax, wmax = -math.huge, 0
 
 	for jj = 0, w - 1 do
@@ -101,11 +101,11 @@ function Chunk.columns(plan, ci: number, cj: number, breathe: (() -> ())?)
 		local interiorRow = jj >= 1 and jj <= n
 		for ii = 0, w - 1 do
 			local xc = x0 + (ii - 1) * V + V / 2
-			local h, mp, rd, wl = Shape.height(plan, xc, zc)
+			local h, mp, rd, wl, _, trench = Shape.height(plan, xc, zc)
 			H[jj * w + ii + 1] = h
 			if interiorRow and ii >= 1 and ii <= n then
 				local k = (jj - 1) * n + ii
-				MP[k], RD[k], WL[k] = mp, rd, wl
+				MP[k], RD[k], WL[k], TR[k] = mp, rd, wl, trench ~= nil
 				if h > hmax then
 					hmax = h
 				end
@@ -133,7 +133,7 @@ function Chunk.columns(plan, ci: number, cj: number, breathe: (() -> ())?)
 			local g = math.sqrt(gx * gx + gz * gz)
 			G[k] = g
 			local xc = x0 + i * V + V / 2
-			S[k] = Materials.surface(plan, xc, zc, H[p], g, MP[k], RD[k], WL[k])
+			S[k] = Materials.surface(plan, xc, zc, H[p], g, MP[k], RD[k], WL[k], if TR[k] then "trench" elseif ocean then "ocean" else nil)
 			B[k] = if MP[k] > 0.02 then id.Sandstone else id.Rock
 			BOTTOM[k] = Shape.bottom(plan, xc, zc, math.min(H[p], H[p - 1], H[p + 1], H[p - w], H[p + w]))
 			ymin = math.min(ymin, BOTTOM[k])
