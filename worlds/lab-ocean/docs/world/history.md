@@ -1,5 +1,10 @@
 # World history
 
+## 2026-11-09: Added Trench `western` to the Ocean
+
+- **Why:** the developer wanted a long Trench in the Ocean west of the large Landmass, running north to south through x -4600 z -4000, x -4800 z 0 and x -4500 z 4000, its floor at -2000, -2800 and -3400. Default roughness; validation asked for a half width of at least 625 with walls at their maximum of 5, so it has 700.
+- **Chunks written:** 68, those `describe` lists for `western` (i -11..-7, j -9..9). Deepest point -3388.5 at x -4456 z 3997.
+
 ## 2026-11-09: Added Trench `abyss` to the Ocean
 
 - **Why:** the developer wanted an abyss in the open Ocean south of the large Landmass: a Trench with a short route at x 0, z 4608, floor at -3000 and walls of 4.
