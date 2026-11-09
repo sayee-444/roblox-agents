@@ -1,5 +1,13 @@
 # World history
 
+## 2026-11-09: Chunk 1,0 emptied by hand and Locked
+
+- **Why:** the developer wanted a hole beside the spawn to fall into the void and see the Destroy Height of -4,000 work. They fell from the bed at -380 and were removed after more than 5 s, timed by eye, and chose to keep the hole.
+- **Implementation:** #77
+- **Chunks written:** 1,0, filled with Air from -3,500 to 1,024 by a one-off command in Studio, not by the Generator. It is Locked, so `run` and `generate` leave it empty.
+- **Snapshot:** none yet, until the developer saves the place.
+- **Restore:** set `locked = false` for `1,0` in `src/world/state.luau`, then `generate 1 0`.
+
 ## 2026-11-09: Declared Depth Limit -3500 and Destroy Height -4000
 
 - **Why:** issue #77 added both to the World Plan. The Ocean bed at -380 lies 3,120 above the Depth Limit, and the Destroy Height sits below it.

@@ -277,7 +277,7 @@ return {
 		["-2,0"] = { generated = true, locked = false },
 		["-1,0"] = { generated = true, locked = false },
 		["0,0"] = { generated = true, locked = false },
-		["1,0"] = { generated = true, locked = false },
+		["1,0"] = { generated = true, locked = true },
 		["2,0"] = { generated = true, locked = false },
 		["3,0"] = { generated = true, locked = false },
 		["4,0"] = { generated = true, locked = false },
