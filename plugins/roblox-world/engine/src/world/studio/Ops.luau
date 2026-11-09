@@ -93,40 +93,68 @@ function Ops.impact(change)
 	return game:GetService("HttpService"):JSONEncode(impact)
 end
 
--- Writes the given Chunks, as a list of { i, j }, or every Chunk of the extent when none is
--- given. Skips Locked Chunks, records the rest as generated and reports seconds per Chunk.
+-- What this plan would change in the Chunks already written, as JSON: where a Water Body would cover their land,
+-- Locked ones apart, and which would change at all (Describe.waterChange). Writes nothing.
+function Ops.waterFacts()
+	local change = Gen.Describe.waterChange(plan, state, Writer.breather())
+	return game:GetService("HttpService"):JSONEncode(change)
+end
+
+-- Writes the given Chunks, as a list of { i, j }. Skips Locked Chunks, records the rest as generated and
+-- returns, as JSON, the seconds each written Chunk took and the Locked ones skipped. tools/world.js sends
+-- the Chunks in batches. Studio may stop answering a batch and still write it to the end, so the batch keeps
+-- what it has written in shared.World.batch, which Ops.writing and Ops.unwritten read afterwards.
 function Ops.generate(list)
 	local t = workspace.Terrain
-	local seconds, skipped = {}, {}
-	local total = 0
-	local function write(ci, cj)
-		local key = Gen.Chunk.key(ci, cj)
-		if isLocked(ci, cj) then
-			table.insert(skipped, key)
-			return
-		end
-		local stats = Writer.writeChunk(t, plan, Gen, ci, cj)
-		shared.World.renderStale = true
-		table.insert(seconds, stats.wall)
-		total += stats.wall
-		state.chunks[key] = { generated = true, locked = false }
-		task.wait()
-	end
-	if list then
+	local batch = { writing = true, seconds = {}, skipped = {} }
+	shared.World.batch = batch
+	local ok, problem = pcall(function()
 		for _, c in ipairs(list) do
-			write(c[1], c[2])
+			local ci, cj = c[1], c[2]
+			local key = Gen.Chunk.key(ci, cj)
+			if isLocked(ci, cj) then
+				table.insert(batch.skipped, key)
+			else
+				local stats = Writer.writeChunk(t, plan, Gen, ci, cj)
+				shared.World.renderStale = true
+				batch.seconds[key] = stats.wall
+				-- What it was written with, so that a later plan that turns its land into water is caught before writing.
+				local sample = Gen.Chunk.sample(plan, ci, cj)
+				state.chunks[key] = { generated = true, locked = false, water = sample.water, sign = sample.sign }
+				task.wait()
+			end
 		end
-	else
-		eachChunk(write)
+	end)
+	batch.writing = false
+	if not ok then
+		error(problem)
 	end
-	if #seconds == 0 then
-		return "generated 0 Chunks, skipped Locked: " .. table.concat(skipped, " ")
+	local seconds = {}
+	for _, c in ipairs(list) do
+		table.insert(seconds, batch.seconds[Gen.Chunk.key(c[1], c[2])])
 	end
-	return string.format(
-		"generated %d Chunks in %.2f s, per Chunk min %.2f mean %.2f max %.2f, skipped Locked: %s",
-		#seconds, total, math.min(table.unpack(seconds)), total / #seconds, math.max(table.unpack(seconds)),
-		if #skipped > 0 then table.concat(skipped, " ") else "none"
-	)
+	return game:GetService("HttpService"):JSONEncode({ seconds = seconds, skipped = batch.skipped })
+end
+
+-- Whether the last batch Ops.generate began is still writing.
+function Ops.writing()
+	return tostring(shared.World.batch ~= nil and shared.World.batch.writing == true)
+end
+
+-- Of the given Chunks, the last batch sent, as JSON: those it left unwritten, the seconds of those it wrote,
+-- and the Locked ones it skipped.
+function Ops.unwritten(list)
+	local batch = shared.World.batch or { seconds = {}, skipped = {} }
+	local unwritten, seconds = {}, {}
+	for _, c in ipairs(list) do
+		local key = Gen.Chunk.key(c[1], c[2])
+		if batch.seconds[key] then
+			table.insert(seconds, batch.seconds[key])
+		elseif not isLocked(c[1], c[2]) then
+			table.insert(unwritten, key)
+		end
+	end
+	return game:GetService("HttpService"):JSONEncode({ unwritten = unwritten, seconds = seconds, skipped = batch.skipped })
 end
 
 -- Reads voxels on both sides of each border between two generated Chunks and compares them with
@@ -251,7 +279,8 @@ function Ops.stateSource()
 	eachChunk(function(ci, cj)
 		local entry = state.chunks[Gen.Chunk.key(ci, cj)]
 		if entry then
-			table.insert(lines, string.format('\t\t["%s"] = { generated = %s, locked = %s },', Gen.Chunk.key(ci, cj), tostring(entry.generated == true), tostring(entry.locked == true)))
+			local written = if type(entry.water) == "string" and type(entry.sign) == "string" then string.format(', water = "%s", sign = "%s"', entry.water, entry.sign) else ""
+			table.insert(lines, string.format('\t\t["%s"] = { generated = %s, locked = %s%s },', Gen.Chunk.key(ci, cj), tostring(entry.generated == true), tostring(entry.locked == true), written))
 		end
 	end)
 	table.insert(lines, "\t},")

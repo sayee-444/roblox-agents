@@ -14,6 +14,7 @@ local KINDS = { mountain = true, mesa = true, valley = true, cave = true }
 local REACHED_STEP = 24 -- studs along a River between the places where `heights` measures its depth
 local REACHED_ACROSS = 3 -- spots on each side of the line where it measures, out to 0.6 of the half width
 local REACHED_GRID = 8 -- spots on each side of a Lake's centre where it measures
+local OCEAN_GRID = 8 -- steps across each Chunk of an Ocean near its coast where `heights` measures its depth
 
 local function isNum(v)
 	return type(v) == "number" and v == v and v ~= math.huge and v ~= -math.huge
@@ -71,6 +72,8 @@ local REMOVED_BANK_FIELDS = {
 }
 
 local SIDES = { 0.02, 1.5 } -- rise over run at the water's edge, from a near plain to about 56 degrees
+local OCEAN_SLOPES = { 0.02, 1.5 } -- rise over run of an Ocean's bed from its Coast, as gentle and as steep as Valley Sides go
+local OCEAN_FIELDS = { id = true, seed = true, chunks = true, depthCap = true, slope = true, bend = true }
 
 local function checkBanks(errors, label, def, isLake)
 	if def.depthVary ~= nil and not (isNum(def.depthVary) and def.depthVary >= 0 and def.depthVary <= 0.9) then
@@ -326,6 +329,7 @@ function Describe.validate(plan): { string }
 	if #oceans > 0 and not (isNum(plan.seaLevel) and plan.seaLevel % 4 == 0) then
 		table.insert(e, "seaLevel must be a multiple of 4, so the water meets a voxel boundary")
 	end
+	local soundOceans = {}
 	for _, oc in ipairs(oceans) do
 		local label = "ocean " .. tostring(oc.id)
 		if ids[oc.id] then
@@ -335,8 +339,19 @@ function Describe.validate(plan): { string }
 		if not isNum(oc.seed) then
 			table.insert(e, label .. ": needs a seed")
 		end
-		if oc.depthCap ~= nil and not (isNum(oc.depthCap) and oc.depthCap > 0 and oc.depthCap % 4 == 0) then
-			table.insert(e, label .. ": depthCap must be a multiple of 4 above 0, so the bed meets a voxel boundary")
+		for field in pairs(oc) do
+			if not OCEAN_FIELDS[field] then
+				table.insert(e, label .. ": has no field " .. tostring(field))
+			end
+		end
+		if oc.depthCap ~= nil and oc.depthCap ~= false and not (isNum(oc.depthCap) and oc.depthCap > 0 and oc.depthCap % 4 == 0) then
+			table.insert(e, label .. ": depthCap must be a multiple of 4 above 0, or false for no cap, so the open bed meets a voxel boundary")
+		end
+		if oc.slope ~= nil and not (isNum(oc.slope) and oc.slope >= OCEAN_SLOPES[1] and oc.slope <= OCEAN_SLOPES[2]) then
+			table.insert(e, string.format("%s: slope must be from %s to %s, as rise over run of the bed from the coast", label, OCEAN_SLOPES[1], OCEAN_SLOPES[2]))
+		end
+		if oc.bend ~= nil and not (isNum(oc.bend) and oc.bend > 0) then
+			table.insert(e, label .. ": bend must be above 0, in studs from the coast")
 		end
 		local sound = type(oc.chunks) == "table" and #oc.chunks > 0
 		for _, r in ipairs(if sound then oc.chunks else {}) do
@@ -349,10 +364,50 @@ function Describe.validate(plan): { string }
 		if not sound then
 			table.insert(e, label .. ": chunks needs rectangles of Chunk indices { i0, j0, i1, j1 }, with i0 <= i1 and j0 <= j1")
 		elseif type(x) == "table" and isNum(x.minX) and isNum(x.maxX) and isNum(x.minZ) and isNum(x.maxZ) then
+			local inside = true
 			for _, r in ipairs(oc.chunks) do
 				if r[1] < x.minX or r[3] > x.maxX or r[2] < x.minZ or r[4] > x.maxZ then
 					table.insert(e, label .. ": chunks must lie inside the extent, which only the developer's order changes")
+					inside = false
 					break
+				end
+			end
+			if inside then
+				soundOceans[oc] = true
+			end
+		end
+	end
+	-- Each Ocean holds one body of water under one cap, so two may meet only at a corner, where both are 0 deep.
+	local holder = {}
+	for _, oc in ipairs(oceans) do
+		if soundOceans[oc] then
+			local shared, touched
+			for _, r in ipairs(oc.chunks) do
+				for i = r[1], r[3] do
+					for j = r[2], r[4] do
+						local other = holder[i .. "," .. j]
+						if other and other ~= oc then
+							shared = shared or { other, i .. "," .. j }
+						end
+						for _, n in ipairs({ { 1, 0 }, { -1, 0 }, { 0, 1 }, { 0, -1 } }) do
+							local beside = holder[(i + n[1]) .. "," .. (j + n[2])]
+							if beside and beside ~= oc then
+								touched = touched or beside
+							end
+						end
+					end
+				end
+			end
+			if shared then
+				table.insert(e, string.format("ocean %s shares Chunk %s with ocean %s, and a Chunk holds one Ocean", tostring(oc.id), shared[2], tostring(shared[1].id)))
+			elseif touched then
+				table.insert(e, string.format("ocean %s touches ocean %s, so they form one body of water: declare them as one Ocean", tostring(oc.id), tostring(touched.id)))
+			end
+			for _, r in ipairs(oc.chunks) do
+				for i = r[1], r[3] do
+					for j = r[2], r[4] do
+						holder[i .. "," .. j] = holder[i .. "," .. j] or oc
+					end
 				end
 			end
 		end
@@ -401,6 +456,13 @@ function Describe.validate(plan): { string }
 		end
 	end
 	-- The depths come from fields checked above, so they are measured only on a plan sound otherwise.
+	if #e == 0 then
+		for _, oc in ipairs(oceans) do
+			if Shape.oceanCeiling(plan, oc) == math.huge then
+				table.insert(e, "ocean " .. tostring(oc.id) .. ": with no cap and no land in the world, its depth has no bound, so give it a depthCap")
+			end
+		end
+	end
 	if #e == 0 then
 		for _, low in ipairs(Shape.lowestSurfaces(plan)) do
 			if low.y < limit then
@@ -544,6 +606,45 @@ function Describe.impact(plan, state, change)
 	return { rewrite = rewrite, lockedReached = lockedReached }
 end
 
+-- What the plan would change in the Chunks already written, against what each one recorded when it was written
+-- (Chunk.sample): `flooded`, unlocked Chunks where a Water Body would cover land, `lockedFlooded`, the Locked ones
+-- where it would, which no write touches, `changed`, every unlocked written Chunk whose terrain would change, and
+-- `unrecorded`, how many written Chunks hold no record to compare. `breathe`, when given, runs after each Chunk.
+function Describe.waterChange(plan, state, breathe: (() -> ())?)
+	local out = { flooded = {}, lockedFlooded = {}, changed = {}, unrecorded = 0 }
+	for _, c in ipairs(allChunks(plan)) do
+		local s = state.chunks and state.chunks[c.key]
+		if s and s.generated then
+			if type(s.water) ~= "string" or type(s.sign) ~= "string" then
+				out.unrecorded += 1
+			else
+				local now = Chunk.sample(plan, c.i, c.j)
+				local flooded = false
+				for k = 1, math.min(#s.water, #now.water) do
+					local was, will = tonumber(string.sub(s.water, k, k), 16), tonumber(string.sub(now.water, k, k), 16)
+					flooded = flooded or bit32.band(bit32.bnot(was), will) ~= 0
+				end
+				if s.locked then
+					if flooded then
+						table.insert(out.lockedFlooded, c.key)
+					end
+				else
+					if flooded then
+						table.insert(out.flooded, c.key)
+					end
+					if now.sign ~= s.sign then
+						table.insert(out.changed, c.key)
+					end
+				end
+				if breathe then
+					breathe()
+				end
+			end
+		end
+	end
+	return out
+end
+
 -- Each border between two generated Chunks, as { axis, ci, cj }, where (ci, cj) is the Chunk on its
 -- lower side. With a list of { i, j }, only the borders that touch one of those Chunks.
 function Describe.bordersOf(plan, state, list)
@@ -660,9 +761,34 @@ function Describe.heights(plan): string
 		local depth = if not fromSize then string.format("depth %g asked", asked) elseif capped then string.format("depth %.1f from its size, cut to its cap", asked) else string.format("depth %.1f from its size", asked)
 		table.insert(lines, string.format("%s: bed %.1f at %d %d, water level %d, %s, %.1f reached", lk.id, ground(lk.center[1], lk.center[2]), lk.center[1], lk.center[2], lk.waterLevel, depth, deepest))
 	end
+	-- An Ocean's deepest point, on a grid of OCEAN_GRID + 1 spots a side in each of its Chunks written column by column.
 	for _, oc in ipairs(plan.oceans or {}) do
-		local depth = Shape.oceanDepth(oc)
-		table.insert(lines, string.format("%s: sea level %d, bed %.1f, depth %d, %d Chunks", oc.id, plan.seaLevel, plan.seaLevel - depth, depth, #touching(plan, oc.id)))
+		local s = plan.chunkSize
+		local deepest, dx, dz, cut = -math.huge, 0, 0, false
+		local chunks = touching(plan, oc.id)
+		for _, key in ipairs(chunks) do
+			local ci, cj = string.match(key, "^(-?%d+),(-?%d+)$")
+			ci, cj = tonumber(ci), tonumber(cj)
+			local x0, z0 = Chunk.origin(plan, ci, cj)
+			if Shape.oceanOpen(plan, ci, cj) then
+				if Shape.oceanCap(oc) > deepest then
+					deepest, dx, dz, cut = Shape.oceanCap(oc), x0 + s / 2, z0 + s / 2, true
+				end
+			else
+				for i = 0, OCEAN_GRID do
+					for j = 0, OCEAN_GRID do
+						local x, z = x0 + i * (s - 1) / OCEAN_GRID, z0 + j * (s - 1) / OCEAN_GRID
+						local depth, capped = Shape.oceanDepth(oc, Shape.coastDistance(plan, x, z))
+						if depth > deepest then
+							deepest, dx, dz, cut = depth, x, z, capped
+						end
+					end
+				end
+			end
+		end
+		local cap = Shape.oceanCap(oc)
+		local how = if not cap then "no cap" elseif cut then string.format("cut by its cap of %d", cap) else string.format("its cap of %d not reached", cap)
+		table.insert(lines, string.format("%s: sea level %d, deepest %.1f at %d %d, %s, %d Chunks", oc.id, plan.seaLevel, plan.seaLevel - deepest, math.round(dx), math.round(dz), how, #chunks))
 	end
 	table.insert(lines, (Describe.depthLine(plan)))
 	return table.concat(lines, "\n")

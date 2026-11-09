@@ -1,5 +1,5 @@
 -- Oceans, through what the pure Generator returns for a position and what it refuses or reports.
--- Until the coast exists (#70), every Ocean Chunk is the open Ocean: a flat bed at its depth cap.
+-- The coast follows the Chunks' edges: an Ocean's depth grows with the distance to the nearest Chunk of land.
 
 local shipped = require("../src/world/plan")
 local Shape = require("../src/world/generator/Shape")
@@ -30,20 +30,86 @@ local function oceanPlan(changes)
 	return plan
 end
 
+-- How deep the water over (x, z) is.
+local function depthAt(plan, x, z)
+	local h, _, _, level = Shape.height(plan, x, z)
+	return level - h, level
+end
+
 return {
-	["an Ocean Chunk is a flat bed at its depth cap under the sea level"] = function(t)
+	["an Ocean deepens a quarter of a stud per stud from the coast, and stops at its cap"] = function(t)
 		local plan = oceanPlan()
-		-- Chunk 1 covers x from 256 to 768, so these reach both of its edges and its corners.
-		for _, p in ipairs({ { 256, -768 }, { 300.5, 0 }, { 512, 440 }, { 767.9, 767.9 } }) do
-			local h, _, _, level = Shape.height(plan, p[1], p[2])
-			t.eq(h, -80, "bed at " .. p[1] .. " " .. p[2])
-			t.eq(level, 20, "water at " .. p[1] .. " " .. p[2])
+		-- Chunk column 1 covers x from 256 to 768, and the land of column 0 ends at 256.
+		for _, p in ipairs({ { 256, 0, 0 }, { 296, -700, 10 }, { 456, 100, 50 }, { 652, 0, 99 }, { 656, 300, 100 }, { 767.9, 767.9, 100 } }) do
+			local depth, level = depthAt(plan, p[1], p[2])
+			t.near(depth, p[3], 1e-6, "depth at " .. p[1] .. " " .. p[2])
+			t.eq(level, 20, "sea level at " .. p[1] .. " " .. p[2])
 		end
+	end,
+
+	["a wide Ocean reaches about 400 at 3 Chunks from the coast, 512 at 4, and its default cap of 1200 by 13"] = function(t)
+		-- Land in column -1 only, and Ocean from column 0 to 14, so the coast lies at x -256.
+		local plan = oceanPlan(function(p)
+			p.extent = { minX = -1, maxX = 14, minZ = -1, maxZ = 1 }
+			p.oceans = { { id = "ocean", seed = 8001, chunks = { { 0, -1, 14, 1 } } } }
+		end)
+		-- Past 2,400 studs it grows as the natural log: 600 * (1 + ln(6000 / 2400)) = 1149.8.
+		for _, p in ipairs({ { 1536, 384 }, { 2048, 512 }, { 2400, 600 }, { 6000, 1149.77 }, { 6656, 1200 }, { 7000, 1200 } }) do
+			t.near((depthAt(plan, -256 + p[1], 0)), p[2], 0.01, "depth " .. p[1] .. " studs out")
+		end
+	end,
+
+	["touching Ocean Chunks hold one sea level, with no wall between them"] = function(t)
+		-- An L: down column 1, then west along row 1. Borders at z 256 and at x 256.
+		local plan = oceanPlan(function(p)
+			p.oceans[1].chunks = { { 1, -1, 1, 0 }, { 1, 1, 1, 1 }, { 0, 1, 0, 1 } }
+		end)
+		for _, pair in ipairs({ { { 500, 255.9 }, { 500, 256.1 } }, { { 255.9, 600 }, { 256.1, 600 } } }) do
+			local a, la = depthAt(plan, pair[1][1], pair[1][2])
+			local b, lb = depthAt(plan, pair[2][1], pair[2][2])
+			t.eq(la, 20, "sea level")
+			t.eq(lb, 20, "sea level")
+			t.near(a, b, 0.1, "depth on both sides of the border at " .. pair[1][1] .. " " .. pair[1][2])
+		end
+	end,
+
+	["a channel 20 studs wide stays wadeable, and one 5 Chunks wide reaches its cap"] = function(t)
+		-- Chunks of 20 studs, so that the middle column is a channel 20 wide between two Landmasses.
+		local narrow = oceanPlan(function(p)
+			p.chunkSize = 20
+			p.oceans = { { id = "channel", seed = 8001, chunks = { { 0, -1, 0, 1 } } } }
+		end)
+		-- A character's waist stands about 3 studs up, from its usual size and not measured.
+		local deepest = 0
+		for x = -9.5, 9.5, 0.5 do
+			deepest = math.max(deepest, (depthAt(narrow, x, 3)))
+		end
+		t.ok(deepest <= 3, "the channel is " .. deepest .. " deep")
+		t.ok(deepest > 0, "the channel holds water")
+		local wide = oceanPlan(function(p)
+			p.extent = { minX = -3, maxX = 3, minZ = -1, maxZ = 1 }
+			p.oceans = { { id = "channel", seed = 8001, chunks = { { -2, -1, 2, 1 } }, depthCap = 300 } }
+		end)
+		t.near((depthAt(wide, 0, 0)), 300, 1e-6, "the middle of a channel 5 Chunks wide")
+		t.near((depthAt(wide, -1100, 0)), 45, 1e-6, "180 studs from its coast")
 	end,
 
 	["a sound Ocean passes validation"] = function(t)
 		local errors = Describe.validate(oceanPlan())
 		t.eq(#errors, 0, table.concat(errors, "; "))
+		local tuned = Describe.validate(oceanPlan(function(p)
+			p.oceans[1].depthCap = false
+			p.oceans[1].slope = 0.05
+			p.oceans[1].bend = 1200
+		end))
+		t.eq(#tuned, 0, table.concat(tuned, "; "))
+	end,
+
+	["a gentler slope keeps the water shallow further out"] = function(t)
+		local plan = oceanPlan(function(p)
+			p.oceans[1].slope = 0.05
+		end)
+		t.near((depthAt(plan, 456, 0)), 10, 1e-6, "200 studs from the coast")
 	end,
 
 	["an Ocean's numbers out of range are refused"] = function(t)
@@ -58,6 +124,22 @@ return {
 			{ "chunks needs rectangles", function(p) p.oceans[1].chunks = { { 1, 1, 1, -1 } } end },
 			{ "chunks must lie inside the extent", function(p) p.oceans[1].chunks = { { 1, -1, 2, 1 } } end },
 			{ "duplicate id ocean", function(p) p.oceans[2] = clone(p.oceans[1]) end },
+			{ "depthCap must be a multiple of 4 above 0, or false for no cap", function(p) p.oceans[1].depthCap = true end },
+			{ "slope must be from 0.02 to 1.5", function(p) p.oceans[1].slope = 0 end },
+			{ "slope must be from 0.02 to 1.5", function(p) p.oceans[1].slope = 2 end },
+			{ "bend must be above 0", function(p) p.oceans[1].bend = -10 end },
+			{ "has no field depth", function(p) p.oceans[1].depth = 100 end },
+			-- Two Oceans that share a border would hold one body of water with two caps.
+			{ "ocean west touches ocean ocean, so they form one body of water: declare them as one Ocean", function(p)
+				p.oceans[2] = { id = "west", seed = 8002, chunks = { { 0, 1, 0, 1 } } }
+			end },
+			{ "ocean west shares Chunk 1,1 with ocean ocean", function(p)
+				p.oceans[2] = { id = "west", seed = 8002, chunks = { { 1, 1, 1, 1 } } }
+			end },
+			{ "ocean ocean: with no cap and no land in the world, its depth has no bound", function(p)
+				p.oceans[1].chunks = { { -1, -1, 1, 1 } }
+				p.oceans[1].depthCap = false
+			end },
 		}
 		for _, case in ipairs(cases) do
 			local errors = table.concat(Describe.validate(oceanPlan(case[2])), "; ")
@@ -65,15 +147,21 @@ return {
 		end
 	end,
 
-	["an Ocean Chunk is written as plain blocks: ground under the bed, water up to the sea level"] = function(t)
-		local plan = oceanPlan()
-		t.eq(Chunk.columns(plan, 0, 0).flat, nil, "a Chunk of land is written column by column")
-		local cols = Chunk.columns(plan, 1, 0)
+	["an Ocean Chunk far from any coast is written as plain blocks: ground under the bed, water up to the sea level"] = function(t)
+		local plan = oceanPlan(function(p)
+			p.extent = { minX = -1, maxX = 14, minZ = -1, maxZ = 1 }
+			p.oceans = { { id = "ocean", seed = 8001, chunks = { { 0, -1, 14, 1 } } } }
+		end)
+		t.eq(Chunk.columns(plan, -1, 0).flat, nil, "a Chunk of land is written column by column")
+		-- Chunk 12 starts 6,144 studs from the coast, short of the 6,524 where the depth meets its cap.
+		t.eq(Chunk.columns(plan, 12, 0).flat, nil, "an Ocean Chunk within reach of the coast is written column by column")
+		-- Chunk 13 starts 6,656 out, past it.
+		local cols = Chunk.columns(plan, 13, 0)
 		local flat = cols.flat
-		t.ok(flat ~= nil, "an Ocean Chunk is a plain block")
-		t.eq(flat.bed, -80, "bed")
+		t.ok(flat ~= nil, "an Ocean Chunk past the reach of the coast is a plain block")
+		t.eq(flat.bed, -1180, "bed")
 		t.eq(flat.level, 20, "sea level")
-		t.eq(flat.bottom, -88, "ground stops rockUnder below the bed")
+		t.eq(flat.bottom, -1188, "ground stops rockUnder below the bed")
 		-- Its voxels, as a slab gives them, hold exactly that, so `borders` reads it like any Chunk.
 		local slab = Chunk.slab(plan, cols, 0, 1, nil, 0, 1)
 		for iy = 1, cols.ny do
@@ -82,9 +170,9 @@ return {
 				for iz = 1, 2 do
 					local solid = slab.SolidOccupancy[ix][iy][iz]
 					local water = slab.LiquidOccupancy[ix][iy][iz]
-					if yc < -88 or yc > 20 then
+					if yc < -1188 or yc > 20 then
 						t.eq(solid + water, 0, "empty at y " .. yc)
-					elseif yc < -80 then
+					elseif yc < -1180 then
 						t.eq(solid, 1, "ground at y " .. yc)
 						t.eq(water, 0, "no water in the ground at y " .. yc)
 					else
@@ -94,7 +182,10 @@ return {
 				end
 			end
 		end
-		t.ok(cols.ymin <= -88 and cols.ymax >= 20, "its box holds the bed and the water")
+		t.ok(cols.ymin <= -1188 and cols.ymax >= 20, "its box holds the bed and the water")
+		-- Written column by column, the Chunk beside it meets it with no step.
+		local h = Shape.height(plan, 6399.9, 0)
+		t.near(h, -1180, 0.01, "bed at the border, on the side within reach")
 	end,
 
 	["describe names exactly the Chunks an Ocean holds, in any shape they make"] = function(t)
@@ -106,9 +197,61 @@ return {
 		t.eq(table.concat(report.regions.ocean.chunks, " "), "1,-1 1,0 0,1 1,1", "chunks")
 	end,
 
-	["heights names each Ocean's sea level, bed and depth"] = function(t)
-		local text = Describe.heights(oceanPlan())
-		t.ok(string.find(text, "ocean: sea level 20, bed -80.0, depth 100, 3 Chunks", 1, true) ~= nil, text)
+	["heights names each Ocean's sea level, its deepest point and whether its cap cut it"] = function(t)
+		local cut = Describe.heights(oceanPlan())
+		t.ok(string.find(cut, "ocean: sea level 20, deepest %-80%.0 at %d+ %-?%d+, cut by its cap of 100, 3 Chunks") ~= nil, cut)
+		-- Its far edge lies 511 studs from the coast: 127.75 deep.
+		local short = Describe.heights(oceanPlan(function(p)
+			p.oceans[1].depthCap = 200
+		end))
+		t.ok(string.find(short, "ocean: sea level 20, deepest %-107%.8 at 767 %-?%d+, its cap of 200 not reached, 3 Chunks") ~= nil, short)
+		local none = Describe.heights(oceanPlan(function(p)
+			p.oceans[1].depthCap = false
+		end))
+		t.ok(string.find(none, "ocean: sea level 20, deepest %-107%.8 at 767 %-?%d+, no cap, 3 Chunks") ~= nil, none)
+	end,
+
+	["a change that turns written land into water names those Chunks, and Locked ones apart"] = function(t)
+		local before = oceanPlan(function(p)
+			p.oceans[1].chunks = { { 1, -1, 1, 0 } }
+		end)
+		local state = { chunks = {} }
+		for _, key in ipairs({ "0,1", "1,1", "-1,1", "1,0", "-1,-1" }) do
+			local i, j = string.match(key, "^(-?%d+),(-?%d+)$")
+			local s = Chunk.sample(before, tonumber(i), tonumber(j))
+			state.chunks[key] = { generated = true, locked = key == "1,1", water = s.water, sign = s.sign }
+		end
+		state.chunks["0,0"] = { generated = true, locked = false }
+		-- The Ocean grows over Chunk 0,1 and the Locked 1,1, so its coast moves and the depth of 1,0 changes too.
+		local after = oceanPlan(function(p)
+			p.oceans[1].chunks = { { 1, -1, 1, 1 }, { 0, 1, 0, 1 } }
+		end)
+		local change = Describe.waterChange(after, state)
+		t.eq(table.concat(change.flooded, " "), "0,1", "land turned into water")
+		t.eq(table.concat(change.lockedFlooded, " "), "1,1", "Locked, not written")
+		t.eq(table.concat(change.changed, " "), "1,0 0,1", "every written Chunk whose terrain changes, and the land beside it keeps its own")
+		t.eq(change.unrecorded, 1, "a Chunk written with no record of it is not compared")
+		local same = Describe.waterChange(before, state)
+		t.eq(#same.flooded + #same.changed + #same.lockedFlooded, 0, "a plan as it was written changes nothing")
+	end,
+
+	["a Lake that grows over written land counts too, and a River does not"] = function(t)
+		local before = oceanPlan(function(p)
+			p.oceans = {}
+			p.lakes = { { id = "lake", seed = 7006, center = { 0, -620 }, radius = 100, shore = 60, warp = 10, bedY = 0, waterLevel = 20 } }
+		end)
+		local state = { chunks = {} }
+		for _, key in ipairs({ "0,-1", "0,0", "1,0", "0,1", "-1,0" }) do
+			local i, j = string.match(key, "^(-?%d+),(-?%d+)$")
+			local s = Chunk.sample(before, tonumber(i), tonumber(j))
+			state.chunks[key] = { generated = true, locked = false, water = s.water, sign = s.sign }
+		end
+		local grown = clone(before)
+		grown.lakes[1].radius = 160
+		t.eq(table.concat(Describe.waterChange(grown, state).flooded, " "), "0,-1", "a Lake grown over land")
+		local river = clone(before)
+		river.rivers[1].halfWidth = (river.rivers[1].halfWidth or 20) * 2
+		t.eq(#Describe.waterChange(river, state).flooded, 0, "a wider River is an ordinary change")
 	end,
 
 	["land outside the Ocean stays as it was"] = function(t)

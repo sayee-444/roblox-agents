@@ -506,7 +506,7 @@ function inStudio(dir, env, ...args) {
     const result = spawnSync(process.execPath, [cli, ...args], {
       encoding: 'utf8',
       timeout: 15000,
-      env: { ...process.env, FAKE_STUDIO_LOG: log, WORLD_FAKE_STUDIO: path.resolve(__dirname, 'fixtures/fake-studio.js'), WORLD_LIST_WAIT_MS: '1', WORLD_STATUS_WAIT_MS: '500', ...env },
+      env: { ...process.env, FAKE_STUDIO_LOG: log, WORLD_FAKE_STUDIO: path.resolve(__dirname, 'fixtures/fake-studio.js'), WORLD_LIST_WAIT_MS: '1', WORLD_STATUS_WAIT_MS: '500', WORLD_RECOVER_WAIT_MS: '1', ...env },
     });
     const calls = fs.existsSync(log) ? fs.readFileSync(log, 'utf8').trim().split('\n') : [];
     return { ...result, calls };
@@ -723,7 +723,7 @@ test('remove puts the plan back and records nothing when Studio fails before any
 
 test('remove keeps the block in the history when the write fails, and names the command that finishes it', () => {
   withPlan({}, (dir, read) => {
-    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_UNREACHABLE: '.generate(' }, 'remove', 'river', '--place', 'P', '--project', dir);
+    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_UNREACHABLE: '.generate(', FAKE_STUDIO_BUSY: 'true', WORLD_RECOVER_TRIES: '2' }, 'remove', 'river', '--place', 'P', '--project', dir);
     assert.strictEqual(status, 1);
     assert.ok(!read('src/world/plan.luau').includes('id = "river"'));
     const history = read('docs/world/history.md');
@@ -736,9 +736,9 @@ test('remove keeps the block in the history when the write fails, and names the 
 
 test('a Luau call Studio does not answer is not sent again, since its code may still be running', () => {
   withPlan({}, (dir) => {
-    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_UNREACHABLE: '.generate(' }, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_UNREACHABLE: '.describe(' }, 'describe', '--place', 'P', '--project', dir);
     assert.strictEqual(status, 1);
-    assert.strictEqual(calls.filter((call) => call.startsWith('generate')).length, 1, calls.join(' | '));
+    assert.strictEqual(calls.filter((call) => call === 'describe').length, 1, calls.join(' | '));
     assert.match(stderr, /may still be running/);
     assert.match(stderr, /Target is not reachable/);
   });
@@ -875,4 +875,146 @@ test('a new world starts with the Depth Limit at -3,500 and the Destroy Height a
     fs.rmSync(dir, { recursive: true, force: true });
     fs.rmSync(composed, { recursive: true, force: true });
   }
+});
+
+// What a plan would change in the Chunks already written, as Ops.waterFacts answers it.
+const WATER = (facts) => JSON.stringify({ flooded: [], lockedFlooded: [], changed: [], unrecorded: 0, ...facts });
+
+test('a change that turns written land into water stops before writing, naming those Chunks and every written Chunk it changes', () => {
+  withPlan({}, (dir) => {
+    const water = WATER({ flooded: ['0,1'], changed: ['1,0', '0,1', '2,0'] });
+    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_WATER: water }, 'generate', '0', '1', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /Nothing was written/);
+    assert.match(stderr, /turn land already written into water in Chunks 0,1\b/);
+    assert.match(stderr, /Written Chunks whose terrain would change: 1,0 0,1 2,0/);
+    assert.match(stderr, /--over-land/);
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+  });
+});
+
+test('run stops in the same way, before writing any Chunk', () => {
+  withPlan({}, (dir) => {
+    const { status, calls } = inStudio(dir, { FAKE_STUDIO_WATER: WATER({ flooded: ['0,1'] }) }, 'run', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+  });
+});
+
+test('--over-land writes the water over that land, on the developer\'s word', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_WATER: WATER({ flooded: ['0,1'], changed: ['0,1'] }) }, 'generate', '0', '1', '--place', 'P', '--project', dir, '--over-land');
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.match(stdout, /land of Chunks 0,1 turns into water, as the developer allowed/);
+  });
+});
+
+test('Locked Chunks keep their rule: their land does not stop a write, and they are named as left as they are', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_WATER: WATER({ lockedFlooded: ['1,1'] }) }, 'generate', '0', '1', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.match(stdout, /Locked Chunks whose land the plan turns into water, left as they are: 1,1/);
+  });
+});
+
+test('a write that leaves out written Chunks whose terrain changes names them, since their borders would show steps', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_WATER: WATER({ changed: ['1,0', '2,0'] }) }, 'generate', '1', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.match(stdout, /Written Chunks whose terrain changes and this write leaves out: 2,0/);
+  });
+});
+
+test('an ordinary change writes as before, saying that no written land turns into water', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, {}, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(calls.includes('water facts'), calls.join(' | '));
+    assert.match(stdout, /water \(\d+\.\d s\): no written land turns into water/);
+  });
+});
+
+// The small plan with an Ocean over its eastern Chunks, written as rectangles that span several lines.
+const OCEAN_PLAN = SMALL_PLAN.replace('\tsites = {},\n', `\tseaLevel = 20,\n\toceans = {\n\t\t{\n\t\t\tid = "sea",\n\t\t\tseed = 8001,\n\t\t\tchunks = { { 5, -5, 6, 6 }, { 3, 5, 4, 6 } },\n\t\t\tdepthCap = 400,\n\t\t},\n\t},\n\tsites = {},\n`);
+
+test('remove takes an Ocean out of the plan, writes only its Chunks and records its block exactly', () => {
+  withPlan({ plan: OCEAN_PLAN }, (dir, read) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT }, 'remove', 'sea', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const plan = read('src/world/plan.luau');
+    assert.ok(!plan.includes('id = "sea"'));
+    assert.ok(plan.includes('oceans = {},'), 'its list stays, empty');
+    assert.ok(calls.includes('impact { removedIds = { "sea" } }'), calls.join(' | '));
+    const history = read('docs/world/history.md');
+    assert.match(history.split('\n')[0], /Removed Ocean `sea`$/);
+    assert.ok(history.includes('chunks = { { 5, -5, 6, 6 }, { 3, 5, 4, 6 } },'), history);
+  });
+});
+
+test('status lists the Oceans a plan holds', () => {
+  withPlan({ plan: OCEAN_PLAN }, (dir) => {
+    assert.match(inStudio(dir, {}, 'status', '--project', dir).stdout, /Oceans: sea/);
+  });
+});
+
+// Studio stops answering one call that writes for minutes: 576 Chunks of lab-ocean at about 0.9 s each did, on 2026-11-09.
+test('generate writes a long list in batches of at most 48 Chunks, so that Studio keeps answering, and adds them up', () => {
+  withPlan({}, (dir) => {
+    const pairs = [];
+    for (let n = 0; n < 100; n += 1) pairs.push(String(n % 10 - 5), String(Math.floor(n / 10) - 5));
+    const { status, stdout, calls } = inStudio(dir, {}, 'generate', ...pairs, '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const writes = calls.filter((call) => call.startsWith('generate'));
+    assert.deepStrictEqual(writes.map((call) => (call.match(/\{ -?\d+, -?\d+ \}/g) || []).length), [48, 48, 4], writes.join(' | '));
+    assert.match(stdout, /generated 100 Chunks in 50\.00 s, per Chunk min 0\.50 mean 0\.50 max 0\.50, skipped Locked: none/);
+  });
+});
+
+test('generate with no Chunks given writes every Chunk of the extent in batches too, row by row, as run does', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, {}, 'generate', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const writes = calls.filter((call) => call.startsWith('generate'));
+    assert.strictEqual(writes.length, 3, writes.join(' | '));
+    assert.ok(writes[0].startsWith('generate { { -5, -5 }, { -4, -5 },'), writes[0]);
+    assert.match(stdout, /generated 144 Chunks/);
+  });
+});
+
+test('remove stops when taking something out would let water cover land already written, and puts the plan back', () => {
+  withPlan({}, (dir, read) => {
+    const before = read('src/world/plan.luau');
+    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT, FAKE_STUDIO_WATER: WATER({ flooded: ['0,0'], changed: ['0,0'] }) }, 'remove', 'range', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /Nothing was removed/);
+    assert.match(stderr, /Chunks 0,0/);
+    assert.strictEqual(read('src/world/plan.luau'), before);
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.ok(!fs.existsSync(path.join(dir, 'docs/world/history.md')), 'nothing is recorded');
+  });
+});
+
+test('a batch Studio stops answering is waited out, and only the Chunks it left unwritten are sent again', () => {
+  withPlan({}, (dir) => {
+    const env = { FAKE_STUDIO_UNREACHABLE_ONCE: '.generate(', FAKE_STUDIO_UNWRITTEN: '["2,0"]', WORLD_RECOVER_WAIT_MS: '1' };
+    const { status, stdout, calls } = inStudio(dir, env, 'generate', '0', '0', '1', '0', '2', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const writes = calls.filter((call) => call.startsWith('generate'));
+    assert.deepStrictEqual(writes, ['generate { { 0, 0 }, { 1, 0 }, { 2, 0 } }', 'generate { { 2, 0 } }']);
+    assert.ok(calls.indexOf('writing') < calls.indexOf('unwritten'), calls.join(' | '));
+    assert.match(stdout, /Studio stopped answering during a batch and went on writing it: 2 of its Chunks were written meanwhile, and 1 was sent again/);
+  });
+});
+
+test('a write Studio never finishes answering stops after waiting, and says what to run', () => {
+  withPlan({}, (dir) => {
+    const env = { FAKE_STUDIO_UNREACHABLE_ONCE: '.generate(', FAKE_STUDIO_BUSY: 'true', WORLD_RECOVER_WAIT_MS: '1', WORLD_RECOVER_TRIES: '3' };
+    const { status, stderr, calls } = inStudio(dir, env, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.strictEqual(calls.filter((call) => call.startsWith('generate')).length, 1, calls.join(' | '));
+    assert.match(stderr, /still writing/);
+    assert.match(stderr, /generate 0 0/);
+  });
 });

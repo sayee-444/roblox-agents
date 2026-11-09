@@ -29,7 +29,9 @@ Create and write terrain
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
                                   run and generate stop when a world that has written nothing meets a place
                                   holding terrain. --over-terrain writes over it, on the developer's word
-  remove <id> [--why <reason>]    Take a Landform, River or Lake out of the plan, a River with its valley, write only
+                                  They also stop when a Lake or Ocean would cover land already written, naming those
+                                  Chunks. --over-land writes the water over it, on the developer's word
+  remove <id> [--why <reason>]    Take a Landform, River, Lake or Ocean out of the plan, a River with its valley, write only
                                   the generated Chunks it touched and record the exact block in the history
   verify <i> <j>                  Rewrite one Chunk and prove the result is identical
 
@@ -71,6 +73,9 @@ const FAR_VIEW_STUDS = 1000;
 // Studio sometimes lists no place for a few seconds while it is connected, which cost runs 20 to 40 s
 // of retries by the model. An empty listing is waited out, and a listing of other places is an answer.
 const LIST_TRIES = 20;
+// Chunks written in one call to Studio. One call of 576 Chunks at about 0.9 s each made Studio stop answering, on
+// lab-ocean on 2026-11-09, while 144 of lab in 131 s passed, so a batch stays near a minute.
+const BATCH = 48;
 const LIST_WAIT_MS = Number(process.env.WORLD_LIST_WAIT_MS || 1000);
 // status answers from the files whatever Studio does, so it waits little for it. A place comes back in
 // the listing on the third or fourth try after any command, measured, so fewer tries report it closed.
@@ -291,15 +296,47 @@ const steps = {
     return `\n${text}`;
   },
 
+  // Writes the Chunks given, or every Chunk of the extent row by row, BATCH at a time, and records the state
+  // after each batch, so that a batch Studio does not finish leaves the earlier ones recorded. Studio may stop
+  // answering a batch and go on writing it, as it did on lab-ocean on 2026-11-09 after nine batches of 48: then
+  // this waits until it is done and sends again only the Chunks it left unwritten.
   async generate(studio, ctx, args) {
     const remove = ctx.flags['remove-baseplate'] === true;
-    const list = chunkList(args);
-    const text = await studio.luau(`local O = ${OPS}; local g = O.generate(${list}); return g .. "\\n" .. O.placeSpawn(${remove})`);
-    if (ctx.project !== ENGINE) {
-      const source = await studio.luau(`return ${OPS}.stateSource()`);
-      fs.writeFileSync(path.join(ctx.project, `${STATE}.luau`), `${source.trim()}\n`);
+    const keys = args.length ? chunkPairs(args) : extentChunks(readModule(path.join(ctx.project, `${PLAN}.luau`)));
+    const seconds = [];
+    const skipped = [];
+    const notes = [];
+    const listOf = (batch) => chunkList(batch.flatMap((key) => key.split(',')));
+    const write = async (batch) => JSON.parse(await studio.luau(`local O = ${OPS}; local g = O.generate(${listOf(batch)}); return g`));
+    for (let at = 0; at < keys.length; at += BATCH) {
+      const batch = keys.slice(at, at + BATCH);
+      const t0 = Date.now();
+      let done;
+      try {
+        done = await write(batch);
+      } catch (error) {
+        if (!error.message.includes('may still be running')) throw error;
+        await waitForWriting(studio, keys.slice(at));
+        const left = JSON.parse(await studio.luau(`return ${OPS}.unwritten(${listOf(batch)})`));
+        notes.push(`Studio stopped answering during a batch and went on writing it: ${left.seconds.length} of its Chunks were written meanwhile, and ${left.unwritten.length} ${left.unwritten.length === 1 ? 'was' : 'were'} sent again`);
+        seconds.push(...left.seconds);
+        skipped.push(...left.skipped);
+        done = left.unwritten.length ? await write(left.unwritten) : { seconds: [], skipped: [] };
+      }
+      seconds.push(...done.seconds);
+      skipped.push(...done.skipped);
+      if (keys.length > BATCH) console.log(`  batch ${at / BATCH + 1} of ${Math.ceil(keys.length / BATCH)}: ${((Date.now() - t0) / 1000).toFixed(1)} s`);
+      if (ctx.project !== ENGINE) {
+        const source = await studio.luau(`return ${OPS}.stateSource()`);
+        fs.writeFileSync(path.join(ctx.project, `${STATE}.luau`), `${source.trim()}\n`);
+      }
     }
-    return text;
+    const locked = skipped.join(' ') || 'none';
+    const total = seconds.reduce((sum, value) => sum + value, 0);
+    const line = seconds.length
+      ? `generated ${seconds.length} Chunks in ${total.toFixed(2)} s, per Chunk min ${Math.min(...seconds).toFixed(2)} mean ${(total / seconds.length).toFixed(2)} max ${Math.max(...seconds).toFixed(2)}, skipped Locked: ${locked}`
+      : `generated 0 Chunks, skipped Locked: ${locked}`;
+    return [line, ...notes, await studio.luau(`return ${OPS}.placeSpawn(${remove})`)].join('\n');
   },
 
   // Takes a Landform, River or Lake out of the plan, writes the Chunks it touched and records it, so that
@@ -326,6 +363,15 @@ const steps = {
       ctx.failed = true;
       return `Nothing was removed, since the plan would be invalid:\n${described}`;
     }
+    // Taking out a Landform can lower ground under a Lake's water, so the same guard as a write stands here.
+    let flooding;
+    try {
+      flooding = await guardFlooding(studio, { ...ctx, args: rewrite.flatMap((key) => key.split(',')) });
+    } catch (error) {
+      fs.writeFileSync(planFile, before);
+      await steps.sync(studio, ctx);
+      throw new Error(`Nothing was removed, and the plan is as it was. ${error.message}`);
+    }
     const names = taken.map((block) => block.id).join(' and ');
     const lockedNote = lockedReached.length ? `\nLocked Chunks it reached, not written, so tell the developer: ${lockedReached.join(' ')}` : '';
     const record = (written, unwritten) => addHistory(ctx.project, plans.removalEntry({
@@ -343,7 +389,7 @@ const steps = {
       }
     }
     record(rewrite, []);
-    return `Removed ${names}, recorded in docs/world/history.md. Chunks: ${rewrite.join(' ') || 'none'}\n${result}${lockedNote}`;
+    return `Removed ${names}, recorded in docs/world/history.md. Chunks: ${rewrite.join(' ') || 'none'}\nwater: ${flooding}\n${result}${lockedNote}`;
   },
 
   async borders(studio, ctx, args) {
@@ -543,6 +589,7 @@ function worldLines(project) {
       `Regions: ${held.regions.map((region) => `${region.id} (${region.kind})`).join(', ') || 'none'}`,
       `Rivers: ${names(held.rivers)}`,
       `Lakes: ${names(held.lakes)}`,
+      `Oceans: ${names(held.oceans)}`,
       `Last change: ${plans.lastChange(readIfThere(path.join(project, 'docs/world/history.md'))) || 'none recorded'}`,
     );
   } else {
@@ -670,6 +717,56 @@ async function guardDestroyHeight(studio, ctx) {
   throw new Error(`Nothing was written: the deepest bed or cave floor of this world, ${where}, is not above ${placeName}'s Destroy Height ${studs(facts.placeHeight)}, below which Roblox removes what falls, so a character there would be removed. Either declare destroyHeight in the World Plan, below its Depth Limit ${studs(facts.depthLimit)}, and run this again so the engine sets it in the place, or set Workspace.FallenPartsDestroyHeight in Studio's Properties window.`);
 }
 
+// A Water Body that grows over land already written would take that land for good, so a write first compares the plan
+// with what each written Chunk recorded when it was written. It stops on such land unless the developer allowed it, and
+// names every written Chunk whose terrain changes, so a write of only some of them leaves no step at their borders.
+async function guardFlooding(studio, ctx) {
+  const facts = JSON.parse(await studio.luau(`return ${OPS}.waterFacts()`));
+  const listed = ctx.args.length ? new Set(chunkPairs(ctx.args)) : null;
+  const changed = facts.changed.join(' ');
+  if (facts.flooded.length && ctx.flags['over-land'] === undefined) {
+    throw new Error(`Nothing was written: this plan would turn land already written into water in Chunks ${facts.flooded.join(' ')}, and that land does not come back. Written Chunks whose terrain would change: ${changed}. Tell the developer, and only on their word run this again with --over-land, writing every Chunk named.`);
+  }
+  const notes = [facts.flooded.length ? `land of Chunks ${facts.flooded.join(' ')} turns into water, as the developer allowed` : 'no written land turns into water'];
+  if (facts.lockedFlooded.length) notes.push(`Locked Chunks whose land the plan turns into water, left as they are: ${facts.lockedFlooded.join(' ')}`);
+  const left = listed ? facts.changed.filter((key) => !listed.has(key)) : [];
+  if (left.length) notes.push(`Written Chunks whose terrain changes and this write leaves out: ${left.join(' ')}. Write them too, or the borders between them show steps`);
+  if (facts.unrecorded) notes.push(`${facts.unrecorded} written Chunks hold no record of what they were written with, so they were not compared until they are written again`);
+  return notes.join('. ');
+}
+
+const RECOVER_WAIT_MS = Number(process.env.WORLD_RECOVER_WAIT_MS || 5000);
+const RECOVER_TRIES = Number(process.env.WORLD_RECOVER_TRIES || 120);
+
+// Waits until the batch Studio stopped answering is written, asking every RECOVER_WAIT_MS; a question it does
+// not answer counts as still writing. After RECOVER_TRIES it stops and names the Chunks to write once it is done.
+async function waitForWriting(studio, rest) {
+  for (let n = 0; n < RECOVER_TRIES; n += 1) {
+    await new Promise((resolve) => { setTimeout(resolve, RECOVER_WAIT_MS); });
+    try {
+      if ((await studio.luau(`return ${OPS}.writing()`)).trim() === 'false') return;
+    } catch (error) {
+      if (!error.message.includes('may still be running')) throw error;
+    }
+  }
+  throw new Error(`Studio is still writing a batch it stopped answering, after ${(RECOVER_TRIES * RECOVER_WAIT_MS) / 1000} s. Once its terrain cells stop changing in status, run: generate ${rest.join(' ').replace(/,/g, ' ')}`);
+}
+
+// Every Chunk of a plan's extent, as keys "i,j", row by row as the engine walks it.
+function extentChunks(planText) {
+  const e = plans.facts(planText).extent;
+  const keys = [];
+  for (let j = e.minZ; j <= e.maxZ; j += 1) for (let i = e.minX; i <= e.maxX; i += 1) keys.push(`${i},${j}`);
+  return keys;
+}
+
+// Chunks given as i j i j, as keys "i,j".
+function chunkPairs(args) {
+  const keys = [];
+  for (let n = 0; n + 1 < args.length; n += 2) keys.push(`${Number(args[n])},${Number(args[n + 1])}`);
+  return keys;
+}
+
 async function main() {
   const { flags, positional } = parseArgs(process.argv.slice(2));
   const [command, ...args] = positional;
@@ -690,7 +787,7 @@ async function main() {
     return 2;
   }
   const order = cycles[command] || ['sync', command];
-  const ctx = { flags, project: path.resolve(typeof flags.project === 'string' ? flags.project : ENGINE), failed: false };
+  const ctx = { flags, args, project: path.resolve(typeof flags.project === 'string' ? flags.project : ENGINE), failed: false };
   if (!fs.existsSync(path.join(ctx.project, `${PLAN}.luau`))) {
     console.error(`No World Plan at ${path.join(ctx.project, `${PLAN}.luau`)}. Write it from the template that new printed`);
     return 2;
@@ -707,13 +804,14 @@ async function main() {
     await studio.connect(flags.place);
     if (['run', 'generate'].includes(command)) await refuseOtherTerrain(studio, ctx);
     const started = Date.now();
-    if (['run', 'generate'].includes(command)) order.splice(order.indexOf('sync') + 1, 0, 'destroy height');
+    if (['run', 'generate'].includes(command)) order.splice(order.indexOf('sync') + 1, 0, 'destroy height', 'water');
+    const guards = { 'destroy height': guardDestroyHeight, water: guardFlooding };
     for (const name of [...new Set(order)]) {
-      if (ctx.failed && ['generate', 'borders', 'verify', 'heights', 'capture'].includes(name)) {
+      if (ctx.failed && ['water', 'generate', 'borders', 'verify', 'heights', 'capture'].includes(name)) {
         console.log(`${name}: skipped after a failure`);
       } else {
         const t0 = Date.now();
-        const text = await (name === 'destroy height' ? guardDestroyHeight : steps[name])(studio, ctx, name === command ? args : []);
+        const text = await (guards[name] || steps[name])(studio, ctx, name === command ? args : []);
         console.log(`${name} (${((Date.now() - t0) / 1000).toFixed(1)} s): ${text}`);
       }
     }

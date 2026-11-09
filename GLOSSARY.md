@@ -46,6 +46,10 @@ _Avoid_: sea
 A stretch of land left between Oceans, which the World Plan does not declare. Its size alone makes it read as a continent or an island.
 _Avoid_: continent, island, land structure
 
+**Coast**:
+The line where an Ocean meets a Landmass, from which the Ocean's depth is measured.
+_Avoid_: coastline, shoreline
+
 **Banks**:
 How a River or Lake meets the land, from the ground around it down to its deepest line, falling as one curve with no break at the waterline: its Shore and its Shallows.
 _Avoid_: edges, walls
