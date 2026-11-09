@@ -29,7 +29,9 @@ Create and write terrain
   generate [<i> <j> ...]          Write only the Chunks a change touched. With none listed, writes every Chunk
                                   run and generate stop when a world that has written nothing meets a place
                                   holding terrain. --over-terrain writes over it, on the developer's word
-  remove <id> [--why <reason>]    Take a Landform, River or Lake out of the plan, a River with its valley, write only
+                                  They also stop when a Lake or Ocean would cover land already written, naming those
+                                  Chunks. --over-land writes the water over it, on the developer's word
+  remove <id> [--why <reason>]    Take a Landform, River, Lake or Ocean out of the plan, a River with its valley, write only
                                   the generated Chunks it touched and record the exact block in the history
   verify <i> <j>                  Rewrite one Chunk and prove the result is identical
 
@@ -543,6 +545,7 @@ function worldLines(project) {
       `Regions: ${held.regions.map((region) => `${region.id} (${region.kind})`).join(', ') || 'none'}`,
       `Rivers: ${names(held.rivers)}`,
       `Lakes: ${names(held.lakes)}`,
+      `Oceans: ${names(held.oceans)}`,
       `Last change: ${plans.lastChange(readIfThere(path.join(project, 'docs/world/history.md'))) || 'none recorded'}`,
     );
   } else {
@@ -670,6 +673,31 @@ async function guardDestroyHeight(studio, ctx) {
   throw new Error(`Nothing was written: the deepest bed or cave floor of this world, ${where}, is not above ${placeName}'s Destroy Height ${studs(facts.placeHeight)}, below which Roblox removes what falls, so a character there would be removed. Either declare destroyHeight in the World Plan, below its Depth Limit ${studs(facts.depthLimit)}, and run this again so the engine sets it in the place, or set Workspace.FallenPartsDestroyHeight in Studio's Properties window.`);
 }
 
+// A Water Body that grows over land already written would take that land for good, so a write first compares the plan
+// with what each written Chunk recorded when it was written. It stops on such land unless the developer allowed it, and
+// names every written Chunk whose terrain changes, so a write of only some of them leaves no step at their borders.
+async function guardFlooding(studio, ctx) {
+  const facts = JSON.parse(await studio.luau(`return ${OPS}.waterFacts()`));
+  const listed = ctx.args.length ? new Set(chunkPairs(ctx.args)) : null;
+  const changed = facts.changed.join(' ');
+  if (facts.flooded.length && ctx.flags['over-land'] === undefined) {
+    throw new Error(`Nothing was written: this plan would turn land already written into water in Chunks ${facts.flooded.join(' ')}, and that land does not come back. Written Chunks whose terrain would change: ${changed}. Tell the developer, and only on their word run this again with --over-land, writing every Chunk named.`);
+  }
+  const notes = [facts.flooded.length ? `land of Chunks ${facts.flooded.join(' ')} turns into water, as the developer allowed` : 'no written land turns into water'];
+  if (facts.lockedFlooded.length) notes.push(`Locked Chunks whose land the plan turns into water, left as they are: ${facts.lockedFlooded.join(' ')}`);
+  const left = listed ? facts.changed.filter((key) => !listed.has(key)) : [];
+  if (left.length) notes.push(`Written Chunks whose terrain changes and this write leaves out: ${left.join(' ')}. Write them too, or the borders between them show steps`);
+  if (facts.unrecorded) notes.push(`${facts.unrecorded} written Chunks hold no record of what they were written with, so they were not compared until they are written again`);
+  return notes.join('. ');
+}
+
+// Chunks given as i j i j, as keys "i,j".
+function chunkPairs(args) {
+  const keys = [];
+  for (let n = 0; n + 1 < args.length; n += 2) keys.push(`${Number(args[n])},${Number(args[n + 1])}`);
+  return keys;
+}
+
 async function main() {
   const { flags, positional } = parseArgs(process.argv.slice(2));
   const [command, ...args] = positional;
@@ -690,7 +718,7 @@ async function main() {
     return 2;
   }
   const order = cycles[command] || ['sync', command];
-  const ctx = { flags, project: path.resolve(typeof flags.project === 'string' ? flags.project : ENGINE), failed: false };
+  const ctx = { flags, args, project: path.resolve(typeof flags.project === 'string' ? flags.project : ENGINE), failed: false };
   if (!fs.existsSync(path.join(ctx.project, `${PLAN}.luau`))) {
     console.error(`No World Plan at ${path.join(ctx.project, `${PLAN}.luau`)}. Write it from the template that new printed`);
     return 2;
@@ -707,13 +735,14 @@ async function main() {
     await studio.connect(flags.place);
     if (['run', 'generate'].includes(command)) await refuseOtherTerrain(studio, ctx);
     const started = Date.now();
-    if (['run', 'generate'].includes(command)) order.splice(order.indexOf('sync') + 1, 0, 'destroy height');
+    if (['run', 'generate'].includes(command)) order.splice(order.indexOf('sync') + 1, 0, 'destroy height', 'water');
+    const guards = { 'destroy height': guardDestroyHeight, water: guardFlooding };
     for (const name of [...new Set(order)]) {
-      if (ctx.failed && ['generate', 'borders', 'verify', 'heights', 'capture'].includes(name)) {
+      if (ctx.failed && ['water', 'generate', 'borders', 'verify', 'heights', 'capture'].includes(name)) {
         console.log(`${name}: skipped after a failure`);
       } else {
         const t0 = Date.now();
-        const text = await (name === 'destroy height' ? guardDestroyHeight : steps[name])(studio, ctx, name === command ? args : []);
+        const text = await (guards[name] || steps[name])(studio, ctx, name === command ? args : []);
         console.log(`${name} (${((Date.now() - t0) / 1000).toFixed(1)} s): ${text}`);
       }
     }

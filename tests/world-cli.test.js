@@ -876,3 +876,85 @@ test('a new world starts with the Depth Limit at -3,500 and the Destroy Height a
     fs.rmSync(composed, { recursive: true, force: true });
   }
 });
+
+// What a plan would change in the Chunks already written, as Ops.waterFacts answers it.
+const WATER = (facts) => JSON.stringify({ flooded: [], lockedFlooded: [], changed: [], unrecorded: 0, ...facts });
+
+test('a change that turns written land into water stops before writing, naming those Chunks and every written Chunk it changes', () => {
+  withPlan({}, (dir) => {
+    const water = WATER({ flooded: ['0,1'], changed: ['1,0', '0,1', '2,0'] });
+    const { status, stderr, calls } = inStudio(dir, { FAKE_STUDIO_WATER: water }, 'generate', '0', '1', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.match(stderr, /Nothing was written/);
+    assert.match(stderr, /turn land already written into water in Chunks 0,1\b/);
+    assert.match(stderr, /Written Chunks whose terrain would change: 1,0 0,1 2,0/);
+    assert.match(stderr, /--over-land/);
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+  });
+});
+
+test('run stops in the same way, before writing any Chunk', () => {
+  withPlan({}, (dir) => {
+    const { status, calls } = inStudio(dir, { FAKE_STUDIO_WATER: WATER({ flooded: ['0,1'] }) }, 'run', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 1);
+    assert.ok(!calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+  });
+});
+
+test('--over-land writes the water over that land, on the developer\'s word', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_WATER: WATER({ flooded: ['0,1'], changed: ['0,1'] }) }, 'generate', '0', '1', '--place', 'P', '--project', dir, '--over-land');
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.match(stdout, /land of Chunks 0,1 turns into water, as the developer allowed/);
+  });
+});
+
+test('Locked Chunks keep their rule: their land does not stop a write, and they are named as left as they are', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_WATER: WATER({ lockedFlooded: ['1,1'] }) }, 'generate', '0', '1', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(calls.some((call) => call.startsWith('generate')), calls.join(' | '));
+    assert.match(stdout, /Locked Chunks whose land the plan turns into water, left as they are: 1,1/);
+  });
+});
+
+test('a write that leaves out written Chunks whose terrain changes names them, since their borders would show steps', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout } = inStudio(dir, { FAKE_STUDIO_WATER: WATER({ changed: ['1,0', '2,0'] }) }, 'generate', '1', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.match(stdout, /Written Chunks whose terrain changes and this write leaves out: 2,0/);
+  });
+});
+
+test('an ordinary change writes as before, saying that no written land turns into water', () => {
+  withPlan({}, (dir) => {
+    const { status, stdout, calls } = inStudio(dir, {}, 'generate', '0', '0', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    assert.ok(calls.includes('water facts'), calls.join(' | '));
+    assert.match(stdout, /water \(\d+\.\d s\): no written land turns into water/);
+  });
+});
+
+// The small plan with an Ocean over its eastern Chunks, written as rectangles that span several lines.
+const OCEAN_PLAN = SMALL_PLAN.replace('\tsites = {},\n', `\tseaLevel = 20,\n\toceans = {\n\t\t{\n\t\t\tid = "sea",\n\t\t\tseed = 8001,\n\t\t\tchunks = { { 5, -5, 6, 6 }, { 3, 5, 4, 6 } },\n\t\t\tdepthCap = 400,\n\t\t},\n\t},\n\tsites = {},\n`);
+
+test('remove takes an Ocean out of the plan, writes only its Chunks and records its block exactly', () => {
+  withPlan({ plan: OCEAN_PLAN }, (dir, read) => {
+    const { status, stdout, calls } = inStudio(dir, { FAKE_STUDIO_IMPACT: IMPACT }, 'remove', 'sea', '--place', 'P', '--project', dir);
+    assert.strictEqual(status, 0, stdout);
+    const plan = read('src/world/plan.luau');
+    assert.ok(!plan.includes('id = "sea"'));
+    assert.ok(plan.includes('oceans = {},'), 'its list stays, empty');
+    assert.ok(calls.includes('impact { removedIds = { "sea" } }'), calls.join(' | '));
+    const history = read('docs/world/history.md');
+    assert.match(history.split('\n')[0], /Removed Ocean `sea`$/);
+    assert.ok(history.includes('chunks = { { 5, -5, 6, 6 }, { 3, 5, 4, 6 } },'), history);
+  });
+});
+
+test('status lists the Oceans a plan holds', () => {
+  withPlan({ plan: OCEAN_PLAN }, (dir) => {
+    assert.match(inStudio(dir, {}, 'status', '--project', dir).stdout, /Oceans: sea/);
+  });
+});

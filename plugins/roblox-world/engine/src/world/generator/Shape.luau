@@ -595,7 +595,8 @@ function Shape.oceanOpen(plan, ci: number, cj: number): boolean
 end
 
 -- Returns ground height at (x, z), then: mesa parameter (0 outside, 1 on the top),
--- distance to the nearest River's sand band centre line, lake or ocean water, and the water level over this column (0 = dry).
+-- distance to the nearest River's sand band centre line, lake or ocean water, the water level over this column (0 = dry),
+-- and the id of the Water Body, a Lake or an Ocean, whose water covers it, or nil.
 function Shape.height(plan, x: number, z: number): (number, number, number, number)
 	local P = prepare(plan)
 	local ocean = Shape.oceanAt(plan, x, z)
@@ -603,6 +604,7 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 		return plan.seaLevel - (Shape.oceanDepth(ocean, Shape.coastDistance(plan, x, z))), 0, 0, plan.seaLevel, ocean.id
 	end
 	local h, mesaP, riverD, waterLevel = land(P, plan, x, z)
+	local body = nil
 
 	-- Lakes come last and only lower the ground, so a River's bed stays open where it enters and
 	-- no valley floor can rise inside the water. The radius is about where the water ends.
@@ -654,13 +656,13 @@ function Shape.height(plan, x: number, z: number): (number, number, number, numb
 				end
 				riverD = math.min(riverD, math.max(0, d - def.radius))
 				if h < def.waterLevel then
-					waterLevel = def.waterLevel
+					waterLevel, body = def.waterLevel, def.id
 				end
 			end
 		end
 	end
 
-	return h, mesaP, riverD, waterLevel
+	return h, mesaP, riverD, waterLevel, body
 end
 
 -- The lowest height this column holds ground, on the voxel grid. Ground stops at the plan's floor,

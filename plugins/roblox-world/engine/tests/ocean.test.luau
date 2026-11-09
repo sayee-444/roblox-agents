@@ -211,6 +211,49 @@ return {
 		t.ok(string.find(none, "ocean: sea level 20, deepest %-107%.8 at 767 %-?%d+, no cap, 3 Chunks") ~= nil, none)
 	end,
 
+	["a change that turns written land into water names those Chunks, and Locked ones apart"] = function(t)
+		local before = oceanPlan(function(p)
+			p.oceans[1].chunks = { { 1, -1, 1, 0 } }
+		end)
+		local state = { chunks = {} }
+		for _, key in ipairs({ "0,1", "1,1", "-1,1", "1,0", "-1,-1" }) do
+			local i, j = string.match(key, "^(-?%d+),(-?%d+)$")
+			local s = Chunk.sample(before, tonumber(i), tonumber(j))
+			state.chunks[key] = { generated = true, locked = key == "1,1", water = s.water, sign = s.sign }
+		end
+		state.chunks["0,0"] = { generated = true, locked = false }
+		-- The Ocean grows over Chunk 0,1 and the Locked 1,1, so its coast moves and the depth of 1,0 changes too.
+		local after = oceanPlan(function(p)
+			p.oceans[1].chunks = { { 1, -1, 1, 1 }, { 0, 1, 0, 1 } }
+		end)
+		local change = Describe.waterChange(after, state)
+		t.eq(table.concat(change.flooded, " "), "0,1", "land turned into water")
+		t.eq(table.concat(change.lockedFlooded, " "), "1,1", "Locked, not written")
+		t.eq(table.concat(change.changed, " "), "1,0 0,1", "every written Chunk whose terrain changes, and the land beside it keeps its own")
+		t.eq(change.unrecorded, 1, "a Chunk written with no record of it is not compared")
+		local same = Describe.waterChange(before, state)
+		t.eq(#same.flooded + #same.changed + #same.lockedFlooded, 0, "a plan as it was written changes nothing")
+	end,
+
+	["a Lake that grows over written land counts too, and a River does not"] = function(t)
+		local before = oceanPlan(function(p)
+			p.oceans = {}
+			p.lakes = { { id = "lake", seed = 7006, center = { 0, -620 }, radius = 100, shore = 60, warp = 10, bedY = 0, waterLevel = 20 } }
+		end)
+		local state = { chunks = {} }
+		for _, key in ipairs({ "0,-1", "0,0", "1,0", "0,1", "-1,0" }) do
+			local i, j = string.match(key, "^(-?%d+),(-?%d+)$")
+			local s = Chunk.sample(before, tonumber(i), tonumber(j))
+			state.chunks[key] = { generated = true, locked = false, water = s.water, sign = s.sign }
+		end
+		local grown = clone(before)
+		grown.lakes[1].radius = 160
+		t.eq(table.concat(Describe.waterChange(grown, state).flooded, " "), "0,-1", "a Lake grown over land")
+		local river = clone(before)
+		river.rivers[1].halfWidth = (river.rivers[1].halfWidth or 20) * 2
+		t.eq(#Describe.waterChange(river, state).flooded, 0, "a wider River is an ordinary change")
+	end,
+
 	["land outside the Ocean stays as it was"] = function(t)
 		local plan = oceanPlan()
 		local land = clone(shipped)

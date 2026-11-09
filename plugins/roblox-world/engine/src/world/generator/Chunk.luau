@@ -24,6 +24,35 @@ function Chunk.origin(plan, ci: number, cj: number): (number, number)
 	return ci * s - s / 2, cj * s - s / 2
 end
 
+local SAMPLES = 8 -- spots on each side of a Chunk where Chunk.sample reads it
+
+-- What Chunk (ci, cj) holds, read at SAMPLES x SAMPLES spots, so that a later plan can be compared with the one it was
+-- written with: `water`, one hex digit per 4 spots, whose bits say which spots a Water Body covers, and `sign`, a hash of
+-- every spot's height, water level and Water Body, which changes when the terrain does at any of them.
+function Chunk.sample(plan, ci: number, cj: number): { water: string, sign: string }
+	local s = plan.chunkSize
+	local x0, z0 = Chunk.origin(plan, ci, cj)
+	local digits, hash, nibble, bits = {}, 2166136261, 0, 0
+	for j = 0, SAMPLES - 1 do
+		for i = 0, SAMPLES - 1 do
+			local h, _, _, level, body = Shape.height(plan, x0 + (i + 0.5) * s / SAMPLES, z0 + (j + 0.5) * s / SAMPLES)
+			nibble = nibble * 2 + (if body then 1 else 0)
+			bits += 1
+			if bits == 4 then
+				table.insert(digits, string.format("%x", nibble))
+				nibble, bits = 0, 0
+			end
+			-- FNV-1a over the spot's text.
+			for _, byte in ipairs({ string.byte(string.format("%.2f %d %s;", h, level, body or ""), 1, -1) }) do
+				hash = bit32.bxor(hash, byte)
+				-- Times 16777619, as 2^24 + 403, so that no product passes what a number holds exactly.
+				hash = (bit32.lshift(hash, 24) + hash * 403) % 4294967296
+			end
+		end
+	end
+	return { water = table.concat(digits), sign = string.format("%08x", hash) }
+end
+
 -- Column facts for Chunk (ci, cj). Heights are kept on a grid padded by one voxel on
 -- every side, so slopes at the border use the neighbour's true values.
 -- Padded index of interior column (i, j), both 0-based: (j + 1) * (n + 2) + (i + 1) + 1.

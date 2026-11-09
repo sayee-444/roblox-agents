@@ -93,6 +93,13 @@ function Ops.impact(change)
 	return game:GetService("HttpService"):JSONEncode(impact)
 end
 
+-- What this plan would change in the Chunks already written, as JSON: where a Water Body would cover their land,
+-- Locked ones apart, and which would change at all (Describe.waterChange). Writes nothing.
+function Ops.waterFacts()
+	local change = Gen.Describe.waterChange(plan, state, Writer.breather())
+	return game:GetService("HttpService"):JSONEncode(change)
+end
+
 -- Writes the given Chunks, as a list of { i, j }, or every Chunk of the extent when none is
 -- given. Skips Locked Chunks, records the rest as generated and reports seconds per Chunk.
 function Ops.generate(list)
@@ -109,7 +116,9 @@ function Ops.generate(list)
 		shared.World.renderStale = true
 		table.insert(seconds, stats.wall)
 		total += stats.wall
-		state.chunks[key] = { generated = true, locked = false }
+		-- What it was written with, so that a later plan that turns its land into water is caught before writing.
+		local sample = Gen.Chunk.sample(plan, ci, cj)
+		state.chunks[key] = { generated = true, locked = false, water = sample.water, sign = sample.sign }
 		task.wait()
 	end
 	if list then
@@ -251,7 +260,8 @@ function Ops.stateSource()
 	eachChunk(function(ci, cj)
 		local entry = state.chunks[Gen.Chunk.key(ci, cj)]
 		if entry then
-			table.insert(lines, string.format('\t\t["%s"] = { generated = %s, locked = %s },', Gen.Chunk.key(ci, cj), tostring(entry.generated == true), tostring(entry.locked == true)))
+			local written = if type(entry.water) == "string" and type(entry.sign) == "string" then string.format(', water = "%s", sign = "%s"', entry.water, entry.sign) else ""
+			table.insert(lines, string.format('\t\t["%s"] = { generated = %s, locked = %s%s },', Gen.Chunk.key(ci, cj), tostring(entry.generated == true), tostring(entry.locked == true), written))
 		end
 	end)
 	table.insert(lines, "\t},")

@@ -10,6 +10,7 @@
 //   FAKE_STUDIO_UNREACHABLE=<s>  Luau holding this text fails as Studio fails when it is too busy to answer
 //   FAKE_STUDIO_DESTROY=<n>      the place's Destroy Height, -500 when not set, as in a new place
 //   FAKE_STUDIO_DEPTH=<json>     what depthFacts answers: the place's Destroy Height, the plan's limits and its deepest bed
+//   FAKE_STUDIO_WATER=<json>     what waterFacts answers: written Chunks whose land turns into water, and which change
 const fs = require('fs');
 const readline = require('readline');
 
@@ -31,6 +32,7 @@ function luau(code) {
   if (impact) { log(`impact ${impact[1]}`); return process.env.FAKE_STUDIO_IMPACT; }
   const setHeight = code.match(/\.setDestroyHeight\((.*?)\)/);
   if (setHeight) { log(`set destroy height ${setHeight[1]}`); return setHeight[1]; }
+  if (code.includes('.waterFacts()')) { log('water facts'); return process.env.FAKE_STUDIO_WATER || JSON.stringify({ flooded: [], lockedFlooded: [], changed: [], unrecorded: 0 }); }
   if (code.includes('.depthFacts()')) return process.env.FAKE_STUDIO_DEPTH || JSON.stringify({ placeHeight: -500, depthLimit: -3500, deepest: { id: 'ocean', kind: 'ocean', y: -80 } });
   if (code.includes('FallenPartsDestroyHeight')) return process.env.FAKE_STUDIO_DESTROY || '-500';
   const generate = code.match(/\.generate\((.*?)\);/);

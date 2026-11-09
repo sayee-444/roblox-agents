@@ -1,7 +1,7 @@
 // Reads and rewrites a World Plan as text, so that a command can answer about it or change it with no
 // Studio and no model writing it. Pure: text in, text and facts out.
 
-const SECTIONS = ['regions', 'rivers', 'lakes'];
+const SECTIONS = ['regions', 'rivers', 'lakes', 'oceans'];
 
 // Lengths and heights, each multiplied by a scale. Slopes, ratios, angles, counts and seeds stay as they
 // are, and so does `rockUnder`, the thickness of a wall of rock whatever the map's size.
@@ -134,7 +134,7 @@ function blockAt(text, entry) {
 }
 
 // The words the glossary capitalises.
-const KIND_NAMES = { river: 'River', lake: 'Lake' };
+const KIND_NAMES = { river: 'River', lake: 'Lake', ocean: 'Ocean' };
 
 // Takes `id` out of the plan. A River and its valley go together, since only a valley carves a River into
 // the ground, so naming either takes both. Returns the new text and what was taken, `id` first, each with

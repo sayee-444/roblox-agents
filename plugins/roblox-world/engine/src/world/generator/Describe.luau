@@ -605,6 +605,45 @@ function Describe.impact(plan, state, change)
 	return { rewrite = rewrite, lockedReached = lockedReached }
 end
 
+-- What the plan would change in the Chunks already written, against what each one recorded when it was written
+-- (Chunk.sample): `flooded`, unlocked Chunks where a Water Body would cover land, `lockedFlooded`, the Locked ones
+-- where it would, which no write touches, `changed`, every unlocked written Chunk whose terrain would change, and
+-- `unrecorded`, how many written Chunks hold no record to compare. `breathe`, when given, runs after each Chunk.
+function Describe.waterChange(plan, state, breathe: (() -> ())?)
+	local out = { flooded = {}, lockedFlooded = {}, changed = {}, unrecorded = 0 }
+	for _, c in ipairs(allChunks(plan)) do
+		local s = state.chunks and state.chunks[c.key]
+		if s and s.generated then
+			if type(s.water) ~= "string" or type(s.sign) ~= "string" then
+				out.unrecorded += 1
+			else
+				local now = Chunk.sample(plan, c.i, c.j)
+				local flooded = false
+				for k = 1, math.min(#s.water, #now.water) do
+					local was, will = tonumber(string.sub(s.water, k, k), 16), tonumber(string.sub(now.water, k, k), 16)
+					flooded = flooded or bit32.band(bit32.bnot(was), will) ~= 0
+				end
+				if s.locked then
+					if flooded then
+						table.insert(out.lockedFlooded, c.key)
+					end
+				else
+					if flooded then
+						table.insert(out.flooded, c.key)
+					end
+					if now.sign ~= s.sign then
+						table.insert(out.changed, c.key)
+					end
+				end
+				if breathe then
+					breathe()
+				end
+			end
+		end
+	end
+	return out
+end
+
 -- Each border between two generated Chunks, as { axis, ci, cj }, where (ci, cj) is the Chunk on its
 -- lower side. With a list of { i, j }, only the borders that touch one of those Chunks.
 function Describe.bordersOf(plan, state, list)
