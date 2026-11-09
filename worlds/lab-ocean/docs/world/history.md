@@ -1,5 +1,12 @@
 # World history
 
+## 2026-11-09: Trenches enlarged and deepened
+
+- **Why:** the developer wanted both Trenches about twice as large and deeper. Doubling does not fit, so each took the most validation allows: `abyss` stays centred and widens until its half width nearly meets the edge of the extent (z 6400); `western` keeps its line, is lengthened at both ends and widened until its half width nearly meets the west edge (x -5888). Walls unchanged.
+- **Plan:** `abyss` halfWidth 1024 to 1784, floors -3000 to -3500. `western` halfWidth 980 to 1080, route extended along its own line from 3 to 5 points (about 8,000 to 10,200 studs), floors each lowered by 100, new ends at the south floor -3500 and the north floor -2100.
+- **Chunks written:** the 166 the two Trenches reach (abyss 45, western 121); Locked 1,0 untouched. `generate` 189.3 s. Deepest: abyss -3422.4 at x -446 z 4612 (floor -3500), western -3500.0 at x -4445 z 4734.
+- **Restore:** set `abyss` to `floors = { -3000, -3000 }, halfWidth = 1024` and `western` to `points = { { -4600, -4000 }, { -4800, 0 }, { -4500, 4000 } }, floors = { -2000, -2800, -3400 }, halfWidth = 980`, then write the Chunks of both Trenches again.
+
 ## 2026-11-09: Trenches adapted to the new Generator (ramp walls, default roughness)
 
 - **Why:** the Generator changed: a Trench's walls leave the Ocean's bed as a ramp over its rim, roughness defaults to a fifth of the half width, and the deep bed has new materials. The plan no longer validated, so `abyss` lost `rough = 0` (its Region Seed now bends its outline) and both got a wider half width, keeping routes and floors.
